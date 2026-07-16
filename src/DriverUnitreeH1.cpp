@@ -1009,7 +1009,6 @@ DriverUnitreeH1::GAIT_TYPE DriverUnitreeH1::get_current_gait_type() const
  * @brief DriverUnitreeH1::_robot_control callback method used by the thread control loop.
  */
 
-// TODO: Determine if this function is still required. It doesn't see, to be called anywhere anymore.
 void DriverUnitreeH1::_robot_control()
 {
     motiontime_ += 2;//motiontime_++;

@@ -86,15 +86,14 @@ void RobotDriverUnitreeH1::_initial_settings()
                                                                   8090, // Local port
                                                                   custom_flags);
 
-    //TODO: Replace branch structure with either upper_body and lower_body topics or remove them and just use the built in whole_body system
-    //      (I think these are only here to maintain compatibility with the B1 controller code, so we probably don't need them)
-    
+    //NOTE: The below are believed to no longer be necessary, so they have been removed.
+/*
     // For backward compatibility
     publisher_LA_joint_states_ = node_->create_publisher<sensor_msgs::msg::JointState>(topic_prefix_ + "/get/LA_joint_states",1); // Left Arm
     publisher_RA_joint_states_ = node_->create_publisher<sensor_msgs::msg::JointState>(topic_prefix_ + "/get/RA_joint_states",1); // Right Arm
     publisher_LL_joint_states_ = node_->create_publisher<sensor_msgs::msg::JointState>(topic_prefix_ + "/get/LL_joint_states",1); // Left Leg
     publisher_RL_joint_states_ = node_->create_publisher<sensor_msgs::msg::JointState>(topic_prefix_ + "/get/RL_joint_states",1); // Right Leg
-
+*/
     publisher_rpy_angles_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(topic_prefix_ + "/get/rpy_angles", 1);
     publisher_IMU_state_ = node_->create_publisher<sensor_msgs::msg::Imu>(topic_prefix_ + "/get/IMU_state", 1);
     publisher_pose_state_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(topic_prefix_ + "/get/pose_state", 1);
@@ -105,11 +104,12 @@ void RobotDriverUnitreeH1::_initial_settings()
     publisher_IMU_orientation_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(topic_prefix_ + "/get/imu_orientation",1);
     publisher_last_IMU_orientation_when_robot_stopped_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(topic_prefix_ + "/get/last_imu_orientation_when_robot_stopped",1);
 
-    subscriber_target_holonomic_velocities_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>(
-        topic_prefix_ + "/set/holonomic_target_velocities",
-        1,
-        std::bind(&RobotDriverUnitreeH1::_callback_target_holonomic_velocities, this, std::placeholders::_1)
-        );
+    // Marked as deprecated in the .hpp, so commented out for now
+    // subscriber_target_holonomic_velocities_ = node_->create_subscription<std_msgs::msg::Float64MultiArray>(
+    //     topic_prefix_ + "/set/holonomic_target_velocities",
+    //     1,
+    //     std::bind(&RobotDriverUnitreeH1::_callback_target_holonomic_velocities, this, std::placeholders::_1)
+    //     );
 
     subscriber_target_twist_ = node_->create_subscription<geometry_msgs::msg::TwistStamped>(
         topic_prefix_ + "/set/target_twist",
@@ -153,7 +153,8 @@ void RobotDriverUnitreeH1::_initial_settings()
     // set the callback here
     set_control_loop_callback([this]() {
 
-        _read_joint_states_and_publish();
+        // Commented out because this is believed to no longer be necessary
+        // _read_joint_states_and_publish();
         _read_imu_state_and_publish();
         _read_battery_state();
         _read_twist_state_and_publish();
@@ -327,7 +328,8 @@ void RobotDriverUnitreeH1::set_target_base_height([[maybe_unused]] const double 
     throw std::runtime_error("RobotDriverUnitreeH1::set_target_base_height Not implemented");
 }
 
-
+// Below function only used by publishers, which have been removed. Thus, it is assumed to be unnecessary
+/*
 void RobotDriverUnitreeH1::_read_joint_states_and_publish()
 {
     // TODO: Replace individual branch calls with one whole-robot call, or an upper_body and lower_body call.
@@ -393,6 +395,8 @@ void RobotDriverUnitreeH1::_read_joint_states_and_publish()
     publisher_RL_joint_states_->publish(ros_msg_RL);
 
 }
+
+*/
 
 void RobotDriverUnitreeH1::_read_imu_state_and_publish()
 {
@@ -615,20 +619,20 @@ void RobotDriverUnitreeH1::control_loop()
 }
 */
 
+// Function commented out since it is only called by a subscriber which is called deprecated, so I assume it is not called anymore.
 
-
-void RobotDriverUnitreeH1::_callback_target_holonomic_velocities(const std_msgs::msg::Float64MultiArray &msg)
-{
-    VectorXd target_holonomic_velocities  = std_vector_double_to_vectorxd(msg.data);
-    new_target_velocities_available_ = true;
-    new_target_twist_available_ = true;
-    target_twist_ <<0,                                // Wx
-                    0,                                // Wy
-                    target_holonomic_velocities(2),   // Wz
-                    target_holonomic_velocities(0),   // Vx
-                    target_holonomic_velocities(1),   // Vy
-                    0;                                // Vz
-}
+// void RobotDriverUnitreeH1::_callback_target_holonomic_velocities(const std_msgs::msg::Float64MultiArray &msg)
+// {
+//     VectorXd target_holonomic_velocities  = std_vector_double_to_vectorxd(msg.data);
+//     new_target_velocities_available_ = true;
+//     new_target_twist_available_ = true;
+//     target_twist_ <<0,                                // Wx
+//                     0,                                // Wy
+//                     target_holonomic_velocities(2),   // Wz
+//                     target_holonomic_velocities(0),   // Vx
+//                     target_holonomic_velocities(1),   // Vy
+//                     0;                                // Vz
+// }
 
 
 

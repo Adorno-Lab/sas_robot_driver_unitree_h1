@@ -1,7 +1,7 @@
 /*
 # (C) Copyright 2024-2026 Adorno-Lab software developments
 #
-#    This file is part of sas_robot_driver_unitree_b1.
+#    This file is part of sas_robot_driver_unitree_h1.
 #
 #    This is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Lesser General Public License as published by
@@ -33,7 +33,7 @@
 using namespace DQ_robotics;
 using namespace Eigen;
 
-class DriverUnitreeB1
+class DriverUnitreeH1
 {
 public:
     enum class HIGH_LEVEL_MODE{
@@ -280,10 +280,10 @@ private:
 
 
 public:
-    DriverUnitreeB1() = delete;
-    DriverUnitreeB1(const DriverUnitreeB1&) = delete;
-    DriverUnitreeB1& operator= (const DriverUnitreeB1&) = delete;
-    DriverUnitreeB1(std::atomic_bool* st_break_loops,
+    DriverUnitreeH1() = delete;
+    DriverUnitreeH1(const DriverUnitreeH1&) = delete;
+    DriverUnitreeH1& operator= (const DriverUnitreeH1&) = delete;
+    DriverUnitreeH1(std::atomic_bool* st_break_loops,
                     const MODE& mode = MODE::None,
                     const LEVEL& level = LEVEL::HIGH,
                     const bool& verbosity = true,

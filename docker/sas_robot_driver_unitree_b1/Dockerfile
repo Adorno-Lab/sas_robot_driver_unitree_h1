@@ -45,13 +45,13 @@ RUN cd ~/ros2_ws/src/sas/ && rm -r sas_robot_driver_kuka
 RUN cd ~/ros2_ws/src/sas/ && rm -r sas_robot_driver_ur
 
 # Clone the sas driver
-RUN cd ~/ros2_ws/src && git clone https://github.com/Adorno-Lab/sas_robot_driver_unitree_b1 --recursive
+RUN cd ~/ros2_ws/src && git clone https://github.com/Adorno-Lab/sas_robot_driver_unitree_h1 --recursive
 
 RUN echo "# Update the environment variable LD_LIBRARY_PATH to include ~/opt/lib, as instructed in https://ros2-tutorial.readthedocs.io" >> ~/.bashrc
-RUN echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/ros2_ws/src/sas_robot_driver_unitree_b1/src/unitree_legged_sdk/lib/cpp/amd64/" >> ~/.bashrc
+RUN echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/ros2_ws/src/sas_robot_driver_unitree_h1/src/unitree_legged_sdk/lib/cpp/amd64/" >> ~/.bashrc
 
 RUN echo "# Update the environment variable LIBRARY_PATH to include ~/opt/lib, as instructed in https://ros2-tutorial.readthedocs.io" >> ~/.bashrc
-RUN echo "export LIBRARY_PATH=$LIBRARY_PATH:~/ros2_ws/src/sas_robot_driver_unitree_b1/src/unitree_legged_sdk/lib/cpp/amd64/" >> ~/.bashrc
+RUN echo "export LIBRARY_PATH=$LIBRARY_PATH:~/ros2_ws/src/sas_robot_driver_unitree_h1/src/unitree_legged_sdk/lib/cpp/amd64/" >> ~/.bashrc
 
 
 # ALIASES
@@ -61,7 +61,7 @@ RUN echo "alias cdros2='cd ~/ros2_ws/' " >> ~/.bashrc
 RUN echo "alias buildros2='cdros2 && colcon build && source install/setup.bash' " >> ~/.bashrc 
 # ROS DOMAIN SETUP
 RUN echo "export ROS_DOMAIN_ID=$ROS_DOMAIN_ID" >> ~/.bashrc 
-RUN echo "alias launch_ROS2_drivers='cdros2 && source install/setup.bash && ros2 launch sas_robot_driver_unitree_b1 real_b1_robot_launch.py' " >> ~/.bashrc 
+RUN echo "alias launch_ROS2_drivers='cdros2 && source install/setup.bash && ros2 launch sas_robot_driver_unitree_h1 real_h1_robot_launch.py' " >> ~/.bashrc 
 
 RUN source ~/.bashrc
 

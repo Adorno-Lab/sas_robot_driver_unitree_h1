@@ -10,7 +10,7 @@ MainWindow::MainWindow(std::atomic_bool *break_loops, QWidget *parent)
     elapsed_time_{0}
 {
     ui->setupUi(this);
-    setWindowTitle("Unitree B1 driver test");
+    setWindowTitle("Unitree H1 driver test");
     ui->statusbar->showMessage("Welcome!", 5000);
     timerId_ = startTimer(time_step_in_milliseconds_);
 
@@ -200,13 +200,13 @@ void MainWindow::update_dial_select_robot()
 
 void MainWindow::update_dial_change_operation_high_level_mode()
 {
-    if (unitree_b1_driver_)
+    if (unitree_h1_driver_)
     {
         int dial = ui->dial_change_operation_high_level_mode_->sliderPosition();
         if (dial == 0) //walking
-            unitree_b1_driver_->request_change_in_high_level_control(DriverUnitreeB1::HIGH_LEVEL_MODE::TARGET_VELOCITY_WALKING);
+            unitree_h1_driver_->request_change_in_high_level_control(DriverUnitreeH1::HIGH_LEVEL_MODE::TARGET_VELOCITY_WALKING);
         if (dial == 1)
-            unitree_b1_driver_->request_change_in_high_level_control(DriverUnitreeB1::HIGH_LEVEL_MODE::FORCED_STAND);
+            unitree_h1_driver_->request_change_in_high_level_control(DriverUnitreeH1::HIGH_LEVEL_MODE::FORCED_STAND);
     }
 }
 
@@ -232,16 +232,16 @@ void MainWindow::timerEvent([[maybe_unused]] QTimerEvent *event)
     ui->elapsed_time_label_->setText(time_string);
 
     //update_horizontalSlider_roll();
-    if (unitree_b1_driver_)
+    if (unitree_h1_driver_)
     {
-        std::string status_msg = unitree_b1_driver_->get_status_message();
+        std::string status_msg = unitree_h1_driver_->get_status_message();
         ui->label_status_->setText(QString(status_msg.c_str()));
 
-        unitree_b1_driver_->set_high_level_speed(target_forward_speed_, target_side_speed_, target_yaw_speed_);
-        unitree_b1_driver_->set_forced_stand_commands(target_roll_, target_pitch_, target_yaw_, target_height_);
+        unitree_h1_driver_->set_high_level_speed(target_forward_speed_, target_side_speed_, target_yaw_speed_);
+        unitree_h1_driver_->set_forced_stand_commands(target_roll_, target_pitch_, target_yaw_, target_height_);
 
-        VectorXd w = unitree_b1_driver_->get_high_level_angular_velocity().vec3();
-        VectorXd v   = unitree_b1_driver_->get_high_level_linear_velocity().vec3();
+        VectorXd w = unitree_h1_driver_->get_high_level_angular_velocity().vec3();
+        VectorXd v   = unitree_h1_driver_->get_high_level_linear_velocity().vec3();
 
 
 
@@ -258,7 +258,7 @@ void MainWindow::timerEvent([[maybe_unused]] QTimerEvent *event)
 
 
         // compute Euler angles
-        auto r_0b = unitree_b1_driver_->get_IMU_orientation();
+        auto r_0b = unitree_h1_driver_->get_IMU_orientation();
        // Eigen::Quaterniond q1(r(0), r(1), r(2), r(3));
        // Eigen::Matrix3d R1 = q1.toRotationMatrix();
 
@@ -272,9 +272,9 @@ void MainWindow::timerEvent([[maybe_unused]] QTimerEvent *event)
         Eigen::Vector3d  rpy_from_orientation = _compute_euler_angles_from_unit_quaternion(r_0b);
 
         // Your existing RPY angles from driver
-        Eigen::Vector3d rpy_from_driver = unitree_b1_driver_->get_IMU_rpy_angles();
+        Eigen::Vector3d rpy_from_driver = unitree_h1_driver_->get_IMU_rpy_angles();
 
-        DQ r_0f = unitree_b1_driver_->get_last_IMU_orientation_when_robot_stopped();
+        DQ r_0f = unitree_h1_driver_->get_last_IMU_orientation_when_robot_stopped();
         //std::cout <<" r_0f: "<<r_0f<<std::endl;
         DQ r_fb = r_0f.conj()*r_0b;
 
@@ -325,25 +325,25 @@ void MainWindow::timerEvent([[maybe_unused]] QTimerEvent *event)
 
 
 
-        ui->progressBar_battery->setValue(unitree_b1_driver_->get_state_of_charge());
+        ui->progressBar_battery->setValue(unitree_h1_driver_->get_state_of_charge());
 
-        std::string current_mode = unitree_b1_driver_->high_level_mode_to_string(
-                                   unitree_b1_driver_->get_current_high_mode());
-        std::string target_mode  = unitree_b1_driver_->high_level_mode_to_string(
-                                   unitree_b1_driver_->get_target_high_mode());
-        std::string gait_type  =   unitree_b1_driver_->gait_type_to_string(
-                                   unitree_b1_driver_->get_current_gait_type());
+        std::string current_mode = unitree_h1_driver_->high_level_mode_to_string(
+                                   unitree_h1_driver_->get_current_high_mode());
+        std::string target_mode  = unitree_h1_driver_->high_level_mode_to_string(
+                                   unitree_h1_driver_->get_target_high_mode());
+        std::string gait_type  =   unitree_h1_driver_->gait_type_to_string(
+                                   unitree_h1_driver_->get_current_gait_type());
 
         ui->pushButton_target_mode_->setText(QString(target_mode.c_str()));
         ui->pushButton_current_mode_->setText(QString(current_mode.c_str()));
         ui->pushButton_gait_type_->setText(QString(gait_type.c_str()));
 
-        Vector3d rpy = unitree_b1_driver_->get_IMU_rpy_angles();
+        Vector3d rpy = unitree_h1_driver_->get_IMU_rpy_angles();
         ui->doubleSpinBox_read_roll_->setValue(rpy.x());
         ui->doubleSpinBox_read_pitch_->setValue(rpy.y());
         ui->doubleSpinBox_read_yaw_->setValue(rpy.z());
 
-        ui->doubleSpinBox_read_height_->setValue(unitree_b1_driver_->get_body_height());
+        ui->doubleSpinBox_read_height_->setValue(unitree_h1_driver_->get_body_height());
 
 
 
@@ -396,14 +396,14 @@ void MainWindow::_connect()
     ui->pushButton_initialize_->setEnabled(true);
     ui->dial_select_robot_->setEnabled(false);
 
-    if (!unitree_b1_driver_)
+    if (!unitree_h1_driver_)
     {
-        std::vector<DriverUnitreeB1::CUSTOM_FLAGS> custom_flags;
+        std::vector<DriverUnitreeH1::CUSTOM_FLAGS> custom_flags;
         if (configuration_.FORCE_STAND_MODE_WHEN_HIGH_LEVEL_VELOCITIES_ARE_ZERO)
-            custom_flags.push_back(DriverUnitreeB1::CUSTOM_FLAGS::FORCE_STAND_MODE_WHEN_HIGH_LEVEL_VELOCITIES_ARE_ZERO);
-        unitree_b1_driver_ = std::make_shared<DriverUnitreeB1>(st_break_loops_,
-                                          DriverUnitreeB1::MODE::VelocityControl, // Driver mode
-                                          DriverUnitreeB1::LEVEL::HIGH,       // Level mode
+            custom_flags.push_back(DriverUnitreeH1::CUSTOM_FLAGS::FORCE_STAND_MODE_WHEN_HIGH_LEVEL_VELOCITIES_ARE_ZERO);
+        unitree_h1_driver_ = std::make_shared<DriverUnitreeH1>(st_break_loops_,
+                                          DriverUnitreeH1::MODE::VelocityControl, // Driver mode
+                                          DriverUnitreeH1::LEVEL::HIGH,       // Level mode
                                           true,   //verbosity
                                           2000,   // TIMEOUT in ms
                                           configuration_.LIE_DOWN_ROBOT_WHEN_DEINITIALIZE, // LIE DOWN ROBOT WHEN DEINITIALIZE
@@ -413,16 +413,16 @@ void MainWindow::_connect()
                                           custom_flags);
 
     }
-    unitree_b1_driver_->connect();
+    unitree_h1_driver_->connect();
 }
 
 void MainWindow::_initialize()
 {
     ui->pushButton_initialize_->setEnabled(false);
     ui->pushButton_deinitialize_->setEnabled(true);
-    if (unitree_b1_driver_)
+    if (unitree_h1_driver_)
     {
-        unitree_b1_driver_->initialize();
+        unitree_h1_driver_->initialize();
     }
 }
 
@@ -430,16 +430,16 @@ void MainWindow::_deinitialize()
 {
     ui->pushButton_deinitialize_->setEnabled(false);
     ui->pushButton_disconnect_->setEnabled(true);
-    if (unitree_b1_driver_)
-        unitree_b1_driver_->deinitialize();
+    if (unitree_h1_driver_)
+        unitree_h1_driver_->deinitialize();
 }
 
 void MainWindow::_disconnect()
 {
 
     ui->pushButton_disconnect_->setEnabled(false);
-    if (unitree_b1_driver_)
-        unitree_b1_driver_->disconnect();
+    if (unitree_h1_driver_)
+        unitree_h1_driver_->disconnect();
 }
 
 void MainWindow::_config_spin_boxes_as_read_only(const std::vector<QDoubleSpinBox *> &spinboxes)

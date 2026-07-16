@@ -27,7 +27,7 @@ set(PROJECT_SOURCES
         mainwindow.cpp
         mainwindow.h
         mainwindow.ui
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../src//DriverUnitreeB1.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../src//DriverUnitreeH1.cpp
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

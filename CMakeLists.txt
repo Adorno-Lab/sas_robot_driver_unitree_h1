@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(sas_robot_driver_unitree_b1)
+project(sas_robot_driver_unitree_h1)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -46,8 +46,8 @@ set(CMAKE_CXX_FLAGS "-O3 -fPIC")
 # into the same shared library called ${PROJECT_NAME}.
 
 add_library(${PROJECT_NAME} SHARED
-    src/sas_robot_driver_unitree_b1.cpp
-    src/DriverUnitreeB1.cpp
+    src/sas_robot_driver_unitree_h1.cpp
+    src/DriverUnitreeH1.cpp
     )
 
 target_link_libraries(${PROJECT_NAME}
@@ -102,11 +102,11 @@ install(
 
 # we use set--unset
 
-set(RCLCPP_LOCAL_BINARY_NAME sas_robot_driver_unitree_b1_node)
+set(RCLCPP_LOCAL_BINARY_NAME sas_robot_driver_unitree_h1_node)
 
 
 add_executable(${RCLCPP_LOCAL_BINARY_NAME}
-    src/sas_robot_driver_unitree_b1_node_main.cpp
+    src/sas_robot_driver_unitree_h1_node_main.cpp
     )
 
 

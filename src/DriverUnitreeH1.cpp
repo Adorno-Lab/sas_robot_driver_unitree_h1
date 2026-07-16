@@ -1,7 +1,7 @@
 /*
 # (C) Copyright 2024-2026 Adorno-Lab software developments
 #
-#    This file is part of sas_robot_driver_unitree_b1.
+#    This file is part of sas_robot_driver_unitree_h1.
 #
 #    This is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Lesser General Public License as published by
@@ -22,17 +22,17 @@
 #
 # ################################################################*/
 
-#include "DriverUnitreeB1.hpp"
+#include "DriverUnitreeH1.hpp"
 #include <unitree_legged_sdk/unitree_legged_sdk.h>
 
 
-bool flag_in_custom_flags(const DriverUnitreeB1::CUSTOM_FLAGS& flag,
-                          const std::vector<DriverUnitreeB1::CUSTOM_FLAGS>& flags)
+bool flag_in_custom_flags(const DriverUnitreeH1::CUSTOM_FLAGS& flag,
+                          const std::vector<DriverUnitreeH1::CUSTOM_FLAGS>& flags)
 {
     return std::count(flags.begin(), flags.end(), flag) > 0;
 }
 
-class DriverUnitreeB1::Impl
+class DriverUnitreeH1::Impl
 {
 public:
     std::shared_ptr<UNITREE_LEGGED_SDK::Safety> safe_;
@@ -60,7 +60,7 @@ public:
 
 
 /**
- * @brief DriverUnitreeB1::DriverUnitreeB1 constructor of the class
+ * @brief DriverUnitreeH1::DriverUnitreeH1 constructor of the class
  * @param st_break_loops Use this flag to break internal loops. This is useful to stop the robot using a signal
  *              interruption by the user.
  * @param mode  The operation mode. Select the control strategy to command the robot.
@@ -72,10 +72,10 @@ public:
  * @param verbosity Use true (default) to display more information in the terminal.
  * @param TIMEOUT_IN_MILLISECONDS The max time in milliseconds to establish the communication to the robot before to throw an exception.
  * @param LIE_DOWN_ROBOT_WHEN_DEINITIALIZE Use this flag to put the robot on the ground when the driver is deinitialized.
- * @param TARGET_IP The IP address of the B1 robot to perform the communication. You can use a
+ * @param TARGET_IP The IP address of the H1 robot to perform the communication. You can use a
  *                  LAN cable connection or a WiFI network to establish the communication.
  *
- * @param TARGET_PORT The default port of the B1 robot.
+ * @param TARGET_PORT The default port of the H1 robot.
  * @param LOCAL_PORT The communication port of the PC that is running the code.
  * @param custom_flags Additional flags to modify the robot behavior.
  *
@@ -87,9 +87,9 @@ public:
  *          // This class follows the SmartArmStack driver principles, in which four methods are required to
  *          // start and finish the robot communication.
  *
-            DriverUnitreeB1 B1(&kill_this_process,
-                            DriverUnitreeB1::MODE::VelocityControl, // Driver mode
-                            DriverUnitreeB1::LEVEL::HIGH,       // Level mode
+            DriverUnitreeH1 H1(&kill_this_process,
+                            DriverUnitreeH1::MODE::VelocityControl, // Driver mode
+                            DriverUnitreeH1::LEVEL::HIGH,       // Level mode
                             true,   //verbosity
                             2000,   // TIMEOUT in ms
                             false, // LIE DOWN ROBOT WHEN DEINITIALIZE
@@ -98,18 +98,18 @@ public:
                             8090);             // Local port
 
 
-            B1.connect();     // First method to be called.
-            B1.initialize();  // Second method to be called. It is required to connect before to initialize.
+            H1.connect();     // First method to be called.
+            H1.initialize();  // Second method to be called. It is required to connect before to initialize.
 
             //Your code here
-            B1.set_high_level_speed(-0.03, 0, 0.0);  //0.03 is the minimum value in forward speed.
+            H1.set_high_level_speed(-0.03, 0, 0.0);  //0.03 is the minimum value in forward speed.
             //
 
-            B1.deinitialize();  // Third method to be called.
-            B1.disconnect();    // Fourth method to be called. It is required to deinitialize before to disconnect.
+            H1.deinitialize();  // Third method to be called.
+            H1.disconnect();    // Fourth method to be called. It is required to deinitialize before to disconnect.
 
  */
-DriverUnitreeB1::DriverUnitreeB1(std::atomic_bool *st_break_loops,
+DriverUnitreeH1::DriverUnitreeH1(std::atomic_bool *st_break_loops,
                                            const MODE &mode,
                                            const LEVEL &level,
                                            const bool &verbosity,
@@ -129,8 +129,8 @@ DriverUnitreeB1::DriverUnitreeB1(std::atomic_bool *st_break_loops,
     timeout_in_milliseconds_{TIMEOUT_IN_MILLISECONDS},
     LIE_DOWN_ROBOT_WHEN_DEINITIALIZE_{LIE_DOWN_ROBOT_WHEN_DEINITIALIZE}
 {
-    impl_        = std::make_shared<DriverUnitreeB1::Impl>();
-    impl_->safe_ = std::make_shared<UNITREE_LEGGED_SDK::Safety>(UNITREE_LEGGED_SDK::LeggedType::B1);
+    impl_        = std::make_shared<DriverUnitreeH1::Impl>();
+    impl_->safe_ = std::make_shared<UNITREE_LEGGED_SDK::Safety>(UNITREE_LEGGED_SDK::LeggedType::H1);
     impl_->udp_  = std::make_shared<UNITREE_LEGGED_SDK::UDP>
         (level == LEVEL::LOW ? UNITREE_LEGGED_SDK::LOWLEVEL : UNITREE_LEGGED_SDK::HIGHLEVEL,LOCAL_PORT,TARGET_IP.c_str(), TARGET_PORT);
 
@@ -148,14 +148,14 @@ DriverUnitreeB1::DriverUnitreeB1(std::atomic_bool *st_break_loops,
     UNITREE_LEGGED_SDK::InitEnvironment();
 
     /*
-    UNITREE_LEGGED_SDK::LoopFunc loop_control("control_loop", dt_, boost::bind(&RobotDriverUnitreeB1::RobotControl, this));
-    UNITREE_LEGGED_SDK::LoopFunc loop_udpSend("udp_send", dt_, 3,  boost::bind(&RobotDriverUnitreeB1::UDPSend, this));
-    UNITREE_LEGGED_SDK::LoopFunc loop_udpRecv("udp_recv", dt_, 3,  boost::bind(&RobotDriverUnitreeB1::UDPRecv, this));
+    UNITREE_LEGGED_SDK::LoopFunc loop_control("control_loop", dt_, boost::bind(&RobotDriverUnitreeH1::RobotControl, this));
+    UNITREE_LEGGED_SDK::LoopFunc loop_udpSend("udp_send", dt_, 3,  boost::bind(&RobotDriverUnitreeH1::UDPSend, this));
+    UNITREE_LEGGED_SDK::LoopFunc loop_udpRecv("udp_recv", dt_, 3,  boost::bind(&RobotDriverUnitreeH1::UDPRecv, this));
     */
-    impl_->loop_control_    = std::make_shared<UNITREE_LEGGED_SDK::LoopFunc>("control_loop", dt_, boost::bind(&DriverUnitreeB1::_robot_control,this));
-    impl_->loop_echo_state_ = std::make_shared<UNITREE_LEGGED_SDK::LoopFunc>("echo_state_loop", dt_, boost::bind(&DriverUnitreeB1::_robot_update,this));
-    impl_->loop_udpSend_    = std::make_shared<UNITREE_LEGGED_SDK::LoopFunc>("udp_send", dt_, 3,  boost::bind(&DriverUnitreeB1::_UDPSend, this));
-    impl_->loop_udpRecv_    = std::make_shared<UNITREE_LEGGED_SDK::LoopFunc>("udp_recv", dt_, 3,  boost::bind(&DriverUnitreeB1::_UDPRecv, this));
+    impl_->loop_control_    = std::make_shared<UNITREE_LEGGED_SDK::LoopFunc>("control_loop", dt_, boost::bind(&DriverUnitreeH1::_robot_control,this));
+    impl_->loop_echo_state_ = std::make_shared<UNITREE_LEGGED_SDK::LoopFunc>("echo_state_loop", dt_, boost::bind(&DriverUnitreeH1::_robot_update,this));
+    impl_->loop_udpSend_    = std::make_shared<UNITREE_LEGGED_SDK::LoopFunc>("udp_send", dt_, 3,  boost::bind(&DriverUnitreeH1::_UDPSend, this));
+    impl_->loop_udpRecv_    = std::make_shared<UNITREE_LEGGED_SDK::LoopFunc>("udp_recv", dt_, 3,  boost::bind(&DriverUnitreeH1::_UDPRecv, this));
 
     ip_ = TARGET_IP;
     port_ = TARGET_PORT;
@@ -166,66 +166,66 @@ DriverUnitreeB1::DriverUnitreeB1(std::atomic_bool *st_break_loops,
 }
 
 /**
- * @brief DriverUnitreeB1::get_target_ip returns the Robot IP (TARGET_IP) address. For high-level mode,
+ * @brief DriverUnitreeH1::get_target_ip returns the Robot IP (TARGET_IP) address. For high-level mode,
  *                  the IP address is usually "192.168.123.220" and "192.168.123.10" for low-level mode.
  * @return The robot IP address.
  */
-std::string DriverUnitreeB1::get_target_ip() const
+std::string DriverUnitreeH1::get_target_ip() const
 {
     return ip_;
 }
 
 
 /**
- * @brief DriverUnitreeB1::get_target_port returns the robot port (target port). Usually this value
+ * @brief DriverUnitreeH1::get_target_port returns the robot port (target port). Usually this value
  *                  corresponds to 8082 for high-level mode and 8007 for low-level driver.
  * @return
  */
-int DriverUnitreeB1::get_target_port() const
+int DriverUnitreeH1::get_target_port() const
 {
     return port_;
 }
 
 
 /**
- * @brief DriverUnitreeB1::get_motiontime returns the elapsed time in the control loop thread.
+ * @brief DriverUnitreeH1::get_motiontime returns the elapsed time in the control loop thread.
  * @return
  */
-int DriverUnitreeB1::get_motiontime() const
+int DriverUnitreeH1::get_motiontime() const
 {
     return motiontime_;
 }
 
 /**
- * @brief DriverUnitreeB1::get_realtime_controller returns the elapsed time in the low-level controller.
+ * @brief DriverUnitreeH1::get_realtime_controller returns the elapsed time in the low-level controller.
  * @return
  */
-uint32_t DriverUnitreeB1::get_realtime_controller() const
+uint32_t DriverUnitreeH1::get_realtime_controller() const
 {
     return tick_;
 }
 
 /**
- * @brief DriverUnitreeB1::get_state_of_charge returns the state of charge of the B1 battery.
+ * @brief DriverUnitreeH1::get_state_of_charge returns the state of charge of the H1 battery.
  * @return A value from 0-100%
  */
-int DriverUnitreeB1::get_state_of_charge() const
+int DriverUnitreeH1::get_state_of_charge() const
 {
     return state_of_charge_;
 }
 
 /**
- * @brief DriverUnitreeB1::get_status_message returns the status message of the driver.
+ * @brief DriverUnitreeH1::get_status_message returns the status message of the driver.
  * @return
  */
-std::string DriverUnitreeB1::get_status_message() const
+std::string DriverUnitreeH1::get_status_message() const
 {
     return status_msg_;
 }
 
 
 /**
- * @brief DriverUnitreeB1::get_udp_status returns the UDP communication status.
+ * @brief DriverUnitreeH1::get_udp_status returns the UDP communication status.
  * @return a 7-dimensional vector containing the UDP communication status. The vector containts
  *      the following ordered data:
  *
@@ -237,43 +237,43 @@ std::string DriverUnitreeB1::get_status_message() const
  *       unsigned long long RecvCRCError;  // total reveive CRC error
  *       unsigned long long RecvLoseError; // total lose package count
  */
-std::vector<unsigned long long> DriverUnitreeB1::get_udp_status()
+std::vector<unsigned long long> DriverUnitreeH1::get_udp_status()
 {
     return upd_status_;
 }
 
 /**
- * @brief DriverUnitreeB1::get_connection_status returns a flag that represents the connection status.
+ * @brief DriverUnitreeH1::get_connection_status returns a flag that represents the connection status.
  * @return The connection status flag. Returns true if the connection was successful. False otherwise.
  */
-bool DriverUnitreeB1::get_connection_status()
+bool DriverUnitreeH1::get_connection_status()
 {
     return communication_established_;
 }
 
 /**
- * @brief DriverUnitreeB1::_UDPRecv receives data from the UDP communication. This callback method is used by loop_udpRecv_.
+ * @brief DriverUnitreeH1::_UDPRecv receives data from the UDP communication. This callback method is used by loop_udpRecv_.
  */
-void DriverUnitreeB1::_UDPRecv()
+void DriverUnitreeH1::_UDPRecv()
 {
     impl_->udp_->Recv();
     _update_udp_status();
 }
 
 /**
- * @brief DriverUnitreeB1::_UDPSend sends data using the UDP communication. This callback method is used by loop_udpSend_.
+ * @brief DriverUnitreeH1::_UDPSend sends data using the UDP communication. This callback method is used by loop_udpSend_.
  */
-void DriverUnitreeB1::_UDPSend()
+void DriverUnitreeH1::_UDPSend()
 {
     impl_->udp_->Send();
     _update_udp_status();
 }
 
 /**
- * @brief DriverUnitreeB1::_update_udp_status updates the UDP status if the data it is initialized.
+ * @brief DriverUnitreeH1::_update_udp_status updates the UDP status if the data it is initialized.
  *
  */
-void DriverUnitreeB1::_update_udp_status()
+void DriverUnitreeH1::_update_udp_status()
 {
     upd_status_.at(0) = impl_->udp_->udpState.TotalCount >0 ? impl_->udp_->udpState.TotalCount : 0;
     upd_status_.at(1) = impl_->udp_->udpState.SendCount  >0 ? impl_->udp_->udpState.SendCount : 0;
@@ -286,7 +286,7 @@ void DriverUnitreeB1::_update_udp_status()
 
 
 /**
- * @brief DriverUnitreeB1::_set_driver_mode sets the driver mode.
+ * @brief DriverUnitreeH1::_set_driver_mode sets the driver mode.
  * @param mode The operation mode. Select the control strategy to command the robot.
  * @param level The control level to be used. HIGH or LOW.
  *              The HIGH level is used to send task space commands
@@ -294,37 +294,37 @@ void DriverUnitreeB1::_update_udp_status()
  *              The LOW mode is used to send joint position, velocity or torque commands. In this case, you must take into account
  *              all constraints in your controler (joint limits, control input limits, robot balance, self-collision avoidance, etc).
  */
-void DriverUnitreeB1::_set_driver_mode(const MODE &mode, const LEVEL &level)
+void DriverUnitreeH1::_set_driver_mode(const MODE &mode, const LEVEL &level)
 {
     switch (mode)
     {
         case MODE::None:
-            std::cerr<<"RobotDriverUnitreeB1::_set_driver_mode. Driver is set to Mode::None. "<<std::endl;
+            std::cerr<<"RobotDriverUnitreeH1::_set_driver_mode. Driver is set to Mode::None. "<<std::endl;
             break;
         case MODE::PositionControl:
             if (level == LEVEL::LOW)
             {
-                throw std::runtime_error(std::string("RobotDriverUnitreeB1::_set_driver_mode. PositionControl in low-level mode is not available. "));
+                throw std::runtime_error(std::string("RobotDriverUnitreeH1::_set_driver_mode. PositionControl in low-level mode is not available. "));
             }else { //HIGH LEVEL
-                throw std::runtime_error(std::string("RobotDriverUnitreeB1::_set_driver_mode. PositionControl in high-level mode is not available. "));
+                throw std::runtime_error(std::string("RobotDriverUnitreeH1::_set_driver_mode. PositionControl in high-level mode is not available. "));
             }
 
             break;
         case MODE::VelocityControl:
             if (level == LEVEL::LOW)
             {
-                throw std::runtime_error(std::string("RobotDriverUnitreeB1::_set_driver_mode. VelocityControl in low-level mode is not available. "));
+                throw std::runtime_error(std::string("RobotDriverUnitreeH1::_set_driver_mode. VelocityControl in low-level mode is not available. "));
             }else { //HIGH LEVEL
-                std::cerr<<"RobotDriverUnitreeB1::_set_driver_mode. VelocityControl in high-level mode is experimental. "<<std::endl;
+                std::cerr<<"RobotDriverUnitreeH1::_set_driver_mode. VelocityControl in high-level mode is experimental. "<<std::endl;
                 _initialize_high_cmd_variable();
             }
             break;
         case MODE::ForceControl:
             if (level == LEVEL::LOW)
             {
-                throw std::runtime_error(std::string("RobotDriverUnitreeB1::_set_driver_mode. ForceControl in low-level mode is not available. "));
+                throw std::runtime_error(std::string("RobotDriverUnitreeH1::_set_driver_mode. ForceControl in low-level mode is not available. "));
             }else { //HIGH LEVEL
-                throw std::runtime_error(std::string("RobotDriverUnitreeB1::_set_driver_mode. ForceControl in high-level mode is not available. "));
+                throw std::runtime_error(std::string("RobotDriverUnitreeH1::_set_driver_mode. ForceControl in high-level mode is not available. "));
             }
 
             break;
@@ -335,9 +335,9 @@ void DriverUnitreeB1::_set_driver_mode(const MODE &mode, const LEVEL &level)
 
 
 /**
- * @brief DriverUnitreeB1::_initialize_high_cmd_variable sets the high_cmd_ (UNITREE_LEGGED_SDK::HighCmd struct) attribute with zeros.
+ * @brief DriverUnitreeH1::_initialize_high_cmd_variable sets the high_cmd_ (UNITREE_LEGGED_SDK::HighCmd struct) attribute with zeros.
  */
-void DriverUnitreeB1::_initialize_high_cmd_variable()
+void DriverUnitreeH1::_initialize_high_cmd_variable()
 {
     impl_->high_cmd_.mode = 0; // 0:idle, default stand      1:forced stand     2:walk continuously
     impl_->high_cmd_.gaitType = 0;
@@ -354,24 +354,24 @@ void DriverUnitreeB1::_initialize_high_cmd_variable()
 }
 
 /**
- * @brief DriverUnitreeB1::are_approximately_equal returns true if two doubles are approximately equal
+ * @brief DriverUnitreeH1::are_approximately_equal returns true if two doubles are approximately equal
  * @param a A double
  * @param b A double
  * @param epsilon the tolerance
  * @return returns true if two doubles are approximately equal. False otherwise
  */
-bool DriverUnitreeB1::are_approximately_equal(const double &a, const double &b, const double &epsilon)
+bool DriverUnitreeH1::are_approximately_equal(const double &a, const double &b, const double &epsilon)
 {
     return std::abs(a - b) < epsilon;
 }
 
 /**
- * @brief DriverUnitreeB1::connect This method starts the threads related to the UPD communication between the PC running the
- *                          controller and the B1 hardware (motors, sensors, battery, etc). Furthermore, a thread to update the robot state
+ * @brief DriverUnitreeH1::connect This method starts the threads related to the UPD communication between the PC running the
+ *                          controller and the H1 hardware (motors, sensors, battery, etc). Furthermore, a thread to update the robot state
  *                          is started automatically. At this stage, there are no control loops running, and consequently, the robot
  *                          will not perform any movement.
  */
-void DriverUnitreeB1::connect()
+void DriverUnitreeH1::connect()
 {
     if (current_status_ == STATUS::IDLE)
     {
@@ -402,7 +402,7 @@ void DriverUnitreeB1::connect()
             impl_->loop_udpRecv_->shutdown();
             impl_->loop_echo_state_->shutdown();
             _show_status();
-            //throw std::runtime_error("Unestablished connection with the B1 robot!");
+            //throw std::runtime_error("Unestablished connection with the H1 robot!");
         }
 
 
@@ -410,13 +410,13 @@ void DriverUnitreeB1::connect()
 }
 
 /**
- * @brief DriverUnitreeB1::initialize starts the appropriate threads based on the selected mode of operation.
+ * @brief DriverUnitreeH1::initialize starts the appropriate threads based on the selected mode of operation.
  *                  This method requires established communication with the robot, i.e. the user must call connect()
  *                  before calling initialize().
  *                  If the operation mode is different from None, the robot may move!
  *                  WARNING: Be prepared to stop the robot with an emergency stop protocol!
  */
-void DriverUnitreeB1::initialize()
+void DriverUnitreeH1::initialize()
 {
     if (current_status_ == STATUS::CONNECTED)
     {
@@ -427,10 +427,10 @@ void DriverUnitreeB1::initialize()
             case MODE::PositionControl:
                 if (level_ == LEVEL::LOW)
                 {
-                    std::cerr<<"RobotDriverUnitreeB1::initialize. PositionControl  in low-level mode is not available. "<<std::endl;
+                    std::cerr<<"RobotDriverUnitreeH1::initialize. PositionControl  in low-level mode is not available. "<<std::endl;
                     deinitialize();
                 }else{ //HIGH LEVEL
-                    std::cerr<<"RobotDriverUnitreeB1::initialize. PositionControl  in high-level mode is not available. "<<std::endl;
+                    std::cerr<<"RobotDriverUnitreeH1::initialize. PositionControl  in high-level mode is not available. "<<std::endl;
                     deinitialize();
                     }
                 break;
@@ -438,7 +438,7 @@ void DriverUnitreeB1::initialize()
 
                 if (level_ == LEVEL::LOW)
                 {
-                    std::cerr<<"RobotDriverUnitreeB1::initialize. VelocityControl in low-level mode is not available. "<<std::endl;
+                    std::cerr<<"RobotDriverUnitreeH1::initialize. VelocityControl in low-level mode is not available. "<<std::endl;
                     deinitialize();
                 }else { //HIGH LEVEL
                         status_msg_ = "finishing echo state loop.";
@@ -453,10 +453,10 @@ void DriverUnitreeB1::initialize()
             case MODE::ForceControl:
                 if (level_ == LEVEL::LOW)
                 {
-                    std::cerr<<"RobotDriverUnitreeB1::initialize. ForceControl in low-level mode is not available. "<<std::endl;
+                    std::cerr<<"RobotDriverUnitreeH1::initialize. ForceControl in low-level mode is not available. "<<std::endl;
                     deinitialize();
                 }else{
-                    std::cerr<<"RobotDriverUnitreeB1::initialize. ForceControl in high-level mode is not available. "<<std::endl;
+                    std::cerr<<"RobotDriverUnitreeH1::initialize. ForceControl in high-level mode is not available. "<<std::endl;
                     deinitialize();
                 }
                 break;
@@ -464,17 +464,17 @@ void DriverUnitreeB1::initialize()
         current_status_ = STATUS::INITIALIZED;
         status_msg_ = "Initialized!";
     }else{
-        std::cerr<<"RobotDriverUnitreeB1::initialize. The driver must be connected before to be initialized. "<<std::endl;
+        std::cerr<<"RobotDriverUnitreeH1::initialize. The driver must be connected before to be initialized. "<<std::endl;
     }
 }
 
 
 /**
- * @brief DriverUnitreeB1::deinitialize stops all communication threads.
+ * @brief DriverUnitreeH1::deinitialize stops all communication threads.
  *                  This method requires initialized communication with the robot, i.e. the user must call both connect(),
  *                  and initialize() before calling deinitialize().
  */
-void DriverUnitreeB1::deinitialize()
+void DriverUnitreeH1::deinitialize()
 {
     //wait to finish;
     finish_motion_to_deinitialize_ = true;
@@ -506,9 +506,9 @@ void DriverUnitreeB1::deinitialize()
 }
 
 /**
- * @brief DriverUnitreeB1::disconnect
+ * @brief DriverUnitreeH1::disconnect
  */
-void DriverUnitreeB1::disconnect()
+void DriverUnitreeH1::disconnect()
 {
     current_status_ = STATUS::DISCONNECTED;
     status_msg_ = "Disconnected!";
@@ -516,21 +516,21 @@ void DriverUnitreeB1::disconnect()
 }
 
 /**
- * @brief DriverUnitreeB1::get_leg_joint_positions returns the joint positions of the robot legs.
+ * @brief DriverUnitreeH1::get_leg_joint_positions returns the joint positions of the robot legs.
  * @return A tuple containing the robot configuration legs in the following order: Front Right, Front Left, Rear Right, Rear Left.
  */
-std::tuple<VectorXd, VectorXd, VectorXd, VectorXd> DriverUnitreeB1::get_leg_joint_positions() const
+std::tuple<VectorXd, VectorXd, VectorXd, VectorXd> DriverUnitreeH1::get_leg_joint_positions() const
 {
     //uFR, uFL, uRR, uRL
     return {qFR_, qFL_, qRR_, qRL_};
 }
 
 /**
- * @brief DriverUnitreeB1::get_joint_positions returns the joint positions of the specified leg.
+ * @brief DriverUnitreeH1::get_joint_positions returns the joint positions of the specified leg.
  * @param branch The desired branch (leg). You can use FR (forward right), FL (forward left), RR (rear right), or RL (rear left).
  * @return the current joint positions (unit: radian)
  */
-VectorXd DriverUnitreeB1::get_joint_positions(const BRANCH &branch) const
+VectorXd DriverUnitreeH1::get_joint_positions(const BRANCH &branch) const
 {
     switch (branch){
 
@@ -543,17 +543,17 @@ VectorXd DriverUnitreeB1::get_joint_positions(const BRANCH &branch) const
     case BRANCH::RL:
         return qRL_;
     default: // This line is required in GNU/Linux
-        throw std::runtime_error("Wrong arguments in RobotDriverUnitreeB1::get_joint_positions");
+        throw std::runtime_error("Wrong arguments in RobotDriverUnitreeH1::get_joint_positions");
         break;
     }
 }
 
 /**
- * @brief DriverUnitreeB1::get_joint_velocities returns the joint velocities of the specified leg.
+ * @brief DriverUnitreeH1::get_joint_velocities returns the joint velocities of the specified leg.
  * @param branch The desired branch (leg). You can use FR (forward right), FL (forward left), RR (rear right), or RL (rear left).
  * @return the current joint velocities (unit: radian/second)
  */
-VectorXd DriverUnitreeB1::get_joint_velocities(const BRANCH &branch) const
+VectorXd DriverUnitreeH1::get_joint_velocities(const BRANCH &branch) const
 {
     switch (branch){
 
@@ -566,18 +566,18 @@ VectorXd DriverUnitreeB1::get_joint_velocities(const BRANCH &branch) const
     case BRANCH::RL:
         return qRL_dot_;
     default: // This line is required in GNU/Linux
-        throw std::runtime_error("Wrong arguments in RobotDriverUnitreeB1::get_joint_velocities");
+        throw std::runtime_error("Wrong arguments in RobotDriverUnitreeH1::get_joint_velocities");
         break;
     }
 }
 
 
 /**
- * @brief DriverUnitreeB1::get_joint_accelerations returns the joint accelerations of the specified leg.
+ * @brief DriverUnitreeH1::get_joint_accelerations returns the joint accelerations of the specified leg.
  * @param branch The desired branch (leg). You can use FR (forward right), FL (forward left), RR (rear right), or RL (rear left).
  * @return the current joint accelerations (unit: radian/second^2)
  */
-VectorXd DriverUnitreeB1::get_joint_accelerations(const BRANCH &branch) const
+VectorXd DriverUnitreeH1::get_joint_accelerations(const BRANCH &branch) const
 {
     switch (branch){
 
@@ -590,18 +590,18 @@ VectorXd DriverUnitreeB1::get_joint_accelerations(const BRANCH &branch) const
     case BRANCH::RL:
         return qRL_ddot_;
     default: // This line is required in GNU/Linux
-        throw std::runtime_error("Wrong arguments in RobotDriverUnitreeB1::get_joint_accelerations");
+        throw std::runtime_error("Wrong arguments in RobotDriverUnitreeH1::get_joint_accelerations");
         break;
     }
 
 }
 
 /**
- * @brief DriverUnitreeB1::get_joint_estimated_torques returns the estimated joint torques of the specified leg.
+ * @brief DriverUnitreeH1::get_joint_estimated_torques returns the estimated joint torques of the specified leg.
  * @param branch The desired branch (leg). You can use FR (forward right), FL (forward left), RR (rear right), or RL (rear left).
  * @return the estimated joint torques (unit: N.m)
  */
-VectorXd DriverUnitreeB1::get_joint_estimated_torques(const BRANCH &branch) const
+VectorXd DriverUnitreeH1::get_joint_estimated_torques(const BRANCH &branch) const
 {
     switch (branch){
 
@@ -614,18 +614,18 @@ VectorXd DriverUnitreeB1::get_joint_estimated_torques(const BRANCH &branch) cons
     case BRANCH::RL:
         return tauRL_;
     default: // This line is required in GNU/Linux
-        throw std::runtime_error("Wrong arguments in RobotDriverUnitreeB1::get_joint_estimated_torques");
+        throw std::runtime_error("Wrong arguments in RobotDriverUnitreeH1::get_joint_estimated_torques");
         break;
     }
 }
 
 
 /**
- * @brief DriverUnitreeB1::get_joint_temperatures returns the motor temperatures of the specified leg.
+ * @brief DriverUnitreeH1::get_joint_temperatures returns the motor temperatures of the specified leg.
  * @param branch The desired branch (leg). You can use FR (forward right), FL (forward left), RR (rear right), or RL (rear left).
  * @return The motor temperatures.
  */
-VectorXd DriverUnitreeB1::get_joint_temperatures(const BRANCH &branch) const
+VectorXd DriverUnitreeH1::get_joint_temperatures(const BRANCH &branch) const
 {
     switch (branch){
 
@@ -638,73 +638,73 @@ VectorXd DriverUnitreeB1::get_joint_temperatures(const BRANCH &branch) const
     case BRANCH::RL:
         return temperatureRL_;
     default: // This line is required in GNU/Linux
-        throw std::runtime_error("Wrong arguments in RobotDriverUnitreeB1::get_joint_estimated_temperatures");
+        throw std::runtime_error("Wrong arguments in RobotDriverUnitreeH1::get_joint_estimated_temperatures");
         break;
     }
 }
 
 /**
- * @brief DriverUnitreeB1::get_IMU_orientation returns the IMU-based estimated orientation.
+ * @brief DriverUnitreeH1::get_IMU_orientation returns the IMU-based estimated orientation.
  * @return
  */
-DQ DriverUnitreeB1::get_IMU_orientation() const
+DQ DriverUnitreeH1::get_IMU_orientation() const
 {
     return IMU_orientation_;
 }
 
-DQ DriverUnitreeB1::get_last_IMU_orientation_when_robot_stopped() const
+DQ DriverUnitreeH1::get_last_IMU_orientation_when_robot_stopped() const
 {
     return last_IMU_orientation_when_robot_stopped_;
 }
 
-Vector3d DriverUnitreeB1::get_IMU_rpy_angles() const
+Vector3d DriverUnitreeH1::get_IMU_rpy_angles() const
 {
     return IMU_rpy_;
 }
 
 /**
- * @brief DriverUnitreeB1::get_IMU_gyroscope returns the IMU-based estimated velocities.
+ * @brief DriverUnitreeH1::get_IMU_gyroscope returns the IMU-based estimated velocities.
  * @return
  */
-DQ DriverUnitreeB1::get_IMU_gyroscope() const
+DQ DriverUnitreeH1::get_IMU_gyroscope() const
 {
     return IMU_gyroscope_;
 }
 
 /**
- * @brief DriverUnitreeB1::get_IMU_accelerometer returns the IMU-based estimated accelerations.
+ * @brief DriverUnitreeH1::get_IMU_accelerometer returns the IMU-based estimated accelerations.
  * @return
  */
-DQ DriverUnitreeB1::get_IMU_accelerometer() const
+DQ DriverUnitreeH1::get_IMU_accelerometer() const
 {
     return IMU_accelerometer_;
 }
 
 /**
- * @brief DriverUnitreeB1::get_odometry_position returns the IMU-based estimated robot position.
+ * @brief DriverUnitreeH1::get_odometry_position returns the IMU-based estimated robot position.
  * @return
  */
-DQ DriverUnitreeB1::get_odometry_position() const
+DQ DriverUnitreeH1::get_odometry_position() const
 {
     return odometry_position_;
 }
 
 /**
- * @brief DriverUnitreeB1::get_body_height returns the estimated body height.
+ * @brief DriverUnitreeH1::get_body_height returns the estimated body height.
  * @return
  */
-double DriverUnitreeB1::get_body_height() const
+double DriverUnitreeH1::get_body_height() const
 {
     return body_height_;
 }
 
 /**
- * @brief DriverUnitreeB1::get_IMU_pose returns the estimated robot pose at the IMU body frame.
+ * @brief DriverUnitreeH1::get_IMU_pose returns the estimated robot pose at the IMU body frame.
  *                         This value is computed using the odometry data (subjected to drift), the body height,
  *                         and the IMU orientation.
  * @return
  */
-DQ DriverUnitreeB1::get_IMU_pose() const
+DQ DriverUnitreeH1::get_IMU_pose() const
 {
     if (is_unit(IMU_orientation_))
     {
@@ -721,17 +721,17 @@ DQ DriverUnitreeB1::get_IMU_pose() const
         return (r + E_*0.5*p*r).normalize();
     }else
     {
-        std::cerr<<"DriverUnitreeB1::get_IMU_pose(): The IMU orientation data is not a unit quaternion!"<<std::endl;
+        std::cerr<<"DriverUnitreeH1::get_IMU_pose(): The IMU orientation data is not a unit quaternion!"<<std::endl;
         return DQ(1);
     }
 }
 
 
 /**
- * @brief DriverUnitreeB1::get_mobile_platform_configuration_from_IMU_pose returns the configuration of the holonomic mobile platform.
+ * @brief DriverUnitreeH1::get_mobile_platform_configuration_from_IMU_pose returns the configuration of the holonomic mobile platform.
  * @return A vector containing the x-position, y-position, and the rotation (yaw) angle.
  */
-VectorXd DriverUnitreeB1::get_mobile_platform_configuration_from_IMU_pose() const
+VectorXd DriverUnitreeH1::get_mobile_platform_configuration_from_IMU_pose() const
 {
     auto x = get_IMU_pose();
     auto axis = x.rotation_axis().vec4();
@@ -744,63 +744,63 @@ VectorXd DriverUnitreeB1::get_mobile_platform_configuration_from_IMU_pose() cons
 
 
 /**
- * @brief DriverUnitreeB1::get_high_level_angular_velocity returns the angular velocities when in High level mode
+ * @brief DriverUnitreeH1::get_high_level_angular_velocity returns the angular velocities when in High level mode
  * @return The angular velocity (yaw_speed*k_)
  */
 
-DQ DriverUnitreeB1::get_high_level_angular_velocity() const
+DQ DriverUnitreeH1::get_high_level_angular_velocity() const
 {
     return high_level_angular_velocity_;
 }
 
 /**
- * @brief DriverUnitreeB1::get_high_level_linear_velocity returns the linear velocities when in High level mode
+ * @brief DriverUnitreeH1::get_high_level_linear_velocity returns the linear velocities when in High level mode
  * @return The planar joint velocties (x_dot*i_ + y_dot*j_)
  */
-DQ DriverUnitreeB1::get_high_level_linear_velocity() const
+DQ DriverUnitreeH1::get_high_level_linear_velocity() const
 {
     return high_level_linear_velocity_;
 }
 
 
 /**
- * @brief DriverUnitreeB1::set_high_level_forward_speed sets the target forward speed of the holonomic mobile platform.
+ * @brief DriverUnitreeH1::set_high_level_forward_speed sets the target forward speed of the holonomic mobile platform.
  * @param forward_speed The desired forward speed. This method is used when the driver is set in high-level.
  */
-void DriverUnitreeB1::set_high_level_forward_speed(const double &forward_speed)
+void DriverUnitreeH1::set_high_level_forward_speed(const double &forward_speed)
 {
     target_high_level_forward_speed_ = forward_speed;
 }
 
 /**
- * @brief DriverUnitreeB1::set_high_level_yaw_speed sets the yaw speed of the holonomic mobile platform.
+ * @brief DriverUnitreeH1::set_high_level_yaw_speed sets the yaw speed of the holonomic mobile platform.
  * @param yaw_speed The desired yaw speed. This method is used when the driver is set in high-level.
  */
-void DriverUnitreeB1::set_high_level_yaw_speed(const double &yaw_speed)
+void DriverUnitreeH1::set_high_level_yaw_speed(const double &yaw_speed)
 {
     target_high_level_yaw_speed_ = yaw_speed;
 }
 
 /**
- * @brief DriverUnitreeB1::set_high_level_forward_and_yaw_speed sets the target forward and yaw speeds of the holonomic mobile platform.
+ * @brief DriverUnitreeH1::set_high_level_forward_and_yaw_speed sets the target forward and yaw speeds of the holonomic mobile platform.
  *                         This method is used when the driver is set in high-level.
  * @param forward_speed The desired forward speed.
  * @param yaw_speed The desired yaw speed.
  */
-void DriverUnitreeB1::set_high_level_forward_and_yaw_speed(const double &forward_speed, const double &yaw_speed)
+void DriverUnitreeH1::set_high_level_forward_and_yaw_speed(const double &forward_speed, const double &yaw_speed)
 {
     set_high_level_forward_speed(forward_speed);
     set_high_level_yaw_speed(yaw_speed);
 }
 
 /**
- * @brief DriverUnitreeB1::set_high_level_speed sets the target forward, side and yaw speeds of the holonomic mobile platform.
+ * @brief DriverUnitreeH1::set_high_level_speed sets the target forward, side and yaw speeds of the holonomic mobile platform.
  *                         This method is used when the driver is set in high-level.
  * @param forward_speed The desired forward speed.
  * @param side_speed  The desired side speed.
  * @param yaw_speed The desired yaw speed.
  */
-void DriverUnitreeB1::set_high_level_speed(const double &forward_speed,
+void DriverUnitreeH1::set_high_level_speed(const double &forward_speed,
                                            const double &side_speed,
                                            const double &yaw_speed)
 {
@@ -809,7 +809,7 @@ void DriverUnitreeB1::set_high_level_speed(const double &forward_speed,
     target_high_level_yaw_speed_ = yaw_speed;
 }
 
-void DriverUnitreeB1::set_forced_stand_commands(const double &roll_angle,
+void DriverUnitreeH1::set_forced_stand_commands(const double &roll_angle,
                                                 const double &pitch_angle,
                                                 const double &yaw_angle,
                                                 const double &bodyheight)
@@ -821,27 +821,27 @@ void DriverUnitreeB1::set_forced_stand_commands(const double &roll_angle,
 }
 
 /**
- * @brief DriverUnitreeB1::get_high_level_forward_speed_reference returns the mobile platform velocities.
+ * @brief DriverUnitreeH1::get_high_level_forward_speed_reference returns the mobile platform velocities.
  * @return
  */
-double DriverUnitreeB1::get_high_level_forward_speed_reference() const
+double DriverUnitreeH1::get_high_level_forward_speed_reference() const
 {
     return target_high_level_forward_speed_;
 }
 
 /**
- * @brief DriverUnitreeB1::get_high_level_yaw_speed_reference returns the yaw speed of the mobile platform.
+ * @brief DriverUnitreeH1::get_high_level_yaw_speed_reference returns the yaw speed of the mobile platform.
  * @return
  */
-double DriverUnitreeB1::get_high_level_yaw_speed_reference() const
+double DriverUnitreeH1::get_high_level_yaw_speed_reference() const
 {
     return target_high_level_yaw_speed_;
 }
 
 /**
- * @brief DriverUnitreeB1::show_high_mode displays the current high-level mode
+ * @brief DriverUnitreeH1::show_high_mode displays the current high-level mode
  */
-void DriverUnitreeB1::show_high_mode() const
+void DriverUnitreeH1::show_high_mode() const
 {
     switch(current_high_level_mode_){
 
@@ -873,10 +873,10 @@ void DriverUnitreeB1::show_high_mode() const
 }
 
 /**
- * @brief DriverUnitreeB1::get_motion_time returns the elapsed time of the thread control loop.
+ * @brief DriverUnitreeH1::get_motion_time returns the elapsed time of the thread control loop.
  * @return
  */
-unsigned long long DriverUnitreeB1::get_motion_time() const
+unsigned long long DriverUnitreeH1::get_motion_time() const
 {
     return motiontime_;
 }
@@ -900,7 +900,7 @@ unsigned long long DriverUnitreeB1::get_motion_time() const
  * @see mode_change_in_progress_
  * @see target_high_level_mode_
  */
-void DriverUnitreeB1::request_change_in_high_level_control(const HIGH_LEVEL_MODE &mode)
+void DriverUnitreeH1::request_change_in_high_level_control(const HIGH_LEVEL_MODE &mode)
 {
     if (target_high_level_mode_ != mode)
     {
@@ -911,7 +911,7 @@ void DriverUnitreeB1::request_change_in_high_level_control(const HIGH_LEVEL_MODE
         case HIGH_LEVEL_MODE::TARGET_VELOCITY_WALKING:
             break;  // Supported
         default:
-            throw std::runtime_error("DriverUnitreeB1::request_change_in_high_level_control: Unsupported mode!");
+            throw std::runtime_error("DriverUnitreeH1::request_change_in_high_level_control: Unsupported mode!");
         }
         mode_change_in_progress_ = true;
         target_high_level_mode_ = mode;
@@ -926,7 +926,7 @@ void DriverUnitreeB1::request_change_in_high_level_control(const HIGH_LEVEL_MODE
  *         "TARGET_VELOCITY_WALKING", "PATH_MODE_WALKING", "POSITION_STAND_DOWN",
  *         "POSITION_STAND_UP", "DAMPING_MODE", "RECOVERY_STAND", or "UNKNOWN")
  */
-string DriverUnitreeB1::high_level_mode_to_string(const HIGH_LEVEL_MODE &mode) const
+string DriverUnitreeH1::high_level_mode_to_string(const HIGH_LEVEL_MODE &mode) const
 {
     switch (mode) {
     case HIGH_LEVEL_MODE::IDLE_DEFAULT_STAND: return "IDLE_DEFAULT_STAND";
@@ -947,7 +947,7 @@ string DriverUnitreeB1::high_level_mode_to_string(const HIGH_LEVEL_MODE &mode) c
  * @param gait_type The gait type to convert
  * @return String representation ("IDLE", "TROT", "TROT_RUNNING", "CLIMB_STAIR", "TROT_OBSTACLE", or "UNKNOWN")
  */
-std::string DriverUnitreeB1::gait_type_to_string(const GAIT_TYPE& gait_type) const
+std::string DriverUnitreeH1::gait_type_to_string(const GAIT_TYPE& gait_type) const
 {
     switch (gait_type) {
     case GAIT_TYPE::IDLE: return "IDLE";
@@ -961,19 +961,19 @@ std::string DriverUnitreeB1::gait_type_to_string(const GAIT_TYPE& gait_type) con
 
 
 /// Returns the target high-level control mode (what the driver is trying to achieve)
-DriverUnitreeB1::HIGH_LEVEL_MODE DriverUnitreeB1::get_target_high_mode() const
+DriverUnitreeH1::HIGH_LEVEL_MODE DriverUnitreeH1::get_target_high_mode() const
 {
     return target_high_level_mode_;
 }
 
 /// Returns the current high-level control mode reported by the robot
-DriverUnitreeB1::HIGH_LEVEL_MODE DriverUnitreeB1::get_current_high_mode() const
+DriverUnitreeH1::HIGH_LEVEL_MODE DriverUnitreeH1::get_current_high_mode() const
 {
     return current_high_level_mode_;
 }
 
 /// Returns the current gait type (e.g., TROT, IDLE) reported by the robot
-DriverUnitreeB1::GAIT_TYPE DriverUnitreeB1::get_current_gait_type() const
+DriverUnitreeH1::GAIT_TYPE DriverUnitreeH1::get_current_gait_type() const
 {
     return current_gait_type_;
 }
@@ -982,9 +982,9 @@ DriverUnitreeB1::GAIT_TYPE DriverUnitreeB1::get_current_gait_type() const
 
 
 /**
- * @brief DriverUnitreeB1::_robot_control callback method used by the thread control loop.
+ * @brief DriverUnitreeH1::_robot_control callback method used by the thread control loop.
  */
-void DriverUnitreeB1::_robot_control()
+void DriverUnitreeH1::_robot_control()
 {
     motiontime_ += 2;//motiontime_++;
     _update_data_from_robot_state();
@@ -997,7 +997,7 @@ void DriverUnitreeB1::_robot_control()
     case MODE::VelocityControl:
         if (level_ == LEVEL::LOW)
         {
-            throw std::runtime_error(std::string("RobotDriverUnitreeB1::_set_driver_mode. VelocityControl in low-level mode is not available. "));
+            throw std::runtime_error(std::string("RobotDriverUnitreeH1::_set_driver_mode. VelocityControl in low-level mode is not available. "));
         }
         else
         { //HIGH LEVEL
@@ -1047,7 +1047,7 @@ void DriverUnitreeB1::_robot_control()
  * The two-stage approach is required for some firmware versions where FORCED_STAND
  * cannot stop a moving robot above speed_threshold_to_force_stand_mode_.
  */
-void DriverUnitreeB1::_stop_robot_in_high_level_motion()
+void DriverUnitreeH1::_stop_robot_in_high_level_motion()
 {
     bool force_stand_mode = flag_in_custom_flags(CUSTOM_FLAGS::FORCE_STAND_MODE_WHEN_HIGH_LEVEL_VELOCITIES_ARE_ZERO, custom_flags_);
     if (force_stand_mode)
@@ -1098,7 +1098,7 @@ void DriverUnitreeB1::_stop_robot_in_high_level_motion()
  * @note DAMPING_MODE (lying down) requires transition: DAMPING_MODE → POSITION_STAND_UP →
  *       FORCED_STAND → stabilize → ready (not yet implemented)
  */
-void DriverUnitreeB1::_prepare_the_robot_for_high_level_motion()
+void DriverUnitreeH1::_prepare_the_robot_for_high_level_motion()
 {
     const int PREPARATION_DURATION_MS = 1500;
 
@@ -1136,7 +1136,7 @@ void DriverUnitreeB1::_prepare_the_robot_for_high_level_motion()
     {
         // TODO: Handle other states like DAMPING_MODE (lying down) -> POSITION_STAND_UP -> FORCED_STAND
         throw std::runtime_error(
-            "DriverUnitreeB1::_prepare_the_robot_for_high_level_motion: Cannot prepare robot from current mode: " +
+            "DriverUnitreeH1::_prepare_the_robot_for_high_level_motion: Cannot prepare robot from current mode: " +
             high_level_mode_to_string(current_high_level_mode_) +
             ". Only POSITION_STAND_UP, FORCED_STAND, and TARGET_VELOCITY_WALKING are supported."
             );
@@ -1160,7 +1160,7 @@ void DriverUnitreeB1::_prepare_the_robot_for_high_level_motion()
  * @see _stop_robot_in_high_level_motion()
  * @see _command_in_high_level_mode()
  */
-void DriverUnitreeB1::_command_robot_in_high_level_motion()
+void DriverUnitreeH1::_command_robot_in_high_level_motion()
 {
     if (target_high_level_mode_ == HIGH_LEVEL_MODE::TARGET_VELOCITY_WALKING)
     {
@@ -1224,7 +1224,7 @@ void DriverUnitreeB1::_command_robot_in_high_level_motion()
  *
  * @note Uses static frozen_time - ensure single call per deinitialization
  */
-void DriverUnitreeB1::_finish_high_level_motion()
+void DriverUnitreeH1::_finish_high_level_motion()
 {
     // This part of the code is executed when the driver is deinitialized.
     static unsigned long long frozen_time = motiontime_;
@@ -1271,9 +1271,9 @@ void DriverUnitreeB1::_finish_high_level_motion()
 
 
 /**
- * @brief DriverUnitreeB1::_command_in_high_level_mode sets the high_cmd_ struct with the desired target values and sends to the robot.
+ * @brief DriverUnitreeH1::_command_in_high_level_mode sets the high_cmd_ struct with the desired target values and sends to the robot.
  *
- * This method configures the Unitree B1 robot's high-level command structure based on the specified mode,
+ * This method configures the Unitree H1 robot's high-level command structure based on the specified mode,
  * performs input validation, and transmits the command via UDP to the robot.
  *
  * @param high_level_mode The high level mode. This can be:
@@ -1315,7 +1315,7 @@ void DriverUnitreeB1::_finish_high_level_motion()
  * @note The high_cmd_ structure is always zero-initialized before populating to prevent stale data.
  * @note The command is sent immediately via UDP after population.
  */
-void DriverUnitreeB1::_command_in_high_level_mode(const HIGH_LEVEL_MODE& high_level_mode,
+void DriverUnitreeH1::_command_in_high_level_mode(const HIGH_LEVEL_MODE& high_level_mode,
                                                   const double& forward_vel,
                                                   const double &side_vel,
                                                   const double& yaw_speed,
@@ -1367,7 +1367,7 @@ void DriverUnitreeB1::_command_in_high_level_mode(const HIGH_LEVEL_MODE& high_le
     }
     default:
         break;
-        //std::cerr<<"DriverUnitreeB1::_command_in_high_level_mode: Unsupported mode!"<<std::endl;
+        //std::cerr<<"DriverUnitreeH1::_command_in_high_level_mode: Unsupported mode!"<<std::endl;
     }
 
     impl_->udp_->SetSend(impl_->high_cmd_);
@@ -1375,18 +1375,18 @@ void DriverUnitreeB1::_command_in_high_level_mode(const HIGH_LEVEL_MODE& high_le
 
 
 /**
- * @brief DriverUnitreeB1::_show_status displays the driver status if the verbosity flag is enabled.
+ * @brief DriverUnitreeH1::_show_status displays the driver status if the verbosity flag is enabled.
  */
-void DriverUnitreeB1::_show_status()
+void DriverUnitreeH1::_show_status()
 {
     if (verbosity_)
         std::cerr<<status_msg_<<std::endl;
 }
 
 /**
- * @brief DriverUnitreeB1::_update_data_from_robot_state callback method used in the thread related to the robot state.
+ * @brief DriverUnitreeH1::_update_data_from_robot_state callback method used in the thread related to the robot state.
  */
-void DriverUnitreeB1::_update_data_from_robot_state()
+void DriverUnitreeH1::_update_data_from_robot_state()
 {
     if (level_ == LEVEL::LOW)
     {
@@ -1421,10 +1421,10 @@ void DriverUnitreeB1::_update_data_from_robot_state()
 
 
 /**
- * @brief DriverUnitreeB1::_robot_update This method updates the robot state. This includes the
+ * @brief DriverUnitreeH1::_robot_update This method updates the robot state. This includes the
  *        joint positions, velocities, accelerations, torques, and temperatures.
  */
-void DriverUnitreeB1::_robot_update()
+void DriverUnitreeH1::_robot_update()
 {
     motiontime_++;
     _update_data_from_robot_state();
@@ -1436,12 +1436,12 @@ void DriverUnitreeB1::_robot_update()
 
 
 /**
- * @brief DriverUnitreeB1::_update_joint_data updates the robot state related to the legs. This includes the joint positions, velocities,
+ * @brief DriverUnitreeH1::_update_joint_data updates the robot state related to the legs. This includes the joint positions, velocities,
  *                      accelerations, torques, and motor temperatures.
  * @param state The high-level of low-level structure to store the robot data.
  */
 template<typename T>
-void DriverUnitreeB1::_update_joint_data(const T &state)
+void DriverUnitreeH1::_update_joint_data(const T &state)
 {
     for (int i = 0; i<3;i++)
     {
@@ -1477,11 +1477,11 @@ void DriverUnitreeB1::_update_joint_data(const T &state)
 }
 
 /**
- * @brief DriverUnitreeB1::_update_IMU_data updates the IMU-based data
+ * @brief DriverUnitreeH1::_update_IMU_data updates the IMU-based data
  * @param state The high-level of low-level structure to store the robot data.
  */
 template<typename T>
-void DriverUnitreeB1::_update_IMU_data(const T &state)
+void DriverUnitreeH1::_update_IMU_data(const T &state)
 {
     IMU_orientation_ =   DQ(state.imu.quaternion.at(0),
                           state.imu.quaternion.at(1),
@@ -1500,11 +1500,11 @@ void DriverUnitreeB1::_update_IMU_data(const T &state)
 }
 
 /**
- * @brief DriverUnitreeB1::_update_battery_data updates the battery data.
+ * @brief DriverUnitreeH1::_update_battery_data updates the battery data.
  * @param state The high-level of low-level structure to store the robot data.
  */
 template<typename T>
-void DriverUnitreeB1::_update_battery_data(const T &state)
+void DriverUnitreeH1::_update_battery_data(const T &state)
 {
     // Update the battery status
     state_of_charge_ = state.bms.SOC;

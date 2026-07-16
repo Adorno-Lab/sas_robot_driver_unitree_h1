@@ -1,7 +1,7 @@
 /*
 # (C) Copyright 2024-2026 Adorno-Lab software developments
 #
-#    This file is part of sas_robot_driver_unitree_b1.
+#    This file is part of sas_robot_driver_unitree_h1.
 #
 #    This is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Lesser General Public License as published by
@@ -25,7 +25,7 @@
 #pragma once
 #include <QMainWindow>
 #include <qspinbox.h>
-#include "DriverUnitreeB1.hpp"
+#include "DriverUnitreeH1.hpp"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -45,10 +45,10 @@ private:
         std::string ROBOT_IP; //"192.168.123.220",  // Target IP   //192.168.123.10 for low-level mode
         int ROBOT_PORT; //    8082,              // Target port  //8007 for low-level mode
         std::string robot_name;
-        bool FORCE_STAND_MODE_WHEN_HIGH_LEVEL_VELOCITIES_ARE_ZERO; // to handle this https://github.com/Adorno-Lab/sas_robot_driver_unitree_b1/issues/4
+        bool FORCE_STAND_MODE_WHEN_HIGH_LEVEL_VELOCITIES_ARE_ZERO; // to handle this https://github.com/Adorno-Lab/sas_robot_driver_unitree_h1/issues/4
     };
     RobotConfiguration configuration_;
-    std::shared_ptr<DriverUnitreeB1> unitree_b1_driver_;
+    std::shared_ptr<DriverUnitreeH1> unitree_h1_driver_;
     std::atomic_bool* st_break_loops_;
 
 public:

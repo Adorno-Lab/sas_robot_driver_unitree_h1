@@ -1,7 +1,7 @@
 /*
 # (C) Copyright 2024-2026 Adorno-Lab software developments
 #
-#    This file is part of sas_robot_driver_unitree_b1.
+#    This file is part of sas_robot_driver_unitree_h1.
 #
 #    This is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Lesser General Public License as published by
@@ -47,7 +47,7 @@ using namespace rclcpp;
 namespace sas
 {
 
-struct RobotDriverUnitreeB1Configuration
+struct RobotDriverUnitreeH1Configuration
 {
     std::string mode;              //const std::string mode= "PositionControl";
     bool LIE_DOWN_ROBOT_WHEN_DEINITIALIZE;  //std::string LIE_DOWN_ROBOT_WHEN_DEINITIALIZE
@@ -55,18 +55,18 @@ struct RobotDriverUnitreeB1Configuration
     int ROBOT_PORT; //    8082,              // Target port  //8007 for low-level mode
     std::string robot_name;
     //double watchdog_period_in_seconds;
-    bool FORCE_STAND_MODE_WHEN_HIGH_LEVEL_VELOCITIES_ARE_ZERO; // to handle this https://github.com/Adorno-Lab/sas_robot_driver_unitree_b1/issues/4
+    bool FORCE_STAND_MODE_WHEN_HIGH_LEVEL_VELOCITIES_ARE_ZERO; // to handle this https://github.com/Adorno-Lab/sas_robot_driver_unitree_h1/issues/4
 };
 
 
 
 
-class RobotDriverUnitreeB1: public LeggedRobotDriver
+class RobotDriverUnitreeH1: public LeggedRobotDriver
 {
 protected:
     std::atomic_bool* st_break_loops_;
     std::string topic_prefix_;
-    RobotDriverUnitreeB1Configuration configuration_;
+    RobotDriverUnitreeH1Configuration configuration_;
     std::shared_ptr<rclcpp::Node> node_;
 
 private:
@@ -139,16 +139,16 @@ protected:
 
 public:
 
-    RobotDriverUnitreeB1(const RobotDriverUnitreeB1&)=delete;
-    RobotDriverUnitreeB1()=delete;
-    ~RobotDriverUnitreeB1();
+    RobotDriverUnitreeH1(const RobotDriverUnitreeH1&)=delete;
+    RobotDriverUnitreeH1()=delete;
+    ~RobotDriverUnitreeH1();
 
-    RobotDriverUnitreeB1(std::shared_ptr<Node>& node,
-                         const RobotDriverUnitreeB1Configuration &configuration,
+    RobotDriverUnitreeH1(std::shared_ptr<Node>& node,
+                         const RobotDriverUnitreeH1Configuration &configuration,
                          std::atomic_bool* break_loops);
 
-    RobotDriverUnitreeB1(std::shared_ptr<Node>& node,
-                         const RobotDriverUnitreeB1Configuration &configuration,
+    RobotDriverUnitreeH1(std::shared_ptr<Node>& node,
+                         const RobotDriverUnitreeH1Configuration &configuration,
                          const std::shared_ptr<ShutdownSignaler>& shutdown_signaler);
 
     //void control_loop();

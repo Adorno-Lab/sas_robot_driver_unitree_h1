@@ -20,6 +20,8 @@
 #
 #   Author: Juan Jose Quiroz Omana, email: juanjose.quirozomana@manchester.ac.uk
 #
+#   Contributor: Daniel S. J. Derwent, email: daniel.derwent@manchester.ac.uk
+#
 # ################################################################*/
 
 #include "DriverUnitreeH1.hpp"
@@ -43,10 +45,12 @@ public:
     UNITREE_LEGGED_SDK::HighCmd high_cmd_;
     UNITREE_LEGGED_SDK::HighState high_state_;
 
-    std::vector<int> FR_index_ = {UNITREE_LEGGED_SDK::FR_0, UNITREE_LEGGED_SDK::FR_1, UNITREE_LEGGED_SDK::FR_2};
-    std::vector<int> FL_index_ = {UNITREE_LEGGED_SDK::FL_0, UNITREE_LEGGED_SDK::FL_1, UNITREE_LEGGED_SDK::FL_2};
+    // TODO: Update this to use the indices for the H1. Consider a broader re-work because its hard to see where
+    // the waist joint would go in this system.
+    std::vector<int> LA_index_ = {UNITREE_LEGGED_SDK::LA_0, UNITREE_LEGGED_SDK::LA_1, UNITREE_LEGGED_SDK::LA_2};
+    std::vector<int> RA_index_ = {UNITREE_LEGGED_SDK::RA_0, UNITREE_LEGGED_SDK::RA_1, UNITREE_LEGGED_SDK::RA_2};
+    std::vector<int> LL_index_ = {UNITREE_LEGGED_SDK::LL_0, UNITREE_LEGGED_SDK::LL_1, UNITREE_LEGGED_SDK::LL_2};
     std::vector<int> RL_index_ = {UNITREE_LEGGED_SDK::RL_0, UNITREE_LEGGED_SDK::RL_1, UNITREE_LEGGED_SDK::RL_2};
-    std::vector<int> RR_index_ = {UNITREE_LEGGED_SDK::RR_0, UNITREE_LEGGED_SDK::RR_1, UNITREE_LEGGED_SDK::RR_2};
 
     std::shared_ptr<UNITREE_LEGGED_SDK::LoopFunc> loop_control_;
     std::shared_ptr<UNITREE_LEGGED_SDK::LoopFunc> loop_echo_state_;
@@ -71,7 +75,8 @@ public:
  *              all constraints in your controler (joint limits, control input limits, robot balance, self-collision avoidance, etc).
  * @param verbosity Use true (default) to display more information in the terminal.
  * @param TIMEOUT_IN_MILLISECONDS The max time in milliseconds to establish the communication to the robot before to throw an exception.
- * @param LIE_DOWN_ROBOT_WHEN_DEINITIALIZE Use this flag to put the robot on the ground when the driver is deinitialized.
+ * @param LIE_DOWN_ROBOT_WHEN_DEINITIALIZE In the B1 driver, this flag is used to put the robot on the ground when the driver is deinitialized.
+ *                                         there is not currently an equivalent for the H1, so this flag is deprecated for now.
  * @param TARGET_IP The IP address of the H1 robot to perform the communication. You can use a
  *                  LAN cable connection or a WiFI network to establish the communication.
  *
@@ -92,7 +97,6 @@ public:
                             DriverUnitreeH1::LEVEL::HIGH,       // Level mode
                             true,   //verbosity
                             2000,   // TIMEOUT in ms
-                            false, // LIE DOWN ROBOT WHEN DEINITIALIZE
                             "192.168.123.220",  // Target IP   //192.168.123.10 for low-level mode
                             8082,              // Target port  //8007 for low-level mode
                             8090);             // Local port
@@ -109,12 +113,15 @@ public:
             H1.disconnect();    // Fourth method to be called. It is required to deinitialize before to disconnect.
 
  */
+
+ // Modified to not take LIE_DOWN_ROBOT_WHEN_DEINITIALIZE and always set it as false until we figure out an H1 
+ // alternative to this parameter
 DriverUnitreeH1::DriverUnitreeH1(std::atomic_bool *st_break_loops,
                                            const MODE &mode,
                                            const LEVEL &level,
                                            const bool &verbosity,
                                            const int &TIMEOUT_IN_MILLISECONDS,
-                                           const bool &LIE_DOWN_ROBOT_WHEN_DEINITIALIZE,
+                                        //    const bool &LIE_DOWN_ROBOT_WHEN_DEINITIALIZE,
                                            const string &TARGET_IP,
                                            const int &TARGET_PORT,
                                            const int &LOCAL_PORT,
@@ -127,7 +134,7 @@ DriverUnitreeH1::DriverUnitreeH1(std::atomic_bool *st_break_loops,
     port_{TARGET_PORT},
     verbosity_{verbosity},
     timeout_in_milliseconds_{TIMEOUT_IN_MILLISECONDS},
-    LIE_DOWN_ROBOT_WHEN_DEINITIALIZE_{LIE_DOWN_ROBOT_WHEN_DEINITIALIZE}
+    LIE_DOWN_ROBOT_WHEN_DEINITIALIZE_{false} // ALways false until we figure out an H1 alternative to this parameter
 {
     impl_        = std::make_shared<DriverUnitreeH1::Impl>();
     impl_->safe_ = std::make_shared<UNITREE_LEGGED_SDK::Safety>(UNITREE_LEGGED_SDK::LeggedType::H1);
@@ -147,11 +154,6 @@ DriverUnitreeH1::DriverUnitreeH1(std::atomic_bool *st_break_loops,
 
     UNITREE_LEGGED_SDK::InitEnvironment();
 
-    /*
-    UNITREE_LEGGED_SDK::LoopFunc loop_control("control_loop", dt_, boost::bind(&RobotDriverUnitreeH1::RobotControl, this));
-    UNITREE_LEGGED_SDK::LoopFunc loop_udpSend("udp_send", dt_, 3,  boost::bind(&RobotDriverUnitreeH1::UDPSend, this));
-    UNITREE_LEGGED_SDK::LoopFunc loop_udpRecv("udp_recv", dt_, 3,  boost::bind(&RobotDriverUnitreeH1::UDPRecv, this));
-    */
     impl_->loop_control_    = std::make_shared<UNITREE_LEGGED_SDK::LoopFunc>("control_loop", dt_, boost::bind(&DriverUnitreeH1::_robot_control,this));
     impl_->loop_echo_state_ = std::make_shared<UNITREE_LEGGED_SDK::LoopFunc>("echo_state_loop", dt_, boost::bind(&DriverUnitreeH1::_robot_update,this));
     impl_->loop_udpSend_    = std::make_shared<UNITREE_LEGGED_SDK::LoopFunc>("udp_send", dt_, 3,  boost::bind(&DriverUnitreeH1::_UDPSend, this));
@@ -296,6 +298,10 @@ void DriverUnitreeH1::_update_udp_status()
  */
 void DriverUnitreeH1::_set_driver_mode(const MODE &mode, const LEVEL &level)
 {
+    // TODO: Update this function, and the driver architecture more generally, to amend the distinction between high level
+    // and low level control. In the H1, the upper body does not appear to have a high level control interface, only
+    // the lower body does. Maybe we can change it so that the LEVEL is clear that it only applies to the lower body, like
+    // LOWER_BODY_LEVEL or similar.
     switch (mode)
     {
         case MODE::None:
@@ -373,6 +379,11 @@ bool DriverUnitreeH1::are_approximately_equal(const double &a, const double &b, 
  */
 void DriverUnitreeH1::connect()
 {
+
+    //TODO: Determine if I need to use udp in this way. From the examples, it seems like it isn't necessary to explicitly
+    // manage the communications in this way, but its worth making sure. If you give the arm example the wrong ethernet device,
+    // then it doesn't warn you. It just runs the program and nothing happens. That's something we should fix before implementing
+    // this function.
     if (current_status_ == STATUS::IDLE)
     {
         impl_->loop_udpSend_->start();
@@ -442,6 +453,8 @@ void DriverUnitreeH1::initialize()
                     deinitialize();
                 }else { //HIGH LEVEL
                         status_msg_ = "finishing echo state loop.";
+
+                        // TODO: Understand the purpose of the echo state loop
                         _show_status();
                         impl_->loop_echo_state_->shutdown();
                         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -521,25 +534,31 @@ void DriverUnitreeH1::disconnect()
  */
 std::tuple<VectorXd, VectorXd, VectorXd, VectorXd> DriverUnitreeH1::get_leg_joint_positions() const
 {
-    //uFR, uFL, uRR, uRL
-    return {qFR_, qFL_, qRR_, qRL_};
+    //uLA, uRA, uLL, uRL
+    return {qLA_, qRA_, qLL_, qRL_};
 }
 
 /**
  * @brief DriverUnitreeH1::get_joint_positions returns the joint positions of the specified leg.
- * @param branch The desired branch (leg). You can use FR (forward right), FL (forward left), RR (rear right), or RL (rear left).
+ * @param branch The desired branch (arm of leg). You can use LA (left arm), RA (right arm), LL (left leg), or RL (right leg).
  * @return the current joint positions (unit: radian)
  */
 VectorXd DriverUnitreeH1::get_joint_positions(const BRANCH &branch) const
 {
+
+    // TODO: The high level object contains the call for the sas function get_joint_positions. That function 
+    // calls this function four times, once for each branch, and stitches the results together into one vector. 
+    // I think it would be best in my implementation to do away with the branch structure entirely, and have 
+    // this function just get all the joint states in a single vector.
+
     switch (branch){
 
-    case BRANCH::FR:
-        return qFR_;
-    case BRANCH::FL:
-        return qFL_;
-    case BRANCH::RR:
-        return qRR_;
+    case BRANCH::LA:
+        return qLA_;
+    case BRANCH::RA:
+        return qRA_;
+    case BRANCH::LL:
+        return qLL_;
     case BRANCH::RL:
         return qRL_;
     default: // This line is required in GNU/Linux
@@ -550,19 +569,21 @@ VectorXd DriverUnitreeH1::get_joint_positions(const BRANCH &branch) const
 
 /**
  * @brief DriverUnitreeH1::get_joint_velocities returns the joint velocities of the specified leg.
- * @param branch The desired branch (leg). You can use FR (forward right), FL (forward left), RR (rear right), or RL (rear left).
+ * @param branch The desired branch (arm of leg). You can use LA (left arm), RA (right arm), LL (left leg), or RL (right leg).
  * @return the current joint velocities (unit: radian/second)
  */
 VectorXd DriverUnitreeH1::get_joint_velocities(const BRANCH &branch) const
 {
+
+    // TODO: see get_joint_positions
     switch (branch){
 
-    case BRANCH::FR:
-        return qFR_dot_;
-    case BRANCH::FL:
-        return qFL_dot_;
-    case BRANCH::RR:
-        return qRR_dot_;
+    case BRANCH::LA:
+        return qLA_dot_;
+    case BRANCH::RA:
+        return qRA_dot_;
+    case BRANCH::LL:
+        return q_LL_dot_;
     case BRANCH::RL:
         return qRL_dot_;
     default: // This line is required in GNU/Linux
@@ -574,19 +595,20 @@ VectorXd DriverUnitreeH1::get_joint_velocities(const BRANCH &branch) const
 
 /**
  * @brief DriverUnitreeH1::get_joint_accelerations returns the joint accelerations of the specified leg.
- * @param branch The desired branch (leg). You can use FR (forward right), FL (forward left), RR (rear right), or RL (rear left).
+ * @param branch The desired branch (arm of leg). You can use LA (left arm), RA (right arm), LL (left leg), or RL (right leg).
  * @return the current joint accelerations (unit: radian/second^2)
  */
 VectorXd DriverUnitreeH1::get_joint_accelerations(const BRANCH &branch) const
 {
+    // TODO: see get_joint_positions
     switch (branch){
 
-    case BRANCH::FR:
-        return qFR_ddot_;
-    case BRANCH::FL:
-        return qFL_ddot_;
-    case BRANCH::RR:
-        return qRR_ddot_;
+    case BRANCH::LA:
+        return qLA_ddot_;
+    case BRANCH::RA:
+        return qRA_ddot_;
+    case BRANCH::LL:
+        return q_LL_ddot_;
     case BRANCH::RL:
         return qRL_ddot_;
     default: // This line is required in GNU/Linux
@@ -598,19 +620,20 @@ VectorXd DriverUnitreeH1::get_joint_accelerations(const BRANCH &branch) const
 
 /**
  * @brief DriverUnitreeH1::get_joint_estimated_torques returns the estimated joint torques of the specified leg.
- * @param branch The desired branch (leg). You can use FR (forward right), FL (forward left), RR (rear right), or RL (rear left).
+ * @param branch The desired branch (arm of leg). You can use LA (left arm), RA (right arm), LL (left leg), or RL (right leg).
  * @return the estimated joint torques (unit: N.m)
  */
 VectorXd DriverUnitreeH1::get_joint_estimated_torques(const BRANCH &branch) const
 {
+    // TODO: see get_joint_positions
     switch (branch){
 
-    case BRANCH::FR:
-        return tauFR_;
-    case BRANCH::FL:
-        return tauFL_;
-    case BRANCH::RR:
-        return tauRR_;
+    case BRANCH::LA:
+        return tauLA_;
+    case BRANCH::RA:
+        return tauRA_;
+    case BRANCH::LL:
+        return tauLL_;
     case BRANCH::RL:
         return tauRL_;
     default: // This line is required in GNU/Linux
@@ -622,19 +645,19 @@ VectorXd DriverUnitreeH1::get_joint_estimated_torques(const BRANCH &branch) cons
 
 /**
  * @brief DriverUnitreeH1::get_joint_temperatures returns the motor temperatures of the specified leg.
- * @param branch The desired branch (leg). You can use FR (forward right), FL (forward left), RR (rear right), or RL (rear left).
+ * @param branch The desired branch (arm of leg). You can use LA (left arm), RA (right arm), LL (left leg), or RL (right leg).
  * @return The motor temperatures.
  */
 VectorXd DriverUnitreeH1::get_joint_temperatures(const BRANCH &branch) const
 {
     switch (branch){
 
-    case BRANCH::FR:
-        return temperatureFR_;
-    case BRANCH::FL:
-        return temperatureFL_;
-    case BRANCH::RR:
-        return temperatureRR_;
+    case BRANCH::LA:
+        return temperatureLA_;
+    case BRANCH::RA:
+        return temperatureRA_;
+    case BRANCH::LL:
+        return temperatureLL_;
     case BRANCH::RL:
         return temperatureRL_;
     default: // This line is required in GNU/Linux
@@ -789,6 +812,7 @@ void DriverUnitreeH1::set_high_level_yaw_speed(const double &yaw_speed)
  */
 void DriverUnitreeH1::set_high_level_forward_and_yaw_speed(const double &forward_speed, const double &yaw_speed)
 {
+    // TODO: Some of these methods, including this one, don't appear to be called anywhere. Do we need them?
     set_high_level_forward_speed(forward_speed);
     set_high_level_yaw_speed(yaw_speed);
 }
@@ -984,6 +1008,8 @@ DriverUnitreeH1::GAIT_TYPE DriverUnitreeH1::get_current_gait_type() const
 /**
  * @brief DriverUnitreeH1::_robot_control callback method used by the thread control loop.
  */
+
+// TODO: Determine if this function is still required. It doesn't see, to be called anywhere anymore.
 void DriverUnitreeH1::_robot_control()
 {
     motiontime_ += 2;//motiontime_++;
@@ -1446,33 +1472,33 @@ void DriverUnitreeH1::_update_joint_data(const T &state)
     for (int i = 0; i<3;i++)
     {
         // Update the joint positions
-        qFR_(i) = state.motorState[impl_->FR_index_.at(i)].q;
-        qFL_(i) = state.motorState[impl_->FL_index_.at(i)].q;
+        qLA_(i) = state.motorState[impl_->LA_index_.at(i)].q;
+        qRA_(i) = state.motorState[impl_->RA_index_.at(i)].q;
+        qLL_(i) = state.motorState[impl_->LL_index_.at(i)].q;
         qRL_(i) = state.motorState[impl_->RL_index_.at(i)].q;
-        qRR_(i) = state.motorState[impl_->RR_index_.at(i)].q;
 
         // Update the joint velocities
-        qFR_dot_(i) = state.motorState[impl_->FR_index_.at(i)].dq;
-        qFL_dot_(i) = state.motorState[impl_->FL_index_.at(i)].dq;
+        qLA_dot_(i) = state.motorState[impl_->LA_index_.at(i)].dq;
+        qRA_dot_(i) = state.motorState[impl_->RA_index_.at(i)].dq;
+        qLL_dot_(i) = state.motorState[impl_->LL_index_.at(i)].dq;
         qRL_dot_(i) = state.motorState[impl_->RL_index_.at(i)].dq;
-        qRR_dot_(i) = state.motorState[impl_->RR_index_.at(i)].dq;
 
         // Update the joint accelerations
-        qFR_ddot_(i) = state.motorState[impl_->FR_index_.at(i)].ddq;
-        qFL_ddot_(i) = state.motorState[impl_->FL_index_.at(i)].ddq;
+        qLA_ddot_(i) = state.motorState[impl_->LA_index_.at(i)].ddq;
+        qRA_ddot_(i) = state.motorState[impl_->RA_index_.at(i)].ddq;
+        qLL_ddot_(i) = state.motorState[impl_->LL_index_.at(i)].ddq;
         qRL_ddot_(i) = state.motorState[impl_->RL_index_.at(i)].ddq;
-        qRR_ddot_(i) = state.motorState[impl_->RR_index_.at(i)].ddq;
 
         // Update the estimated joint torques output
-        tauFR_(i) = state.motorState[impl_->FR_index_.at(i)].tauEst;
-        tauFL_(i) = state.motorState[impl_->FL_index_.at(i)].tauEst;
+        tauLA_(i) = state.motorState[impl_->LA_index_.at(i)].tauEst;
+        tauRA_(i) = state.motorState[impl_->RA_index_.at(i)].tauEst;
+        tauLL_(i) = state.motorState[impl_->LL_index_.at(i)].tauEst;
         tauRL_(i) = state.motorState[impl_->RL_index_.at(i)].tauEst;
-        tauRR_(i) = state.motorState[impl_->RR_index_.at(i)].tauEst;
 
-        temperatureFR_(i) = state.motorState[impl_->FR_index_.at(i)].temperature;
-        temperatureFL_(i) = state.motorState[impl_->FL_index_.at(i)].temperature;
+        temperatureLA_(i) = state.motorState[impl_->LA_index_.at(i)].temperature;
+        temperatureRA_(i) = state.motorState[impl_->RA_index_.at(i)].temperature;
+        temperatureLL_(i) = state.motorState[impl_->LL_index_.at(i)].temperature;
         temperatureRL_(i) = state.motorState[impl_->RL_index_.at(i)].temperature;
-        temperatureRR_(i) = state.motorState[impl_->RR_index_.at(i)].temperature;
     }
 }
 

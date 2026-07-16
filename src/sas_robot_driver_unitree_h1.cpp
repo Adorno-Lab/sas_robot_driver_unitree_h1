@@ -21,6 +21,8 @@
 #   Author: Juan Jose Quiroz Omana, email: juanjose.quirozomana@manchester.ac.uk
 #   Based on https://ros2-tutorial.readthedocs.io/en/latest/cpp/cpp_node.html
 #
+#   Contributor: Daniel S. J. Derwent, email: daniel.derwent@manchester.ac.uk
+#
 # ################################################################*/
 
 #include <sas_robot_driver_unitree_h1/sas_robot_driver_unitree_h1.hpp>
@@ -71,22 +73,27 @@ void RobotDriverUnitreeH1::_initial_settings()
 
 
     // I need to use the parameters of the configuration structure!
+    // The LIE_DOWN_ROBOT_WHEN_DEINITIALIZE flag is no longer passed. We haven't yet determined what the H1 equivalent of
+    // this will be. For now it isn'y passed, and the constructor automatically sets it to false.
     impl_->unitree_h1_driver_ = std::make_shared<DriverUnitreeH1>(break_loops_,
                                                                   mode, // Driver mode
                                                                   DriverUnitreeH1::LEVEL::HIGH,       // Level mode
                                                                   true,   //verbosity
                                                                   2000,   // TIMEOUT in ms
-                                                                  configuration_.LIE_DOWN_ROBOT_WHEN_DEINITIALIZE, // LIE DOWN ROBOT WHEN DEINITIALIZE
+                                                                //   configuration_.LIE_DOWN_ROBOT_WHEN_DEINITIALIZE, // LIE DOWN ROBOT WHEN DEINITIALIZE
                                                                   configuration_.ROBOT_IP,  // Target IP   //192.168.123.10 for low-level mode
                                                                   configuration_.ROBOT_PORT,// Target port  //8007 for low-level mode
-                                                                  8090,
+                                                                  8090, // Local port
                                                                   custom_flags);
 
+    //TODO: Replace branch structure with either upper_body and lower_body topics or remove them and just use the built in whole_body system
+    //      (I think these are only here to maintain compatibility with the B1 controller code, so we probably don't need them)
+    
     // For backward compatibility
-    publisher_FR_joint_states_ = node_->create_publisher<sensor_msgs::msg::JointState>(topic_prefix_ + "/get/FR_joint_states",1);
-    publisher_FL_joint_states_ = node_->create_publisher<sensor_msgs::msg::JointState>(topic_prefix_ + "/get/FL_joint_states",1);
-    publisher_RR_joint_states_ = node_->create_publisher<sensor_msgs::msg::JointState>(topic_prefix_ + "/get/RR_joint_states",1);
-    publisher_RL_joint_states_ = node_->create_publisher<sensor_msgs::msg::JointState>(topic_prefix_ + "/get/RL_joint_states",1);
+    publisher_LA_joint_states_ = node_->create_publisher<sensor_msgs::msg::JointState>(topic_prefix_ + "/get/LA_joint_states",1); // Left Arm
+    publisher_RA_joint_states_ = node_->create_publisher<sensor_msgs::msg::JointState>(topic_prefix_ + "/get/RA_joint_states",1); // Right Arm
+    publisher_LL_joint_states_ = node_->create_publisher<sensor_msgs::msg::JointState>(topic_prefix_ + "/get/LL_joint_states",1); // Left Leg
+    publisher_RL_joint_states_ = node_->create_publisher<sensor_msgs::msg::JointState>(topic_prefix_ + "/get/RL_joint_states",1); // Right Leg
 
     publisher_rpy_angles_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(topic_prefix_ + "/get/rpy_angles", 1);
     publisher_IMU_state_ = node_->create_publisher<sensor_msgs::msg::Imu>(topic_prefix_ + "/get/IMU_state", 1);
@@ -179,8 +186,8 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
 
 RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
                                            const RobotDriverUnitreeH1Configuration &configuration,
-                                           const std::shared_ptr<ShutdownSignaler> &shutdown_signaler)
-    :LeggedRobotDriver{shutdown_signaler},
+                                           const std::shared_ptr<ShutdownSignaler> &shutdown_signaller)
+    :LeggedRobotDriver{shutdown_signaller},
     topic_prefix_{configuration.robot_name},
     configuration_{configuration},
     node_{node},
@@ -194,66 +201,82 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
 
 
 /**
- * @brief Get the joint positions of all four legs of the Unitree H1 robot
+ * @brief Get the joint positions of the arms and legs of the Unitree H1 robot
  *
- * Retrieves the current joint angles for all 12 degrees of freedom (3 per leg)
+ * Retrieves the current joint angles for all 19 degrees of freedom (4 per arm, 5 per leg, plus the waist)
  * and concatenates them into a single state vector.
  *
- * @return VectorXd A 12-element vector with joint positions in the format:
- *         [FR_hip, FR_thigh, FR_calf, FL_hip, FL_thigh, FL_calf,
- *          RR_hip, RR_thigh, RR_calf, RL_hip, RL_thigh, RL_calf]
+ * @return VectorXd A 19-element vector with joint positions in the format:
+ *         [LA_shoulder_roll, LA_shoulder_pitch, LA_shoulder_yaw, LA_elbow,
+ *          RA_shoulder_roll, RA_shoulder_pitch, RA_shoulder_yaw, RA_elbow,
+ *          waist,
+ *          LL_hip_roll, LL_hip_pitch, LL_hip_yaw, LL_knee, LL_ankle,
+ *          RL_hip_roll, RL_hip_pitch, RL_hip_yaw, RL_knee, RL_ankle]
  */
 VectorXd RobotDriverUnitreeH1::get_joint_positions()
 {
-    const VectorXd qFR = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::FR);
-    const VectorXd qFL = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::FL);
-    const VectorXd qRR = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::RR);
+    // TODO: Would be nice to replace this with a call to get all the joint positions, since as written it isn't
+    // clear what to do with the waist joint.
+    const VectorXd qLA = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::LA);
+    const VectorXd qRA = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::RA);
+    // Get waist somehow?
+    const VectorXd qLL = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::LL);
     const VectorXd qRL = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::RL);
-    VectorXd qlegs = VectorXd(qFR.size() + qFL.size() + qRR.size() + qRL.size());
-    qlegs << qFR, qFL, qRR, qRL;
-    return qlegs;
+    VectorXd qjoints = VectorXd(qLA.size() + qRA.size() + qLL.size() + qRL.size());
+    qjoints << qLA, qRA, qLL, qRL;
+    return qjoints;
 }
 
 /**
  * @brief Get the joint velocities of all four legs of the Unitree H1 robot
  *
- * Retrieves the current joint angular velocities for all 12 degrees of freedom (3 per leg)
+ * Retrieves the current joint angular velocities for all 19 degrees of freedom (4 per arm, 5 per leg, plus the waist)
  * and concatenates them into a single state vector.
  *
- * @return VectorXd A 12-element vector with joint velocities in the format:
- *         [FR_hip_dot, FR_thigh_dot, FR_calf_dot, FL_hip_dot, FL_thigh_dot, FL_calf_dot,
- *          RR_hip_dot, RR_thigh_dot, RR_calf_dot, RL_hip_dot, RL_thigh_dot, RL_calf_dot]
+ * @return VectorXd A 19-element vector with joint velocities in the format:
+ *         [LA_shoulder_roll, LA_shoulder_pitch, LA_shoulder_yaw, LA_elbow,
+ *          RA_shoulder_roll, RA_shoulder_pitch, RA_shoulder_yaw, RA_elbow,
+ *          waist,
+ *          LL_hip_roll, LL_hip_pitch, LL_hip_yaw, LL_knee, LL_ankle,
+ *          RL_hip_roll, RL_hip_pitch, RL_hip_yaw, RL_knee, RL_ankle]
  */
 VectorXd RobotDriverUnitreeH1::get_joint_velocities()
 {
-    const VectorXd qFR_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::FR);
-    const VectorXd qFL_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::FL);
-    const VectorXd qRR_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::RR);
+    // TODO: Replace individual branch calls with one whole-robot call, or an upper_body and lower_body call.
+    //       Hard to see where the waist joint could be incorporated into current system.
+    const VectorXd qLA_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::LA);
+    const VectorXd qRA_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::RA);
+    const VectorXd qLL_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::LL);
     const VectorXd qRL_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::RL);
-    VectorXd qlegs_dot = VectorXd(qFR_dot.size() + qFL_dot.size() + qRR_dot.size() + qRL_dot.size());
-    qlegs_dot << qFR_dot, qFL_dot, qRR_dot, qRL_dot;
-    return qlegs_dot;
+    VectorXd qjoints_dot = VectorXd(qLA_dot.size() + qRA_dot.size() + qLL_dot.size() + qRL_dot.size());
+    qjoints_dot << qLA_dot, qRA_dot, qLL_dot, qRL_dot;
+    return qjoints_dot;
 }
 
 /**
  * @brief Get the estimated joint torques of all four legs of the Unitree H1 robot
  *
- * Retrieves the current estimated joint torques for all 12 degrees of freedom (3 per leg)
+ * Retrieves the current estimated joint torques for all 19 degrees of freedom (4 per arm, 5 per leg, plus the waist)
  * and concatenates them into a single state vector.
  *
- * @return VectorXd A 12-element vector with joint torques in the format:
- *         [tFR_hip, tFR_thigh, tFR_calf, tFL_hip, tFL_thigh, tFL_calf,
- *          tRR_hip, tRR_thigh, tRR_calf, tRL_hip, tRL_thigh, tRL_calf]
+ * @return VectorXd A 19-element vector with joint torques in the format:
+ *         [LA_shoulder_roll, LA_shoulder_pitch, LA_shoulder_yaw, LA_elbow,
+ *          RA_shoulder_roll, RA_shoulder_pitch, RA_shoulder_yaw, RA_elbow,
+ *          waist,
+ *          LL_hip_roll, LL_hip_pitch, LL_hip_yaw, LL_knee, LL_ankle,
+ *          RL_hip_roll, RL_hip_pitch, RL_hip_yaw, RL_knee, RL_ankle]
  */
 VectorXd RobotDriverUnitreeH1::get_joint_torques()
 {
-    const VectorXd tFR = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::FR);
-    const VectorXd tFL = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::FL);
-    const VectorXd tRR = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::RR);
+    // TODO: Replace individual branch calls with one whole-robot call, or an upper_body and lower_body call.
+    //       Hard to see where the waist joint could be incorporated into current system.
+    const VectorXd tLA = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::LA);
+    const VectorXd tRA = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::RA);
+    const VectorXd tLL = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::LL);
     const VectorXd tRL = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::RL);
-    VectorXd tlegs = VectorXd(tFR.size() + tFL.size() + tRR.size() + tRL.size());
-    tlegs << tFR, tFL, tRR, tRL;
-    return tlegs;
+    VectorXd tjoints = VectorXd(tLA.size() + tRA.size() + tLL.size() + tRL.size());
+    tjoints << tLA, tRA, tLL, tRL;
+    return tjoints;
 }
 
 void RobotDriverUnitreeH1::set_target_joint_positions([[maybe_unused]] const VectorXd &desired_joint_positions_rad)
@@ -284,6 +307,7 @@ void RobotDriverUnitreeH1::deinitialize()
 
 void RobotDriverUnitreeH1::set_target_twist(const DQ &twist)
 {
+    // TODO: Understand why rotational terms not included in this function
     const VectorXd twist_vec = twist.vec6();
     //    0  1  2  3  4  5
     //   wx wy wz vx vy vz
@@ -306,52 +330,54 @@ void RobotDriverUnitreeH1::set_target_base_height([[maybe_unused]] const double 
 
 void RobotDriverUnitreeH1::_read_joint_states_and_publish()
 {
-    sensor_msgs::msg::JointState ros_msg_FR;
-    sensor_msgs::msg::JointState ros_msg_FL;
-    sensor_msgs::msg::JointState ros_msg_RR;
+    // TODO: Replace individual branch calls with one whole-robot call, or an upper_body and lower_body call.
+    //       Hard to see where the waist joint could be incorporated into current system.
+    sensor_msgs::msg::JointState ros_msg_LA;
+    sensor_msgs::msg::JointState ros_msg_RA;
+    sensor_msgs::msg::JointState ros_msg_LL;
     sensor_msgs::msg::JointState ros_msg_RL;
 
-    ros_msg_FR.header.stamp =  node_->get_clock()->now();
-    ros_msg_FL.header.stamp =  node_->get_clock()->now();
-    ros_msg_RR.header.stamp =  node_->get_clock()->now();
+    ros_msg_LA.header.stamp =  node_->get_clock()->now();
+    ros_msg_RA.header.stamp =  node_->get_clock()->now();
+    ros_msg_LL.header.stamp =  node_->get_clock()->now();
     ros_msg_RL.header.stamp =  node_->get_clock()->now();
 
-    VectorXd qFR     = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::FR);
-    VectorXd qFR_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::FR);
-    VectorXd qFR_tau = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::FR);
+    VectorXd qLA     = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::LA);
+    VectorXd qLA_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::LA);
+    VectorXd qLA_tau = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::LA);
 
-    VectorXd qFL     = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::FL);
-    VectorXd qFL_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::FL);
-    VectorXd qFL_tau = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::FL);
+    VectorXd qRA     = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::RA);
+    VectorXd qRA_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::RA);
+    VectorXd qRA_tau = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::RA);
 
-    VectorXd qRR     = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::RR);
-    VectorXd qRR_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::RR);
-    VectorXd qRR_tau = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::RR);
+    VectorXd qLL     = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::LL);
+    VectorXd qLL_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::LL);
+    VectorXd qLL_tau = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::LL);
 
     VectorXd qRL     = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::RL);
     VectorXd qRL_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::RL);
     VectorXd qRL_tau = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::RL);
 
-    if (qFR.size() > 0)
-        ros_msg_FR.position = vectorxd_to_std_vector_double(qFR);
-    if (qFR_dot.size() > 0)
-        ros_msg_FR.velocity = vectorxd_to_std_vector_double(qFR_dot);
-    if (qFR_tau.size() > 0)
-        ros_msg_FR.effort = vectorxd_to_std_vector_double(qFR_tau);
+    if (qLA.size() > 0)
+        ros_msg_LA.position = vectorxd_to_std_vector_double(qLA);
+    if (qLA_dot.size() > 0)
+        ros_msg_LA.velocity = vectorxd_to_std_vector_double(qLA_dot);
+    if (qLA_tau.size() > 0)
+        ros_msg_LA.effort = vectorxd_to_std_vector_double(qLA_tau);
 
-    if (qFL.size() > 0)
-        ros_msg_FL.position = vectorxd_to_std_vector_double(qFL);
-    if (qFL_dot.size() > 0)
-        ros_msg_FL.velocity = vectorxd_to_std_vector_double(qFL_dot);
-    if (qFL_tau.size() > 0)
-        ros_msg_FL.effort = vectorxd_to_std_vector_double(qFL_tau);
+    if (qRA.size() > 0)
+        ros_msg_RA.position = vectorxd_to_std_vector_double(qRA);
+    if (qRA_dot.size() > 0)
+        ros_msg_RA.velocity = vectorxd_to_std_vector_double(qRA_dot);
+    if (qRA_tau.size() > 0)
+        ros_msg_RA.effort = vectorxd_to_std_vector_double(qRA_tau);
 
-    if (qRR.size() > 0)
-        ros_msg_RR.position = vectorxd_to_std_vector_double(qRR);
-    if (qRR_dot.size() > 0)
-        ros_msg_RR.velocity = vectorxd_to_std_vector_double(qRR_dot);
-    if (qRR_tau.size() > 0)
-        ros_msg_RR.effort = vectorxd_to_std_vector_double(qRR_tau);
+    if (qLL.size() > 0)
+        ros_msg_LL.position = vectorxd_to_std_vector_double(qLL);
+    if (qLL_dot.size() > 0)
+        ros_msg_LL.velocity = vectorxd_to_std_vector_double(qLL_dot);
+    if (qLL_tau.size() > 0)
+        ros_msg_LL.effort = vectorxd_to_std_vector_double(qLL_tau);
 
 
     if (qRL.size() > 0)
@@ -361,9 +387,9 @@ void RobotDriverUnitreeH1::_read_joint_states_and_publish()
     if (qRL_tau.size() > 0)
         ros_msg_RL.effort = vectorxd_to_std_vector_double(qRL_tau);
 
-    publisher_FR_joint_states_->publish(ros_msg_FR);
-    publisher_FL_joint_states_->publish(ros_msg_FL);
-    publisher_RR_joint_states_->publish(ros_msg_RR);
+    publisher_LA_joint_states_->publish(ros_msg_LA);
+    publisher_RA_joint_states_->publish(ros_msg_RA);
+    publisher_LL_joint_states_->publish(ros_msg_LL);
     publisher_RL_joint_states_->publish(ros_msg_RL);
 
 }
@@ -476,6 +502,7 @@ bool RobotDriverUnitreeH1::_should_shutdown() const
 
 void RobotDriverUnitreeH1::_set_target_velocities_from_subscriber()
 {
+    // TODO: Understand why rotational terms not included in this function
     if (new_target_twist_available_)
     {
         //    0  1  2  3  4  5

@@ -1,8 +1,33 @@
 
+/*
+# (C) Copyright 2024-2026 Adorno-Lab software developments
+#
+#    This file is part of sas_robot_driver_unitree_h1.
+#
+#    This is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Lesser General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This software is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public License
+#    along with this software.  If not, see <https://www.gnu.org/licenses/>.
+#
+# ################################################################
+#
+#   Author: Juan Jose Quiroz Omana, email: juanjose.quirozomana@manchester.ac.uk
+#   Contributor: Daniel S. J. Derwent, email: daniel.derwent@manchester.ac.uk
+#
+# ################################################################
+*/
+
 #include <rclcpp/rclcpp.hpp>
 #include <sas_common/sas_common.hpp>
 #include <sas_core/eigen3_std_conversions.hpp>
-//#include <sas_robot_driver_unitree_z1/sas_robot_driver_unitree_z1.hpp>
 #include <dqrobotics/utils/DQ_Math.h>
 #include <sas_robot_driver_unitree_h1/sas_robot_driver_unitree_h1.hpp>
 #include <sas_robot_driver/sas_robot_driver_ros.hpp>
@@ -11,10 +36,10 @@
  * SIGNAL HANDLER
  * *******************************************/
 #include<signal.h>
-static std::shared_ptr<sas::ShutdownSignaler> shutdown_signaler = std::make_shared<sas::ShutdownSignaler>();
+static std::shared_ptr<sas::ShutdownSignaler> shutdown_signaller = std::make_shared<sas::ShutdownSignaler>();
 void sig_int_handler(int)
 {
-    shutdown_signaler->shutdown();
+    shutdown_signaller->shutdown();
 }
 
 int main(int argc, char** argv)
@@ -32,7 +57,8 @@ int main(int argc, char** argv)
     {
         sas::RobotDriverUnitreeH1Configuration robot_driver_unitree_h1_configuration;
         sas::get_ros_parameter(node,"mode", robot_driver_unitree_h1_configuration.mode);
-        sas::get_ros_parameter(node,"LIE_DOWN_ROBOT_WHEN_DEINITIALIZE", robot_driver_unitree_h1_configuration.LIE_DOWN_ROBOT_WHEN_DEINITIALIZE);
+        // TODO: Decide what kind of safe deinitialization behavior we want to see from the H1
+        // sas::get_ros_parameter(node,"LIE_DOWN_ROBOT_WHEN_DEINITIALIZE", robot_driver_unitree_h1_configuration.LIE_DOWN_ROBOT_WHEN_DEINITIALIZE);
         sas::get_ros_parameter(node,"robot_name", robot_driver_unitree_h1_configuration.robot_name);
         sas::get_ros_parameter(node,"ROBOT_IP", robot_driver_unitree_h1_configuration.ROBOT_IP);
         sas::get_ros_parameter(node,"ROBOT_PORT", robot_driver_unitree_h1_configuration.ROBOT_PORT);
@@ -42,7 +68,7 @@ int main(int argc, char** argv)
 
         auto robot_driver_unitree_h1 = std::make_shared<sas::RobotDriverUnitreeH1>(node,
                                                                         robot_driver_unitree_h1_configuration,
-                                                                        shutdown_signaler);
+                                                                        shutdown_signaller);
 
         RCLCPP_INFO_STREAM_ONCE(node->get_logger(), "::Loading parameters from parameter server.");
 
@@ -55,7 +81,7 @@ int main(int argc, char** argv)
         sas::RobotDriverROS robot_driver_ros(node,
                                              robot_driver_unitree_h1,
                                              robot_driver_ros_configuration,
-                                             shutdown_signaler);
+                                             shutdown_signaller);
         robot_driver_ros.control_loop();
 
     }

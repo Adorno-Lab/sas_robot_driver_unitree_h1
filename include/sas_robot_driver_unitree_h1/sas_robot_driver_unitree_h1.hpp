@@ -21,6 +21,8 @@
 #   Author: Juan Jose Quiroz Omana, email: juanjose.quirozomana@manchester.ac.uk
 #   Based on https://ros2-tutorial.readthedocs.io/en/latest/cpp/cpp_node.html
 #
+#   Contributor: Daniel S. J. Derwent, email: daniel.derwent@manchester.ac.uk
+#
 # ################################################################*/
 
 #pragma once
@@ -50,7 +52,11 @@ namespace sas
 struct RobotDriverUnitreeH1Configuration
 {
     std::string mode;              //const std::string mode= "PositionControl";
+
+    // TODO: Remove LIE_DOWN_ROBOT_WHEN_DEINITIALIZE and replace with an H1 alternative. Currently the constructor sets this
+    // as false.
     bool LIE_DOWN_ROBOT_WHEN_DEINITIALIZE;  //std::string LIE_DOWN_ROBOT_WHEN_DEINITIALIZE
+
     std::string ROBOT_IP; //"192.168.123.220",  // Target IP   //192.168.123.10 for low-level mode
     int ROBOT_PORT; //    8082,              // Target port  //8007 for low-level mode
     std::string robot_name;
@@ -82,9 +88,11 @@ private:
 
     //Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr publisher_target_joint_positions_;
 
-    Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher_FR_joint_states_;
-    Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher_FL_joint_states_;
-    Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher_RR_joint_states_;
+    //TODO: Replace branch structure with either upper_body and lower_body topics or remove them and just use the built in whole_body system
+    //      (I think these are only here to maintain compatibility with the B1 controller code, so we probably don't need them)
+    Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher_LA_joint_states_;
+    Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher_RA_joint_states_;
+    Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher_LL_joint_states_;
     Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher_RL_joint_states_;
 
     Publisher<sensor_msgs::msg::Imu>::SharedPtr publisher_IMU_state_;

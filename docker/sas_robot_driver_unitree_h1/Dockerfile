@@ -40,9 +40,9 @@ RUN apt-get update && apt-get install -y libdqrobotics-interface-qpoases
 # Suggested instructions to clone SAS
 RUN mkdir -p ~/ros2_ws/src
 RUN cd ~/ros2_ws/src && git clone --recurse-submodules -b jazzy https://github.com/SmartArmStack/smart_arm_stack_ROS2.git sas
-RUN cd ~/ros2_ws/src/sas/ && rm -r sas_robot_driver_denso 
-RUN cd ~/ros2_ws/src/sas/ && rm -r sas_robot_driver_kuka
-RUN cd ~/ros2_ws/src/sas/ && rm -r sas_robot_driver_ur
+# RUN cd ~/ros2_ws/src/sas/ && rm -r sas_robot_driver_denso 
+# RUN cd ~/ros2_ws/src/sas/ && rm -r sas_robot_driver_kuka
+# RUN cd ~/ros2_ws/src/sas/ && rm -r sas_robot_driver_ur
 
 # Clone the sas driver
 RUN cd ~/ros2_ws/src && git clone https://github.com/Adorno-Lab/sas_robot_driver_unitree_h1 --recursive

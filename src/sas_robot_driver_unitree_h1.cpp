@@ -60,9 +60,9 @@ void RobotDriverUnitreeH1::_initial_settings()
     impl_ = std::make_unique<RobotDriverUnitreeH1::Impl>();
 
     DriverUnitreeH1::MODE mode;
-    if (configuration_.mode == "VelocityControl")
+    if (configuration_.mode == "PositionControl")
     {
-        mode = DriverUnitreeH1::MODE::VelocityControl;
+        mode = DriverUnitreeH1::MODE::PositionControl;
     }else{
         mode = DriverUnitreeH1::MODE::None;
     }
@@ -74,10 +74,10 @@ void RobotDriverUnitreeH1::_initial_settings()
 
     // I need to use the parameters of the configuration structure!
     // The LIE_DOWN_ROBOT_WHEN_DEINITIALIZE flag is no longer passed. We haven't yet determined what the H1 equivalent of
-    // this will be. For now it isn'y passed, and the constructor automatically sets it to false.
+    // this will be. For now it isn't passed, and the constructor automatically sets it to false.
     impl_->unitree_h1_driver_ = std::make_shared<DriverUnitreeH1>(break_loops_,
                                                                   mode, // Driver mode
-                                                                  DriverUnitreeH1::LEVEL::HIGH,       // Level mode
+                                                                  DriverUnitreeH1::LOWER_BODY_LEVEL::HIGH,       // Level mode
                                                                   true,   //verbosity
                                                                   2000,   // TIMEOUT in ms
                                                                 //   configuration_.LIE_DOWN_ROBOT_WHEN_DEINITIALIZE, // LIE DOWN ROBOT WHEN DEINITIALIZE
@@ -135,15 +135,14 @@ void RobotDriverUnitreeH1::_initial_settings()
         1,
         std::bind(&RobotDriverUnitreeH1::_callback_mode_switch, this, std::placeholders::_1)
         );
-*/
+    */
 
-
-/*
+    /*
     subscriber_shutdown_signal_ = node_->create_subscription<sas_msgs::msg::Bool>(
         topic_prefix_ + "/set/shutdown", 1,
         std::bind(&RobotDriverUnitreeH1::_callback_shutdown_signal_,  this, std::placeholders::_1)
         );
-*/
+    */
 
     subscriber_emergency_stop_device_signal_ = node_->create_subscription<sas_msgs::msg::Bool>(
         "/sas/set/shutdown", 1,
@@ -218,13 +217,17 @@ VectorXd RobotDriverUnitreeH1::get_joint_positions()
 {
     // TODO: Would be nice to replace this with a call to get all the joint positions, since as written it isn't
     // clear what to do with the waist joint.
-    const VectorXd qLA = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::LA);
-    const VectorXd qRA = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::RA);
-    // Get waist somehow?
-    const VectorXd qLL = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::LL);
-    const VectorXd qRL = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::RL);
-    VectorXd qjoints = VectorXd(qLA.size() + qRA.size() + qLL.size() + qRL.size());
-    qjoints << qLA, qRA, qLL, qRL;
+    // const VectorXd qLA = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::LA);
+    // const VectorXd qRA = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::RA);
+    // // Get waist somehow?
+    // const VectorXd qLL = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::LL);
+    // const VectorXd qRL = impl_->unitree_h1_driver_->get_joint_positions(DriverUnitreeH1::BRANCH::RL);
+    // VectorXd qjoints = VectorXd(qLA.size() + qRA.size() + qLL.size() + qRL.size());
+    // qjoints << qLA, qRA, qLL, qRL;
+    // return qjoints;
+
+    // My preferred implementation would be:
+    VectorXd qjoints = impl_->unitree_h1_driver_->get_joint_positions();
     return qjoints;
 }
 
@@ -245,12 +248,16 @@ VectorXd RobotDriverUnitreeH1::get_joint_velocities()
 {
     // TODO: Replace individual branch calls with one whole-robot call, or an upper_body and lower_body call.
     //       Hard to see where the waist joint could be incorporated into current system.
-    const VectorXd qLA_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::LA);
-    const VectorXd qRA_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::RA);
-    const VectorXd qLL_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::LL);
-    const VectorXd qRL_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::RL);
-    VectorXd qjoints_dot = VectorXd(qLA_dot.size() + qRA_dot.size() + qLL_dot.size() + qRL_dot.size());
-    qjoints_dot << qLA_dot, qRA_dot, qLL_dot, qRL_dot;
+    // const VectorXd qLA_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::LA);
+    // const VectorXd qRA_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::RA);
+    // const VectorXd qLL_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::LL);
+    // const VectorXd qRL_dot = impl_->unitree_h1_driver_->get_joint_velocities(DriverUnitreeH1::BRANCH::RL);
+    // VectorXd qjoints_dot = VectorXd(qLA_dot.size() + qRA_dot.size() + qLL_dot.size() + qRL_dot.size());
+    // qjoints_dot << qLA_dot, qRA_dot, qLL_dot, qRL_dot;
+    // return qjoints_dot;
+
+    // My preferred implementation would be:
+    VectorXd qjoints_dot = impl_->unitree_h1_driver_->get_joint_velocities();
     return qjoints_dot;
 }
 
@@ -271,12 +278,16 @@ VectorXd RobotDriverUnitreeH1::get_joint_torques()
 {
     // TODO: Replace individual branch calls with one whole-robot call, or an upper_body and lower_body call.
     //       Hard to see where the waist joint could be incorporated into current system.
-    const VectorXd tLA = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::LA);
-    const VectorXd tRA = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::RA);
-    const VectorXd tLL = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::LL);
-    const VectorXd tRL = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::RL);
-    VectorXd tjoints = VectorXd(tLA.size() + tRA.size() + tLL.size() + tRL.size());
-    tjoints << tLA, tRA, tLL, tRL;
+    // const VectorXd tLA = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::LA);
+    // const VectorXd tRA = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::RA);
+    // const VectorXd tLL = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::LL);
+    // const VectorXd tRL = impl_->unitree_h1_driver_->get_joint_estimated_torques(DriverUnitreeH1::BRANCH::RL);
+    // VectorXd tjoints = VectorXd(tLA.size() + tRA.size() + tLL.size() + tRL.size());
+    // tjoints << tLA, tRA, tLL, tRL;
+    // return tjoints;
+
+    // My preferred implementation would be:
+    VectorXd tjoints = impl_->unitree_h1_driver_->get_joint_estimated_torques();
     return tjoints;
 }
 
@@ -328,7 +339,7 @@ void RobotDriverUnitreeH1::set_target_base_height([[maybe_unused]] const double 
     throw std::runtime_error("RobotDriverUnitreeH1::set_target_base_height Not implemented");
 }
 
-// Below function only used by publishers, which have been removed. Thus, it is assumed to be unnecessary
+// Below function only used by publishers which have been removed. Thus, it is assumed to be unnecessary
 /*
 void RobotDriverUnitreeH1::_read_joint_states_and_publish()
 {
@@ -701,11 +712,6 @@ void RobotDriverUnitreeH1::_callback_emergency_stop_device_signal(const sas_msgs
     if (shutdown_signal_ == false)
         shutdown_signal_ = msg.data;
 }
-
-
-
-
-
 
 RobotDriverUnitreeH1::~RobotDriverUnitreeH1()
 {

@@ -141,8 +141,8 @@ public:
         ForceControl,
     };
 
-    enum class LEVEL{HIGH, LOW};
-    LEVEL level_;
+    enum class LOWER_BODY_LEVEL{HIGH, LOW};
+    LOWER_BODY_LEVEL level_;
     // Changed the below to match the H1's layout
     enum class BRANCH{LA, RA, LL, RL};
 
@@ -239,30 +239,35 @@ private:
     //-------------------------------------------------------------
     //---------------Robot state attributes------------------------
     //----joint positions--(unit: radian)
+    VectorXd q_ = (VectorXd(19) << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0).finished();
     VectorXd qLA_ = (VectorXd(3) << 0,0,0).finished();
     VectorXd qRA_ = (VectorXd(3) << 0,0,0).finished();
     VectorXd qLL_ = (VectorXd(3) << 0,0,0).finished();
     VectorXd qRL_ = (VectorXd(3) << 0,0,0).finished();
 
     //----joint velocities--(unit: radian/second)
+    VectorXd q_dot_ = (VectorXd(19) << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0).finished();
     VectorXd qLA_dot_  = (VectorXd(3) << 0,0,0).finished();
     VectorXd qRA_dot_  = (VectorXd(3) << 0,0,0).finished();
     VectorXd qLL_dot_  = (VectorXd(3) << 0,0,0).finished();
     VectorXd qRL_dot_  = (VectorXd(3) << 0,0,0).finished();
 
     //----joint accelerations-- (unit: radian/second^2)
+    VectorXd q_ddot_ = (VectorXd(19) << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0).finished();
     VectorXd qLA_ddot_  = (VectorXd(3) << 0,0,0).finished();
     VectorXd qRA_ddot_  = (VectorXd(3) << 0,0,0).finished();
     VectorXd qLL_ddot_  = (VectorXd(3) << 0,0,0).finished();
     VectorXd qRL_ddot_  = (VectorXd(3) << 0,0,0).finished();
 
     //----estimated output joint torques (unit: N.m)
+    VectorXd tau_ = (VectorXd(19) << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0).finished();
     VectorXd tauLA_ = (VectorXd(3) << 0,0,0).finished();
     VectorXd tauRA_ = (VectorXd(3) << 0,0,0).finished();
     VectorXd tauLL_ = (VectorXd(3) << 0,0,0).finished();
     VectorXd tauRL_ = (VectorXd(3) << 0,0,0).finished();
 
     //----motor temperatures
+    VectorXd temperature_ = (VectorXd(19) << 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0).finished();
     VectorXd temperatureLA_ = (VectorXd(3) << 0,0,0).finished();
     VectorXd temperatureRA_ = (VectorXd(3) << 0,0,0).finished();
     VectorXd temperatureLL_ = (VectorXd(3) << 0,0,0).finished();
@@ -280,7 +285,7 @@ private:
 
     void _update_udp_status();
 
-    void _set_driver_mode(const MODE& mode, const LEVEL& level);
+    void _set_driver_mode(const MODE& mode, const LOWER_BODY_LEVEL& level);
     void _initialize_high_cmd_variable();
 
 
@@ -297,7 +302,7 @@ public:
     // Modified the below to not take the LIE_DOWN_ROBOT_WHEN_DEINITIALIZE flag, pending a replacement
     DriverUnitreeH1(std::atomic_bool* st_break_loops,
                     const MODE& mode = MODE::None,
-                    const LEVEL& level = LEVEL::HIGH,
+                    const LOWER_BODY_LEVEL& level = LOWER_BODY_LEVEL::HIGH,
                     const bool& verbosity = true,
                     const int& TIMEOUT_IN_MILLISECONDS = 2000,
                     // const bool& LIE_DOWN_ROBOT_WHEN_DEINITIALIZE = true,

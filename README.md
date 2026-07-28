@@ -11,7 +11,6 @@
 #### Prerequisites:
 - Docker with sudo permissions.
 - Prepare the Unitree H1 robot.
-- Connect your machine to the WiFi H1 network (unitree-h1-5g-xx)
 
 1. Clone this repository
 ```shell

@@ -114,10 +114,12 @@ class DriverUnitreeH1
     VectorXd get_torso_velocity() const;
 
     void set_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad);
+    void set_upper_body_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec);
     void set_torso_velocity(const VectorXd& desired_torso_velocity_mps_radps);
 
     private:
 
     void set_all_upper_body_joint_position_commands_(const VectorXd& target_positions_rad);
+    void set_all_upper_body_joint_velocity_commands_(const VectorXd& target_velocities_rad_per_sec);
     
 };

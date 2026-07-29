@@ -58,9 +58,8 @@ public:
 
     static constexpr float comms_timeout_sec_ = 1.0f;
     static constexpr float kp_ = 60.f;
-    static constexpr float kd_ = 1.5f;
-    static constexpr float dq_ = 0.f;
-    static constexpr float tau_ff_ = 0.f;
+    static constexpr float pos_cmd_kd_ = 1.5f;
+    static constexpr float vel_cmd_kd_ = 10.f;
     static constexpr std::chrono::duration<double> weight_ramp_overall_duration_sec_{2.0};
     static constexpr std::chrono::duration<double> weight_ramp_step_time_sec_ {0.02};
 
@@ -81,11 +80,14 @@ public:
     {
         auto &cmd = cmd_msg_.motor_cmd().at(joint_id);
 
+        // Motors are torque controlled using the eqn:
+        // Torque = kp * (q_des - q_curr) + kd * (dq_des - dq_curr) + tau_ff
+        // So, here we set dq_des as 0, so there is some damping proportional to the speed.
         cmd.q(target_position_rad);
-        cmd.dq(dq_);
+        cmd.dq(0.0);
         cmd.kp(kp_);
-        cmd.kd(kd_);
-        cmd.tau(tau_ff_);
+        cmd.kd(pos_cmd_kd_);
+        cmd.tau(0);
     }
 
     /**
@@ -111,6 +113,32 @@ public:
         cmd_msg_.motor_cmd().at(JOINT_INDEX::kNotUsedJoint).q(target_weight);
         upper_body_publisher_->Write(cmd_msg_);
         current_control_weight_ = target_weight;
+    }
+
+    /**
+     * @brief DriverUnitreeB1::Impl::set_joint_velocity_command helper function for velocity commands. 
+     *        Called in a few places when joint velocities are being written to the motors. Centralises 
+     *        the logic for this so it can be changed in only one place.
+     * @param joint_id The id of the joint to be written to in Unitree SDK terms.
+     * @param target_velocity_rad_per_sec The joint velocity in radians per second
+     */
+    void set_joint_velocity_command(int joint_id, float target_velocity_rad_per_sec)
+    {
+        auto &state = state_msg_.motor_state().at(joint_id);
+        auto &cmd = cmd_msg_.motor_cmd().at(joint_id);
+        // Motors are torque controlled using the eqn:
+        // Torque = kp * (q_des - q_curr) + kd * (dq_des - dq_curr) + tau_ff
+        // So here we set kp=0, to eliminate the position term.
+        // Note that velocity control is somewhat inaccurate at low speeds, because
+        // kp=0 means the robot has no position-holding stiffness, and the weight of 
+        // the joints generates a torque has a significant impact. Larger gains might
+        // help, but experiments show that kd values above 10 result in a nasty grinding
+        // sound from the motors, which probably isn't good.
+        cmd.q(0);
+        cmd.dq(target_velocity_rad_per_sec);
+        cmd.kp(0);
+        cmd.kd(vel_cmd_kd_); 
+        cmd.tau(0);
     }
 };
 
@@ -234,8 +262,8 @@ void DriverUnitreeH1::disconnect(){
 
     // Close the channels
     try{
-        impl_->upper_body_publisher_.CloseChannel();
-        impl_->upper_body_subscriber_.CloseChannel();
+        impl_->upper_body_publisher_->CloseChannel();
+        impl_->upper_body_subscriber_->CloseChannel();
     }
     catch (const std::exception& e){
         std::cout << "[ERROR] [DriverUnitreeH1::disconnect] Exception caught while closing upper body coms channels: "<<e.what()<<std::endl;
@@ -282,6 +310,21 @@ void DriverUnitreeH1::set_upper_body_joint_positions(const VectorXd& desired_joi
     impl_->upper_body_publisher_->Write(impl_->cmd_msg_);
 }
 
+void DriverUnitreeH1::set_upper_body_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec) {
+    
+    if(current_status_!=STATUS::INITIALIZED){
+            throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_velocities] Function called when robot is not properly initialised!");
+    }
+
+    set_all_upper_body_joint_velocity_commands_(desired_joint_velocities_rad_per_sec);
+
+    // Set weight to 1.0, to ensure that control instruction is followed
+    impl_->cmd_msg_.motor_cmd().at(JOINT_INDEX::kNotUsedJoint).q(1.0);
+
+    // Send message
+    impl_->upper_body_publisher_->Write(impl_->cmd_msg_);
+}
+
 void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_mps_radps) {
 
     if(current_status_!=STATUS::INITIALIZED){
@@ -303,11 +346,21 @@ void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_
 /**
  * @brief DriverUnitreeB1::set_all_upper_body_joint_position_commands_ private helper function for position commands. 
  *        Used to write position commands to all upper body joints at once
- * @param joint_id The id of the joint to be written to in Unitree SDK terms.
- * @param target_position_rad The joint position in radians
+ * @param target_position_rad The joint positions in radians
  */
 void DriverUnitreeH1::set_all_upper_body_joint_position_commands_(const VectorXd& target_positions_rad){
     for(int i=0; i<upper_body_joints_.size(); i++){
         impl_->set_joint_position_command(upper_body_joints_.at(i),target_positions_rad(i));
+    }
+}
+
+/**
+ * @brief DriverUnitreeB1::set_all_upper_body_joint_velocity_commands_ private helper function for velocity commands. 
+ *        Used to write velocity commands to all upper body joints at once
+ * @param target_position_rad The joint velocities in radians
+ */
+void DriverUnitreeH1::set_all_upper_body_joint_velocity_commands_(const VectorXd& target_velocities_rad_per_sec){
+    for(int i=0; i<upper_body_joints_.size(); i++){
+        impl_->set_joint_velocity_command(upper_body_joints_.at(i),target_velocities_rad_per_sec(i));
     }
 }

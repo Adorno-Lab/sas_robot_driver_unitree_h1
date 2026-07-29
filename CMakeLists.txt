@@ -81,13 +81,19 @@ install(
 # Script executables
 ####################################
 
-# add_executable(basic_test src/basic_test.cpp)
 add_executable(basic_test
     src/basic_test.cpp
     src/DriverUnitreeH1.cpp
     src/DriverUnitreeH1.hpp
 )
 target_link_libraries(basic_test unitree_sdk2)
+
+add_executable(velocity_test
+    src/velocity_test.cpp
+    src/DriverUnitreeH1.cpp
+    src/DriverUnitreeH1.hpp
+)
+target_link_libraries(velocity_test unitree_sdk2)
 
 ####################################
 # Node executable

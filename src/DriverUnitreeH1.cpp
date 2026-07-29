@@ -61,8 +61,8 @@ public:
     static constexpr float kd_ = 1.5f;
     static constexpr float dq_ = 0.f;
     static constexpr float tau_ff_ = 0.f;
-    static constexpr std::chrono::seconds max_joint_velocity_rad_per_sec_=2.0;
-    static constexpr std::chrono::seconds weight_ramp_step_time_sec_ = 0.02;
+    static constexpr std::chrono::duration<double> weight_ramp_overall_duration_sec_{2.0};
+    static constexpr std::chrono::duration<double> weight_ramp_step_time_sec_ {0.02};
 
     // #############################################
     //  Impl member functions
@@ -90,13 +90,13 @@ public:
 
     /**
      * @brief DriverUnitreeB1::Impl::ramp_upper_body_weight helper function for init / deinit. 
-     *        Ramps the control weight over Impl::max_joint_velocity_rad_per_sec_ seconds
+     *        Ramps the control weight over Impl::weight_ramp_overall_duration_sec_ seconds
      * @param target_weight The desired upper body control weight (1.0 for init, 0.0 for deinit)
      */
     void ramp_upper_body_control_weight(float target_weight){
         
         // Send the message, gradually ramp the weight each iteration
-        float num_time_steps = static_cast<float>(max_joint_velocity_rad_per_sec_/weight_ramp_step_time_sec_);
+        float num_time_steps = static_cast<float>(weight_ramp_overall_duration_sec_/weight_ramp_step_time_sec_);
         float starting_weight = current_control_weight_;
         float weight = starting_weight;
         for(int i=0; i<num_time_steps; i++){
@@ -153,8 +153,8 @@ void DriverUnitreeH1::connect(){
 
 void DriverUnitreeH1::initialize(){
 
-    if(current_status_!=STATUS::CONNECTED){1
-        throw std::exception("[DriverUnitreeH1::initialize] Initialize called when robot is not properly connected!")
+    if(current_status_!=STATUS::CONNECTED){
+        throw std::runtime_error("[DriverUnitreeH1::initialize] Initialize called when robot is not properly connected!");
     }
 
     std::cout << "Starting locomotion server..." << std::endl;
@@ -178,7 +178,7 @@ void DriverUnitreeH1::deinitialize(){
     // generate any exceptions.
 
     if(current_status_!=STATUS::INITIALIZED){
-        std::cout << "[ERROR] [DriverUnitreeH1::initialize] Deinitialize called when robot is not properly initialised!"<<e.what()<<std::endl;
+        std::cout << "[ERROR] [DriverUnitreeH1::initialize] Deinitialize called when robot is not properly initialised!"<<std::endl;
         return;
     }
 
@@ -228,8 +228,17 @@ void DriverUnitreeH1::disconnect(){
     // generate any exceptions.
 
     if(current_status_!=STATUS::DEINITIALIZED){
-        std::cout << "[ERROR] [DriverUnitreeH1::disconnect] Disconnect called when robot is not properly deinitialised!"<<e.what()<<std::endl;
+        std::cout << "[ERROR] [DriverUnitreeH1::disconnect] Disconnect called when robot is not properly deinitialised!"<<std::endl;
         return;
+    }
+
+    // Close the channels
+    try{
+        impl_->upper_body_publisher_.CloseChannel();
+        impl_->upper_body_subscriber_.CloseChannel();
+    }
+    catch (const std::exception& e){
+        std::cout << "[ERROR] [DriverUnitreeH1::disconnect] Exception caught while closing upper body coms channels: "<<e.what()<<std::endl;
     }
 
     current_status_ = STATUS::DISCONNECTED;
@@ -238,7 +247,7 @@ void DriverUnitreeH1::disconnect(){
 VectorXd DriverUnitreeH1::get_upper_body_joint_positions() const {
     
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::exception("[DriverUnitreeH1::get_upper_body_joint_positions] Function called when robot is not properly initialised!")
+        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_positions] Function called when robot is not properly initialised!");
     }
 
     VectorXd current_jpos_rad = VectorXd::Zero(upper_body_joints_.size());
@@ -251,7 +260,7 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_positions() const {
 VectorXd DriverUnitreeH1::get_torso_velocity() const {
     
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::exception("[DriverUnitreeH1::get_torso_velocity] Function called when robot is not properly initialised!")
+            throw std::runtime_error("[DriverUnitreeH1::get_torso_velocity] Function called when robot is not properly initialised!");
     }
     
     std::cout<<"DriverUnitreeH1::get_torso_velocity is not yet implemented"<<std::endl;
@@ -261,7 +270,7 @@ VectorXd DriverUnitreeH1::get_torso_velocity() const {
 void DriverUnitreeH1::set_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad) {
     
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::exception("[DriverUnitreeH1::set_upper_body_joint_positions] Function called when robot is not properly initialised!")
+            throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_positions] Function called when robot is not properly initialised!");
     }
 
     set_all_upper_body_joint_position_commands_(desired_joint_positions_rad);
@@ -276,7 +285,7 @@ void DriverUnitreeH1::set_upper_body_joint_positions(const VectorXd& desired_joi
 void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_mps_radps) {
 
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::exception("[DriverUnitreeH1::set_torso_velocity] Function called when robot is not properly initialised!")
+            throw std::runtime_error("[DriverUnitreeH1::set_torso_velocity] Function called when robot is not properly initialised!");
     }
 
     // TODO: REFUSE IF not in high-level mode, or not in velocity mode
@@ -297,7 +306,7 @@ void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_
  * @param joint_id The id of the joint to be written to in Unitree SDK terms.
  * @param target_position_rad The joint position in radians
  */
-void DriverUnitreeH1::set_all_upper_body_joint_position_commands_(VectorXd& target_positions_rad){
+void DriverUnitreeH1::set_all_upper_body_joint_position_commands_(const VectorXd& target_positions_rad){
     for(int i=0; i<upper_body_joints_.size(); i++){
         impl_->set_joint_position_command(upper_body_joints_.at(i),target_positions_rad(i));
     }

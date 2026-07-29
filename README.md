@@ -73,10 +73,7 @@ build_and_source
 
 And executables can be run using:
 ```shell
-build/sas_robot_driver_unitree_h1/<executable_name> <arguments>
+build/sas_robot_driver_unitree_h1/<executable_name>
 ```
 
-for example, `build/sas_robot_driver_unitree_h1/basic_test eth0`, will run the example in `basic_test.cpp`.
-
-> [!NOTE]
-> The network interface to use for executable commands is always `eth0` if the code is running on the robot's onboard PC.
+for example, `build/sas_robot_driver_unitree_h1/basic_test`, will run the example in `basic_test.cpp`.

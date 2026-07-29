@@ -95,6 +95,13 @@ add_executable(velocity_test
 )
 target_link_libraries(velocity_test unitree_sdk2)
 
+add_executable(printer_test
+    src/printer_test.cpp
+    src/DriverUnitreeH1.cpp
+    src/DriverUnitreeH1.hpp
+)
+target_link_libraries(printer_test unitree_sdk2)
+
 ####################################
 # Node executable
 ####################################

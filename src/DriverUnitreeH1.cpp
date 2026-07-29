@@ -285,6 +285,19 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_positions() const {
     return current_jpos_rad;
 }
 
+VectorXd DriverUnitreeH1::get_upper_body_joint_velocities() const {
+    
+    if(current_status_!=STATUS::INITIALIZED){
+        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_velocities] Function called when robot is not properly initialised!");
+    }
+
+    VectorXd current_jvel_rad_per_sec = VectorXd::Zero(upper_body_joints_.size());
+    for (int i = 0; i < upper_body_joints_.size(); ++i) {
+        current_jvel_rad_per_sec(i) = impl_->state_msg_.motor_state().at(upper_body_joints_.at(i)).dq();
+    }
+    return current_jvel_rad_per_sec;
+}
+
 VectorXd DriverUnitreeH1::get_torso_velocity() const {
     
     if(current_status_!=STATUS::INITIALIZED){

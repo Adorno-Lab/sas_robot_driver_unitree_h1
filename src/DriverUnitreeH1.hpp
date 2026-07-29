@@ -111,6 +111,7 @@ class DriverUnitreeH1
     void disconnect();
 
     VectorXd get_upper_body_joint_positions() const;
+    VectorXd get_upper_body_joint_velocities() const;
     VectorXd get_torso_velocity() const;
 
     void set_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad);

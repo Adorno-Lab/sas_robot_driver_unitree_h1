@@ -476,6 +476,22 @@ VectorXd DriverUnitreeH1::get_battery_temperatures() const {
 }
 
 // --------------------------------------------
+//  Misc
+// --------------------------------------------
+
+float DriverUnitreeH1::get_stand_height_percent() const {
+    float stand_height;
+    impl_->locomotion_client_->GetStandHeight(stand_height);
+    float percent = (stand_height-0.6)/(0.2)*100;
+    return(percent);
+}
+
+void DriverUnitreeH1::set_stand_height_percent(const float desired_height_percent){
+    float absolute = ((desired_height_percent/100)*0.2)+0.6;
+    impl_->locomotion_client_->SetStandHeight(absolute);
+}
+
+// ------'--------------------------------------
 //  Setter functions
 // --------------------------------------------
 

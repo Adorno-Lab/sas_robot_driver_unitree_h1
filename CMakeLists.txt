@@ -159,6 +159,14 @@ target_link_libraries(torque_test
   ${PROJECT_NAME}
 )
 
+add_executable(standing_test
+  src/standing_test.cpp
+)
+
+target_link_libraries(standing_test
+  ${PROJECT_NAME}
+)
+
 ####################################
 # Install test executables (optional)
 ####################################

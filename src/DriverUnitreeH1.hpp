@@ -124,6 +124,8 @@ class DriverUnitreeH1
     VectorXd get_Euler_angles() const;
     int get_IMU_temperature() const;
 
+    float get_stand_height_percent() const;
+
     VectorXd get_battery_temperatures() const;
     int get_battery_state_of_charge() const;
 
@@ -132,6 +134,8 @@ class DriverUnitreeH1
     void set_upper_body_joint_torques(const VectorXd& desired_joint_torques_Nm);
     
     void set_torso_velocity(const VectorXd& desired_torso_velocity_mps_radps);
+
+    void set_stand_height_percent(const float desired_height_percent);
 
     private:
 

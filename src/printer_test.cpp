@@ -4,10 +4,12 @@
 #include <chrono>
 
 #include <Eigen/Core>
+#include <dqrobotics/DQ.h>
 
 #include "DriverUnitreeH1.hpp"
 
 using namespace Eigen;
+using namespace DQ_robotics;
 
 int main()
 {
@@ -37,14 +39,30 @@ int main()
         while (running)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
             auto positions = driver.get_upper_body_joint_positions();
             auto velocities = driver.get_upper_body_joint_velocities();
             auto torques = driver.get_upper_body_joint_torques();
-            auto temps = driver.get_upper_body_joint_temperatures();
+            auto joint_temps = driver.get_upper_body_joint_temperatures();
+            // auto battery_soc = driver.get_battery_state_of_charge();
+            // auto battery_temps = driver.get_battery_temperatures();
+            auto IMU_quat = driver.get_IMU_orientation();
+            auto gyro = driver.get_gyroscope_data();
+            auto accelerometer = driver.get_accelerometer_data();
+            auto rpy = driver.get_Euler_angles();
+            auto IMU_temp = driver.get_IMU_temperature();
+
             std::cout<<"positions: "<<positions.transpose()<<std::endl;
             std::cout<<"velocities: "<<velocities.transpose()<<std::endl;
             std::cout<<"torques: "<<torques.transpose()<<std::endl;
-            std::cout<<"casing temperatures: "<<temps.transpose()<<std::endl;
+            std::cout<<"joint temperatures: "<<joint_temps.transpose()<<std::endl;
+            // std::cout<<"battery charge: "<<battery_soc<<std::endl;
+            // std::cout<<"casing temperatures: "<<battery_temps.transpose()<<std::endl;
+            std::cout<<"IMU_quat: "<<IMU_quat<<std::endl;
+            std::cout<<"gyro: "<<gyro.transpose()<<std::endl;
+            std::cout<<"accelerometer: "<<accelerometer.transpose()<<std::endl;
+            std::cout<<"Euler angles: "<<rpy.transpose()<<std::endl;
+            std::cout<<"IMU temperature: "<<IMU_temp<<std::endl;
             std::cout<<"---------------------------------------------------------"<<std::endl;
         }
     });

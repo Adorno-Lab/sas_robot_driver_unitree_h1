@@ -15,9 +15,12 @@
 #include <unitree/robot/channel/channel_subscriber.hpp>
 
 #include <Eigen/Core>
+#include <dqrobotics/DQ.h>
+
 
 #include "DriverUnitreeH1.hpp"
 
+using namespace DQ_robotics;
 using namespace Eigen;
 
 /** To Do List:
@@ -172,7 +175,7 @@ void DriverUnitreeH1::connect(){
     impl_->upper_body_publisher_->InitChannel();
 
     // Start low level subscriber
-    impl_->upper_body_subscriber_.reset(new unitree::robot::ChannelSubscriber<unitree_go::msg::dds_::LowState_>("rt/lowstate"));
+    impl_->upper_body_subscriber_.reset(new unitree::robot::ChannelSubscriber<unitree_go::msg::dds_::LowState_>("rt/lf/lowstate"));
     impl_->upper_body_subscriber_->InitChannel([&](const void *msg) {
         auto s = ( const unitree_go::msg::dds_::LowState_* )msg;
         memcpy( &impl_->state_msg_, s, sizeof( unitree_go::msg::dds_::LowState_ ) );
@@ -326,7 +329,6 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_temperatures() const {
     return current_j_casing_temp_C;
 }
 
-
 VectorXd DriverUnitreeH1::get_torso_velocity() const {
     
     if(current_status_!=STATUS::INITIALIZED){
@@ -335,6 +337,108 @@ VectorXd DriverUnitreeH1::get_torso_velocity() const {
     
     std::cout<<"DriverUnitreeH1::get_torso_velocity is not yet implemented"<<std::endl;
     return VectorXd::Zero(3);
+}
+
+DQ DriverUnitreeH1::get_IMU_orientation() const {
+    
+    if(current_status_!=STATUS::INITIALIZED){
+            throw std::runtime_error("[DriverUnitreeH1::get_IMU_orientation] Function called when robot is not properly initialised!");
+    }
+
+    VectorXd current_imu_orientation = VectorXd::Zero(4);
+    for (int i = 0; i < current_imu_orientation.size(); ++i) {
+        current_imu_orientation(i) = impl_->state_msg_.imu_state().quaternion()[i];
+    }
+
+    DQ imu_quat(current_imu_orientation);
+    return imu_quat;
+}
+
+VectorXd DriverUnitreeH1::get_gyroscope_data() const {
+    
+    if(current_status_!=STATUS::INITIALIZED){
+            throw std::runtime_error("[DriverUnitreeH1::get_gyroscope_data] Function called when robot is not properly initialised!");
+    }
+
+    VectorXd gyroscope_data = VectorXd::Zero(3);
+    for (int i = 0; i < gyroscope_data.size(); ++i) {
+        gyroscope_data(i) = impl_->state_msg_.imu_state().gyroscope()[i];
+    }
+
+    return gyroscope_data;
+}
+
+VectorXd DriverUnitreeH1::get_accelerometer_data() const {
+    
+    if(current_status_!=STATUS::INITIALIZED){
+            throw std::runtime_error("[DriverUnitreeH1::get_accelerometer_data] Function called when robot is not properly initialised!");
+    }
+
+    VectorXd accelerometer_data = VectorXd::Zero(3);
+    for (int i = 0; i < accelerometer_data.size(); ++i) {
+        accelerometer_data(i) = impl_->state_msg_.imu_state().accelerometer()[i];
+    }
+
+    return accelerometer_data;
+}
+
+VectorXd DriverUnitreeH1::get_Euler_angles() const {
+    
+    if(current_status_!=STATUS::INITIALIZED){
+            throw std::runtime_error("[DriverUnitreeH1::get_Euler_angles] Function called when robot is not properly initialised!");
+    }
+
+    VectorXd Euler_angles = VectorXd::Zero(3);
+    for (int i = 0; i < Euler_angles.size(); ++i) {
+        Euler_angles(i) = impl_->state_msg_.imu_state().rpy()[i];
+    }
+
+    return Euler_angles;
+}
+
+int DriverUnitreeH1::get_IMU_temperature() const {
+    
+    if(current_status_!=STATUS::INITIALIZED){
+            throw std::runtime_error("[DriverUnitreeH1::get_IMU_temperature] Function called when robot is not properly initialised!");
+    }
+
+    int IMU_temp = impl_->state_msg_.imu_state().temperature();
+
+    return IMU_temp;
+}
+
+int DriverUnitreeH1::get_battery_state_of_charge() const {
+    
+    // This function always returns 0 for the state of charge. The reason is not clear, but it is possible that the
+    // H1's firmware is just not publishing that information. Resolving this will likely mean a discussion with
+    // autodiscovery.
+    throw std::runtime_error("[DriverUnitreeH1::get_battery_state_of_charge] This function is not ready to use!");
+    
+
+    if(current_status_!=STATUS::INITIALIZED){
+        throw std::runtime_error("[DriverUnitreeH1::get_battery_state_of_charge] Function called when robot is not properly initialised!");
+    }
+    
+    int battery_soc_percent = static_cast<int>(impl_->state_msg_.bms_state().soc());
+    return battery_soc_percent;
+}
+
+VectorXd DriverUnitreeH1::get_battery_temperatures() const {
+    
+    // This function always returns [0, 0] for the temperatures. The reason is not clear, but it is possible that the
+    // H1's firmware is just not publishing that information. Resolving this will likely mean a discussion with
+    // autodiscovery.
+    throw std::runtime_error("[DriverUnitreeH1::get_battery_temperatures] This function is not ready to use!");
+
+    if(current_status_!=STATUS::INITIALIZED){
+        throw std::runtime_error("[DriverUnitreeH1::get_battery_temperatures] Function called when robot is not properly initialised!");
+    }
+
+    VectorXd current_battery_temp_C = VectorXd::Zero(2);
+    for (int i = 0; i < 2; ++i) {
+        current_battery_temp_C(i) = impl_->state_msg_.bms_state().bq_ntc()[i];
+    }
+    return current_battery_temp_C;
 }
 
 void DriverUnitreeH1::set_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad) {

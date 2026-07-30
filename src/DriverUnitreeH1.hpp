@@ -24,9 +24,10 @@
 */
 
 #pragma once
+#include <dqrobotics/DQ.h>
 #include <memory>
-#include <Eigen/Core>
 
+using namespace DQ_robotics;
 using namespace Eigen;
 
 class DriverUnitreeH1
@@ -114,10 +115,21 @@ class DriverUnitreeH1
     VectorXd get_upper_body_joint_velocities() const;
     VectorXd get_upper_body_joint_torques() const;
     VectorXd get_upper_body_joint_temperatures() const;
+
     VectorXd get_torso_velocity() const;
+
+    DQ get_IMU_orientation() const;
+    VectorXd get_gyroscope_data() const;
+    VectorXd get_accelerometer_data() const;
+    VectorXd get_Euler_angles() const;
+    int get_IMU_temperature() const;
+
+    VectorXd get_battery_temperatures() const;
+    int get_battery_state_of_charge() const;
 
     void set_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad);
     void set_upper_body_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec);
+    
     void set_torso_velocity(const VectorXd& desired_torso_velocity_mps_radps);
 
     private:

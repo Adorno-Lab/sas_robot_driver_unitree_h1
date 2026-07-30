@@ -1,56 +1,92 @@
 cmake_minimum_required(VERSION 3.8)
+
 project(sas_robot_driver_unitree_h1)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+
 ####################################
 # Dependencies
 ####################################
+
 find_package(ament_cmake REQUIRED)
+
 find_package(Eigen3 REQUIRED)
 find_package(rclcpp REQUIRED)
+
 find_package(sas_core REQUIRED)
 find_package(sas_common REQUIRED)
 find_package(sas_robot_driver REQUIRED)
 
-####################################
-# Unitree SDK (build as subproject)
-####################################
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/unitree_sdk2)
 
 ####################################
-# Shared Library
+# DQ Robotics
 ####################################
+# Installed system library:
+#   /usr/lib/libdqrobotics.so
+# Headers:
+#   /usr/include/dqrobotics
+
+find_library(DQROBOTICS_LIBRARY
+  NAMES dqrobotics
+  REQUIRED
+)
+
+
+####################################
+# Unitree SDK2
+####################################
+# Build Unitree SDK as part of this package
+
+add_subdirectory(
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/unitree_sdk2
+)
+
+
+####################################
+# Driver shared library
+####################################
+
 add_library(${PROJECT_NAME} SHARED
   src/DriverUnitreeH1.cpp
 )
 
+
 ament_target_dependencies(${PROJECT_NAME}
+  rclcpp
   sas_core
   sas_common
   sas_robot_driver
-  rclcpp
 )
+
 
 target_include_directories(${PROJECT_NAME}
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
+
   PRIVATE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/unitree_sdk2/include>
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/unitree_sdk2/include
 )
 
-# Link Unitree SDK properly (no file paths)
+
 target_link_libraries(${PROJECT_NAME}
   unitree_sdk2
+  ${DQROBOTICS_LIBRARY}
 )
 
+
 ####################################
-# Export
+# Export library
 ####################################
-ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+
+ament_export_targets(
+  export_${PROJECT_NAME}
+  HAS_LIBRARY_TARGET
+)
+
 
 ament_export_dependencies(
   Eigen3
@@ -60,13 +96,16 @@ ament_export_dependencies(
   sas_robot_driver
 )
 
+
 ####################################
-# Install library + headers
+# Install
 ####################################
+
 install(
   DIRECTORY include/
   DESTINATION include
 )
+
 
 install(
   TARGETS ${PROJECT_NAME}
@@ -77,94 +116,74 @@ install(
   INCLUDES DESTINATION include
 )
 
+
 ####################################
-# Script executables
+# Test executables
 ####################################
+# These link against the driver library.
+# Do NOT compile DriverUnitreeH1.cpp again.
+
 
 add_executable(basic_test
-    src/basic_test.cpp
-    src/DriverUnitreeH1.cpp
-    src/DriverUnitreeH1.hpp
+  src/basic_test.cpp
 )
-target_link_libraries(basic_test unitree_sdk2)
+
+target_link_libraries(basic_test
+  ${PROJECT_NAME}
+)
+
 
 add_executable(velocity_test
-    src/velocity_test.cpp
-    src/DriverUnitreeH1.cpp
-    src/DriverUnitreeH1.hpp
+  src/velocity_test.cpp
 )
-target_link_libraries(velocity_test unitree_sdk2)
+
+target_link_libraries(velocity_test
+  ${PROJECT_NAME}
+)
+
 
 add_executable(printer_test
-    src/printer_test.cpp
-    src/DriverUnitreeH1.cpp
-    src/DriverUnitreeH1.hpp
+  src/printer_test.cpp
 )
-target_link_libraries(printer_test unitree_sdk2)
+
+target_link_libraries(printer_test
+  ${PROJECT_NAME}
+)
+
 
 ####################################
-# Node executable
+# Install test executables (optional)
 ####################################
-# set(RCLCPP_LOCAL_BINARY_NAME sas_robot_driver_unitree_h1_node)
 
-# add_executable(${RCLCPP_LOCAL_BINARY_NAME}
-#   src/sas_robot_driver_unitree_h1_node.cpp
-# )
-
-# ament_target_dependencies(${RCLCPP_LOCAL_BINARY_NAME}
-#   rclcpp
-#   sas_core
-#   sas_common
-#   sas_robot_driver
-# )
-
-# target_include_directories(${RCLCPP_LOCAL_BINARY_NAME}
-#   PUBLIC
-#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-#     $<INSTALL_INTERFACE:include>
-# )
-
-# target_link_libraries(${RCLCPP_LOCAL_BINARY_NAME}
-#   ${PROJECT_NAME}
-# )
-
-# target_compile_features(${RCLCPP_LOCAL_BINARY_NAME} PUBLIC c_std_99 cxx_std_17)
+# Uncomment if you want them available after colcon install
 
 # install(
-#   TARGETS ${RCLCPP_LOCAL_BINARY_NAME}
+#   TARGETS
+#     basic_test
+#     velocity_test
+#     printer_test
 #   DESTINATION lib/${PROJECT_NAME}
 # )
 
-# unset(RCLCPP_LOCAL_BINARY_NAME)
 
 ####################################
-# Launch files
+# Testing / linting
 ####################################
-# install(
-#   DIRECTORY launch
-#   DESTINATION share/${PROJECT_NAME}/
-# )
 
-####################################
-# Scripts
-####################################
-# install(
-#   DIRECTORY scripts/
-#   FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
-#   DESTINATION lib/${PROJECT_NAME}
-# )
-
-####################################
-# Testing
-####################################
 if(BUILD_TESTING)
+
   find_package(ament_lint_auto REQUIRED)
+
   set(ament_cmake_copyright_FOUND TRUE)
   set(ament_cmake_cpplint_FOUND TRUE)
+
   ament_lint_auto_find_test_dependencies()
+
 endif()
 
+
 ####################################
-# Final ament package
+# Finalise ament package
 ####################################
+
 ament_package()

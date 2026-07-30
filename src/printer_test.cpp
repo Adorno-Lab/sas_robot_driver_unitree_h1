@@ -39,8 +39,12 @@ int main()
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             auto positions = driver.get_upper_body_joint_positions();
             auto velocities = driver.get_upper_body_joint_velocities();
+            auto torques = driver.get_upper_body_joint_torques();
+            auto temps = driver.get_upper_body_joint_temperatures();
             std::cout<<"positions: "<<positions.transpose()<<std::endl;
             std::cout<<"velocities: "<<velocities.transpose()<<std::endl;
+            std::cout<<"torques: "<<torques.transpose()<<std::endl;
+            std::cout<<"casing temperatures: "<<temps.transpose()<<std::endl;
             std::cout<<"---------------------------------------------------------"<<std::endl;
         }
     });

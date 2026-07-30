@@ -28,7 +28,9 @@ using namespace Eigen;
  * Decide in DriverUnitreeH1::initialize whether to start the robot locomotion driver based on the lower body level setting
  * Add input length validation to vector-valued setter functions
  * Add joint limit tracking and enforcement
+ * Add joint velocity limit enforcement
  * Add checks to setter functions to make sure we're in the right mode (position / velocity) and level (low / high)
+ * Add checking to make sure connections succeed, such as in connect and initialise, and that coms succeed, like in the motor writes.
  */
 
 // #############################################
@@ -297,6 +299,33 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_velocities() const {
     }
     return current_jvel_rad_per_sec;
 }
+
+VectorXd DriverUnitreeH1::get_upper_body_joint_torques() const {
+    
+    if(current_status_!=STATUS::INITIALIZED){
+        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_torques] Function called when robot is not properly initialised!");
+    }
+
+    VectorXd current_jtorque_Nm = VectorXd::Zero(upper_body_joints_.size());
+    for (int i = 0; i < upper_body_joints_.size(); ++i) {
+        current_jtorque_Nm(i) = impl_->state_msg_.motor_state().at(upper_body_joints_.at(i)).tau_est();
+    }
+    return current_jtorque_Nm;
+}
+
+VectorXd DriverUnitreeH1::get_upper_body_joint_temperatures() const {
+    
+    if(current_status_!=STATUS::INITIALIZED){
+        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_temperatures] Function called when robot is not properly initialised!");
+    }
+
+    VectorXd current_j_casing_temp_C = VectorXd::Zero(upper_body_joints_.size());
+    for (int i = 0; i < upper_body_joints_.size(); ++i) {
+        current_j_casing_temp_C(i) = static_cast<double>(impl_->state_msg_.motor_state().at(upper_body_joints_.at(i)).temperature());
+    }
+    return current_j_casing_temp_C;
+}
+
 
 VectorXd DriverUnitreeH1::get_torso_velocity() const {
     

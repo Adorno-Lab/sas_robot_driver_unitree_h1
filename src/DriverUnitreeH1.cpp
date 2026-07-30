@@ -145,6 +145,28 @@ public:
         cmd.kd(vel_cmd_kd_); 
         cmd.tau(0);
     }
+
+    /**
+     * @brief DriverUnitreeB1::Impl::set_joint_torque_command helper function for torque commands. 
+     *        Called in a few places when joint torques are being written to the motors. Centralises 
+     *        the logic for this so it can be changed in only one place.
+     * @param joint_id The id of the joint to be written to in Unitree SDK terms.
+     * @param target_torque_Nm The joint torque in Newton metres
+     */
+    void set_joint_torque_command(int joint_id, float target_torque_Nm)
+    {
+        auto &state = state_msg_.motor_state().at(joint_id);
+        auto &cmd = cmd_msg_.motor_cmd().at(joint_id);
+        // Motors are torque controlled using the eqn:
+        // Torque = kp * (q_des - q_curr) + kd * (dq_des - dq_curr) + tau_ff
+        // So here we set kp==kd=0, to eliminate the position and velocity terms.
+        // and control things via the feed-forward torques directly
+        cmd.q(0);
+        cmd.dq(0);
+        cmd.kp(0);
+        cmd.kd(0); 
+        cmd.tau(target_torque_Nm);
+    }
 };
 
 // #############################################
@@ -277,6 +299,10 @@ void DriverUnitreeH1::disconnect(){
     current_status_ = STATUS::DISCONNECTED;
 }
 
+// --------------------------------------------
+//  Upper body getter functions
+// --------------------------------------------
+
 VectorXd DriverUnitreeH1::get_upper_body_joint_positions() const {
     
     if(current_status_!=STATUS::INITIALIZED){
@@ -328,6 +354,10 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_temperatures() const {
     }
     return current_j_casing_temp_C;
 }
+
+// --------------------------------------------
+//  IMU getter functions
+// --------------------------------------------
 
 VectorXd DriverUnitreeH1::get_torso_velocity() const {
     
@@ -407,6 +437,10 @@ int DriverUnitreeH1::get_IMU_temperature() const {
     return IMU_temp;
 }
 
+// --------------------------------------------
+//  Battery getter functions
+// --------------------------------------------
+
 int DriverUnitreeH1::get_battery_state_of_charge() const {
     
     // This function always returns 0 for the state of charge. The reason is not clear, but it is possible that the
@@ -441,6 +475,10 @@ VectorXd DriverUnitreeH1::get_battery_temperatures() const {
     return current_battery_temp_C;
 }
 
+// --------------------------------------------
+//  Setter functions
+// --------------------------------------------
+
 void DriverUnitreeH1::set_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad) {
     
     if(current_status_!=STATUS::INITIALIZED){
@@ -463,6 +501,21 @@ void DriverUnitreeH1::set_upper_body_joint_velocities(const VectorXd& desired_jo
     }
 
     set_all_upper_body_joint_velocity_commands_(desired_joint_velocities_rad_per_sec);
+
+    // Set weight to 1.0, to ensure that control instruction is followed
+    impl_->cmd_msg_.motor_cmd().at(JOINT_INDEX::kNotUsedJoint).q(1.0);
+
+    // Send message
+    impl_->upper_body_publisher_->Write(impl_->cmd_msg_);
+}
+
+void DriverUnitreeH1::set_upper_body_joint_torques(const VectorXd& desired_joint_velocities_rad_per_sec) {
+    
+    if(current_status_!=STATUS::INITIALIZED){
+            throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_torques] Function called when robot is not properly initialised!");
+    }
+
+    set_all_upper_body_joint_torque_commands_(desired_joint_velocities_rad_per_sec);
 
     // Set weight to 1.0, to ensure that control instruction is followed
     impl_->cmd_msg_.motor_cmd().at(JOINT_INDEX::kNotUsedJoint).q(1.0);
@@ -508,5 +561,16 @@ void DriverUnitreeH1::set_all_upper_body_joint_position_commands_(const VectorXd
 void DriverUnitreeH1::set_all_upper_body_joint_velocity_commands_(const VectorXd& target_velocities_rad_per_sec){
     for(int i=0; i<upper_body_joints_.size(); i++){
         impl_->set_joint_velocity_command(upper_body_joints_.at(i),target_velocities_rad_per_sec(i));
+    }
+}
+
+/**
+ * @brief DriverUnitreeB1::set_all_upper_body_joint_torque_commands_ private helper function for torque commands. 
+ *        Used to write torque commands to all upper body joints at once
+ * @param target_torques_Nm The joint torques in Newton metres
+ */
+void DriverUnitreeH1::set_all_upper_body_joint_torque_commands_(const VectorXd& target_torques_Nm){
+    for(int i=0; i<upper_body_joints_.size(); i++){
+        impl_->set_joint_torque_command(upper_body_joints_.at(i),target_torques_Nm(i));
     }
 }

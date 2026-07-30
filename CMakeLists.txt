@@ -151,6 +151,14 @@ target_link_libraries(printer_test
 )
 
 
+add_executable(torque_test
+  src/torque_test.cpp
+)
+
+target_link_libraries(torque_test
+  ${PROJECT_NAME}
+)
+
 ####################################
 # Install test executables (optional)
 ####################################

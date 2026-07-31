@@ -38,7 +38,6 @@ find_library(DQROBOTICS_LIBRARY
 ####################################
 # Unitree SDK2
 ####################################
-# Build Unitree SDK as part of this package
 
 add_subdirectory(
   ${CMAKE_CURRENT_SOURCE_DIR}/src/unitree_sdk2
@@ -66,6 +65,8 @@ target_include_directories(${PROJECT_NAME}
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:src>
 
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/unitree_sdk2/include
@@ -120,12 +121,9 @@ install(
 ####################################
 # Test executables
 ####################################
-# These link against the driver library.
-# Do NOT compile DriverUnitreeH1.cpp again.
-
 
 add_executable(basic_test
-  src/basic_test.cpp
+  src/scripts/basic_test.cpp
 )
 
 target_link_libraries(basic_test
@@ -134,7 +132,7 @@ target_link_libraries(basic_test
 
 
 add_executable(velocity_test
-  src/velocity_test.cpp
+  src/scripts/velocity_test.cpp
 )
 
 target_link_libraries(velocity_test
@@ -143,7 +141,7 @@ target_link_libraries(velocity_test
 
 
 add_executable(printer_test
-  src/printer_test.cpp
+  src/scripts/printer_test.cpp
 )
 
 target_link_libraries(printer_test
@@ -152,7 +150,7 @@ target_link_libraries(printer_test
 
 
 add_executable(torque_test
-  src/torque_test.cpp
+  src/scripts/torque_test.cpp
 )
 
 target_link_libraries(torque_test
@@ -160,27 +158,12 @@ target_link_libraries(torque_test
 )
 
 add_executable(standing_test
-  src/standing_test.cpp
+  src/scripts/standing_test.cpp
 )
 
 target_link_libraries(standing_test
   ${PROJECT_NAME}
 )
-
-####################################
-# Install test executables (optional)
-####################################
-
-# Uncomment if you want them available after colcon install
-
-# install(
-#   TARGETS
-#     basic_test
-#     velocity_test
-#     printer_test
-#   DESTINATION lib/${PROJECT_NAME}
-# )
-
 
 ####################################
 # Testing / linting

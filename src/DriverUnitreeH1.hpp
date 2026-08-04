@@ -142,5 +142,9 @@ class DriverUnitreeH1
     void set_all_upper_body_joint_position_commands_(const VectorXd& target_positions_rad);
     void set_all_upper_body_joint_velocity_commands_(const VectorXd& target_velocities_rad_per_sec);
     void set_all_upper_body_joint_torque_commands_(const VectorXd& target_torques_Nm);
+    void damp_all_upper_body_joints_();
+
+    void safely_start_upper_body_joints();
+    void safely_stop_upper_body_joints();
     
 };

@@ -173,6 +173,14 @@ target_link_libraries(mode_test
   ${PROJECT_NAME}
 )
 
+add_executable(limit_test
+  src/scripts/limit_test.cpp
+)
+
+target_link_libraries(limit_test
+  ${PROJECT_NAME}
+)
+
 ####################################
 # Testing / linting
 ####################################

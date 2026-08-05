@@ -60,7 +60,59 @@ public:
     static constexpr float pos_cmd_kd_ = 1.5f;
     static constexpr float vel_cmd_kd_ = 10.f;
     static constexpr std::chrono::duration<double> weight_ramp_overall_duration_sec_{4.0};
-    static constexpr std::chrono::duration<double> weight_ramp_step_time_sec_ {0.02};
+    static constexpr float expected_firmware_update_period_sec_ = 0.02;
+    static constexpr std::chrono::duration<double> expected_firmware_update_period_chrono_sec_ {expected_firmware_update_period_sec_};
+    static constexpr float expected_movement_period_sec_ = expected_firmware_update_period_sec_*10;
+
+    static constexpr float joint_limit_intervention_margin_rad_ = 0.2;
+
+    static constexpr float global_joint_velocity_limit_radps_ = 1.0;
+    
+    static constexpr float global_joint_caution_factor_ = 0.15;
+
+    std::unordered_map<int, float> lower_position_limits_rad_ = {
+    {8,	 -0.43+global_joint_caution_factor_},
+    {0,	 -0.43+global_joint_caution_factor_},
+    {1,	 -3.14+global_joint_caution_factor_},
+    {2,  -0.26+global_joint_caution_factor_},
+    {11, -0.87+global_joint_caution_factor_},
+    {7,	 -0.43+global_joint_caution_factor_},
+    {3,	 -0.43+global_joint_caution_factor_},
+    {4,	 -3.14+global_joint_caution_factor_},
+    {5,	 -0.26+global_joint_caution_factor_},
+    {10, -0.87+global_joint_caution_factor_},
+    {6,	 -2.35+global_joint_caution_factor_},
+    {12, -2.87+global_joint_caution_factor_},
+    {13, -3.11+global_joint_caution_factor_},
+    {14, -4.45+global_joint_caution_factor_},
+    {15, -1.25+global_joint_caution_factor_},
+    {16, -2.87+global_joint_caution_factor_},
+    {17, -0.34+global_joint_caution_factor_},
+    {18, -1.30+global_joint_caution_factor_},
+    {19, -1.25+global_joint_caution_factor_},
+    };
+
+    std::unordered_map<int, float> upper_position_limits_rad_ = {
+    {8,	 0.43-global_joint_caution_factor_},
+    {0,	 0.43-global_joint_caution_factor_},
+    {1,	 2.53-global_joint_caution_factor_},
+    {2,	 2.05-global_joint_caution_factor_},
+    {11, 0.52-global_joint_caution_factor_},
+    {7,	 0.43-global_joint_caution_factor_},
+    {3,	 0.43-global_joint_caution_factor_},
+    {4,	 2.53-global_joint_caution_factor_},
+    {5,	 2.05-global_joint_caution_factor_},
+    {10, 0.52-global_joint_caution_factor_},
+    {6,	 2.35-global_joint_caution_factor_},
+    {12, 2.87-global_joint_caution_factor_},
+    {13, 0.34-global_joint_caution_factor_},
+    {14, 1.30-global_joint_caution_factor_},
+    {15, 2.61-global_joint_caution_factor_},
+    {16, 2.87-global_joint_caution_factor_},
+    {17, 3.11-global_joint_caution_factor_},
+    {18, 4.45-global_joint_caution_factor_},
+    {19, 2.61-global_joint_caution_factor_},
+    };
 
     // #############################################
     //  Impl member functions
@@ -81,12 +133,23 @@ public:
      */
     void set_joint_position_command(int joint_id, float target_position_rad)
     {
+        // If the position target is changing too quickly, then set a new target that will respect the
+        // velocity limit.
+        auto current_position = state_msg_.motor_state().at(joint_id).q();
+        auto estimated_speed = (target_position_rad - current_position)/expected_movement_period_sec_;
+        if(estimated_speed>global_joint_velocity_limit_radps_){
+            target_position_rad = current_position + global_joint_velocity_limit_radps_ * expected_movement_period_sec_;
+        }
+        else if(estimated_speed<-global_joint_velocity_limit_radps_){
+            target_position_rad = current_position - global_joint_velocity_limit_radps_ * expected_movement_period_sec_;
+        }
+        
         auto &cmd = cmd_msg_.motor_cmd().at(joint_id);
 
         // Motors are torque controlled using the eqn:
         // Torque = kp * (q_des - q_curr) + kd * (dq_des - dq_curr) + tau_ff
         // So, here we set dq_des as 0, so there is some damping proportional to the speed.
-        cmd.q(target_position_rad);
+        cmd.q(std::clamp(target_position_rad, lower_position_limits_rad_.at(joint_id), upper_position_limits_rad_.at(joint_id)));
         cmd.dq(0.0);
         cmd.kp(kp_);
         cmd.kd(pos_cmd_kd_);
@@ -102,6 +165,8 @@ public:
      */
     void set_joint_velocity_command(int joint_id, float target_velocity_rad_per_sec)
     {
+        target_velocity_rad_per_sec = scale_command_based_on_joint_position(target_velocity_rad_per_sec, joint_id);     
+        
         auto &cmd = cmd_msg_.motor_cmd().at(joint_id);
         // Motors are torque controlled using the eqn:
         // Torque = kp * (q_des - q_curr) + kd * (dq_des - dq_curr) + tau_ff
@@ -112,7 +177,7 @@ public:
         // help, but experiments show that kd values above 10 result in a nasty grinding
         // sound from the motors, which probably isn't good.
         cmd.q(0);
-        cmd.dq(target_velocity_rad_per_sec);
+        cmd.dq(std::clamp(target_velocity_rad_per_sec, -global_joint_velocity_limit_radps_, global_joint_velocity_limit_radps_));
         cmd.kp(0);
         cmd.kd(vel_cmd_kd_); 
         cmd.tau(0);
@@ -127,6 +192,8 @@ public:
      */
     void set_joint_torque_command(int joint_id, float target_torque_Nm)
     {
+        target_torque_Nm = scale_command_based_on_joint_position(target_torque_Nm, joint_id);
+
         auto &cmd = cmd_msg_.motor_cmd().at(joint_id);
         // Motors are torque controlled using the eqn:
         // Torque = kp * (q_des - q_curr) + kd * (dq_des - dq_curr) + tau_ff
@@ -137,6 +204,25 @@ public:
         cmd.kp(0);
         cmd.kd(0); 
         cmd.tau(target_torque_Nm);
+    }
+
+    float scale_command_based_on_joint_position(float original_command, int joint_id){
+        auto current_position = state_msg_.motor_state().at(joint_id).q();
+        if (original_command > 0.0)
+        {
+            double dist = upper_position_limits_rad_.at(joint_id) - current_position;
+            if (dist < joint_limit_intervention_margin_rad_){
+                original_command *= std::max(0.0, dist / joint_limit_intervention_margin_rad_);
+            }
+        }
+        else
+        {
+            double dist = current_position - lower_position_limits_rad_.at(joint_id);
+            if (dist < joint_limit_intervention_margin_rad_){
+                original_command *= std::max(0.0, dist / joint_limit_intervention_margin_rad_);
+            }
+        }
+        return (original_command);
     }
 
     /**
@@ -1004,7 +1090,7 @@ void DriverUnitreeH1::damp_all_upper_body_joints_(){
  *        This prepares the upper body joints for normal commanded motion.
  */
 void DriverUnitreeH1::safely_start_upper_body_joints_(){
-    float num_time_steps = static_cast<float>(impl_->weight_ramp_overall_duration_sec_/impl_->weight_ramp_step_time_sec_);
+    float num_time_steps = static_cast<float>(impl_->weight_ramp_overall_duration_sec_/impl_->expected_firmware_update_period_chrono_sec_);
 
     // Start by putting the robot into "upper body damping mode"
     damp_all_upper_body_joints_();
@@ -1023,7 +1109,7 @@ void DriverUnitreeH1::safely_start_upper_body_joints_(){
             cmd.tau(0);
         }
         impl_->send_upper_body_control_message("DriverUnitreeH1::safely_start_upper_body_joints_");
-        std::this_thread::sleep_for(impl_->weight_ramp_step_time_sec_);
+        std::this_thread::sleep_for(impl_->expected_firmware_update_period_chrono_sec_);
     }
 }
 
@@ -1031,7 +1117,7 @@ void DriverUnitreeH1::safely_start_upper_body_joints_(){
  * @brief Safely stops upper body joints by switching them to damping mode.
  */
 void DriverUnitreeH1::safely_stop_upper_body_joints_(){
-    float num_time_steps = static_cast<float>(impl_->weight_ramp_overall_duration_sec_/impl_->weight_ramp_step_time_sec_);
+    float num_time_steps = static_cast<float>(impl_->weight_ramp_overall_duration_sec_/impl_->expected_firmware_update_period_chrono_sec_);
 
     // Start by putting the robot back into "upper body damping mode"
     damp_all_upper_body_joints_();

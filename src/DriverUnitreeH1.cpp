@@ -27,12 +27,11 @@ using namespace Eigen;
 /** To Do List:
  * Add briefs for all functions
  * Add copyright statement
- * Add tracking for the lower body level (low or high) and the control mode (position or velocity)
- * Decide in DriverUnitreeH1::initialize whether to start the robot locomotion driver based on the lower body level setting
+ * Add tracking for upper body control mode (position, velocity, or torque)
  * Add input length validation to vector-valued setter functions
  * Add joint limit tracking and enforcement
  * Add joint velocity limit enforcement
- * Add checks to setter functions to make sure we're in the right mode (position / velocity) and level (low / high)
+ * Add checks to setter functions to make sure we're in the right mode (position / velocity / torque)
  */
 
 // #############################################
@@ -302,6 +301,29 @@ public:
 //  DriverUnitreeH1 public member functions
 // #############################################
 
+DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, std::string control_mode){
+
+    // Create implementation object
+    impl_ = std::make_shared<DriverUnitreeH1::Impl>();
+
+    // Process arguments
+    impl_->network_interface_ = network_interface;
+
+    if(control_mode=="position_controlled"){
+        current_mode_ = MODE::POSITION_CONTROLLED;
+    }
+    else if(control_mode=="velocity_controlled"){
+        current_mode_ = MODE::VELOCITY_CONTROLLED;
+    }
+    else if(control_mode=="torque_controlled"){
+        current_mode_ = MODE::TORQUE_CONTROLLED;
+    }
+    else{
+        throw std::runtime_error("[DriverUnitreeH1::DriverUnitreeH1] Invalid control mode string passed to constructor: '"+control_mode+"'");
+    }
+    
+}
+
 DriverUnitreeH1::DriverUnitreeH1(std::string network_interface){
 
     // Create implementation object
@@ -309,6 +331,9 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface){
 
     // Process arguments
     impl_->network_interface_ = network_interface;
+
+    // Enact defaults
+    current_mode_ = MODE::POSITION_CONTROLLED;
     
 }
 
@@ -683,10 +708,34 @@ void DriverUnitreeH1::set_stand_height_percent(const float desired_height_percen
 //  Setter functions
 // --------------------------------------------
 
+void DriverUnitreeH1::change_control_mode(const std::string& new_mode) {
+    
+    if(current_status_!=STATUS::INITIALIZED){
+        throw std::runtime_error("[DriverUnitreeH1::change_control_mode] Function called when robot is not properly initialised!");
+    }
+
+    if(new_mode=="position_controlled"){
+        current_mode_ = MODE::POSITION_CONTROLLED;
+    }
+    else if(new_mode=="velocity_controlled"){
+        current_mode_ = MODE::VELOCITY_CONTROLLED;
+    }
+    else if(new_mode=="torque_controlled"){
+        current_mode_ = MODE::TORQUE_CONTROLLED;
+    }
+    else{
+        throw std::runtime_error("[DriverUnitreeH1::change_control_mode] Invalid control mode string passed to function: '"+new_mode+"'");
+    }
+}
+
 void DriverUnitreeH1::set_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad) {
     
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_positions] Function called when robot is not properly initialised!");
+        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_positions] Function called when robot is not properly initialised!");
+    }
+
+    if(current_mode_!=MODE::POSITION_CONTROLLED){
+        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_positions] Function called when robot is not in position control mode!");
     }
 
     set_all_upper_body_joint_position_commands_(desired_joint_positions_rad);
@@ -701,7 +750,11 @@ void DriverUnitreeH1::set_upper_body_joint_positions(const VectorXd& desired_joi
 void DriverUnitreeH1::set_upper_body_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec) {
     
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_velocities] Function called when robot is not properly initialised!");
+        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_velocities] Function called when robot is not properly initialised!");
+    }
+
+    if(current_mode_!=MODE::VELOCITY_CONTROLLED){
+        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_velocities] Function called when robot is not in velocity control mode!");
     }
 
     set_all_upper_body_joint_velocity_commands_(desired_joint_velocities_rad_per_sec);
@@ -716,7 +769,11 @@ void DriverUnitreeH1::set_upper_body_joint_velocities(const VectorXd& desired_jo
 void DriverUnitreeH1::set_upper_body_joint_torques(const VectorXd& desired_joint_velocities_rad_per_sec) {
     
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_torques] Function called when robot is not properly initialised!");
+        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_torques] Function called when robot is not properly initialised!");
+    }
+
+    if(current_mode_!=MODE::TORQUE_CONTROLLED){
+        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_torques] Function called when robot is not in torque control mode!");
     }
 
     set_all_upper_body_joint_torque_commands_(desired_joint_velocities_rad_per_sec);

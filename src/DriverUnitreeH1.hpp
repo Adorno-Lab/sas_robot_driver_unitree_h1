@@ -37,6 +37,13 @@ class DriverUnitreeH1
     class Impl;
     std::shared_ptr<Impl> impl_;
 
+    enum class MODE{
+        POSITION_CONTROLLED,
+        VELOCITY_CONTROLLED,
+        TORQUE_CONTROLLED
+    };
+    MODE current_mode_{MODE::POSITION_CONTROLLED};
+
     enum class STATUS{
         IDLE,
         CONNECTED,
@@ -45,7 +52,6 @@ class DriverUnitreeH1
         DISCONNECTED,
     };
     STATUS current_status_{STATUS::IDLE};
-    std::string status_msg_;
 
     enum JOINT_INDEX {
         // Right leg
@@ -104,6 +110,7 @@ class DriverUnitreeH1
     DriverUnitreeH1() = delete;
     DriverUnitreeH1(const DriverUnitreeH1&) = delete;
     DriverUnitreeH1& operator= (const DriverUnitreeH1&) = delete;
+    DriverUnitreeH1(std::string network_interface, std::string control_mode);
     DriverUnitreeH1(std::string network_interface);
 
     void connect();
@@ -129,6 +136,7 @@ class DriverUnitreeH1
     VectorXd get_battery_temperatures() const;
     int get_battery_state_of_charge() const;
 
+    void change_control_mode(const std::string& new_mode);
     void set_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad);
     void set_upper_body_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec);
     void set_upper_body_joint_torques(const VectorXd& desired_joint_torques_Nm);

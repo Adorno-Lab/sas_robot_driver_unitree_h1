@@ -165,6 +165,14 @@ target_link_libraries(standing_test
   ${PROJECT_NAME}
 )
 
+add_executable(mode_test
+  src/scripts/mode_test.cpp
+)
+
+target_link_libraries(mode_test
+  ${PROJECT_NAME}
+)
+
 ####################################
 # Testing / linting
 ####################################

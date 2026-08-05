@@ -27,11 +27,8 @@ using namespace Eigen;
 /** To Do List:
  * Add briefs for all functions
  * Add copyright statement
- * Add tracking for upper body control mode (position, velocity, or torque)
- * Add input length validation to vector-valued setter functions
  * Add joint limit tracking and enforcement
  * Add joint velocity limit enforcement
- * Add checks to setter functions to make sure we're in the right mode (position / velocity / torque)
  */
 
 // #############################################
@@ -738,6 +735,10 @@ void DriverUnitreeH1::set_upper_body_joint_positions(const VectorXd& desired_joi
         throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_positions] Function called when robot is not in position control mode!");
     }
 
+    if(desired_joint_positions_rad.size()!=upper_body_joints_.size()){
+        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_positions] Input has incorrect size! (got "+std::to_string(desired_joint_positions_rad.size())+", expected "+std::to_string(upper_body_joints_.size())+")");
+    }
+
     set_all_upper_body_joint_position_commands_(desired_joint_positions_rad);
 
     // Set weight to 1.0, to ensure that control instruction is followed
@@ -757,6 +758,10 @@ void DriverUnitreeH1::set_upper_body_joint_velocities(const VectorXd& desired_jo
         throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_velocities] Function called when robot is not in velocity control mode!");
     }
 
+    if(desired_joint_velocities_rad_per_sec.size()!=upper_body_joints_.size()){
+        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_velocities] Input has incorrect size! (got "+std::to_string(desired_joint_velocities_rad_per_sec.size())+", expected "+std::to_string(upper_body_joints_.size())+")");
+    }
+
     set_all_upper_body_joint_velocity_commands_(desired_joint_velocities_rad_per_sec);
 
     // Set weight to 1.0, to ensure that control instruction is followed
@@ -766,7 +771,7 @@ void DriverUnitreeH1::set_upper_body_joint_velocities(const VectorXd& desired_jo
     impl_->send_upper_body_control_message("set_upper_body_joint_velocities");
 }
 
-void DriverUnitreeH1::set_upper_body_joint_torques(const VectorXd& desired_joint_velocities_rad_per_sec) {
+void DriverUnitreeH1::set_upper_body_joint_torques(const VectorXd& desired_joint_torques_Nm) {
     
     if(current_status_!=STATUS::INITIALIZED){
         throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_torques] Function called when robot is not properly initialised!");
@@ -776,7 +781,11 @@ void DriverUnitreeH1::set_upper_body_joint_torques(const VectorXd& desired_joint
         throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_torques] Function called when robot is not in torque control mode!");
     }
 
-    set_all_upper_body_joint_torque_commands_(desired_joint_velocities_rad_per_sec);
+    if(desired_joint_torques_Nm.size()!=upper_body_joints_.size()){
+        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_torques] Input has incorrect size! (got "+std::to_string(desired_joint_torques_Nm.size())+", expected "+std::to_string(upper_body_joints_.size())+")");
+    }
+
+    set_all_upper_body_joint_torque_commands_(desired_joint_torques_Nm);
 
     // Set weight to 1.0, to ensure that control instruction is followed
     impl_->cmd_msg_.motor_cmd().at(JOINT_INDEX::kNotUsedJoint).q(1.0);
@@ -791,7 +800,10 @@ void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_
             throw std::runtime_error("[DriverUnitreeH1::set_torso_velocity] Function called when robot is not properly initialised!");
     }
 
-    // TODO: REFUSE IF not in high-level mode, or not in velocity mode
+    if(desired_torso_velocity_mps_radps.size()!=3){
+        throw std::runtime_error("[DriverUnitreeH1::set_torso_velocity] Input has incorrect size! (got "+std::to_string(desired_torso_velocity_mps_radps.size())+", expected 3 -> {x, y, omega})");
+    }
+
     float vx, vy, v_yaw;
     vx = desired_torso_velocity_mps_radps(0);
     vy = desired_torso_velocity_mps_radps(1);

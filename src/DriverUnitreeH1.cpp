@@ -27,14 +27,12 @@ using namespace Eigen;
 /** To Do List:
  * Add briefs for all functions
  * Add copyright statement
- * See if there's a way to verify that the connection has been made successfully in DriverUnitreeH1::connect. Maybe we can write a function that checks for hallmarks of no robot connected, i.e., IMU quat, Imu temp and motor temps all 0.
  * Add tracking for the lower body level (low or high) and the control mode (position or velocity)
  * Decide in DriverUnitreeH1::initialize whether to start the robot locomotion driver based on the lower body level setting
  * Add input length validation to vector-valued setter functions
  * Add joint limit tracking and enforcement
  * Add joint velocity limit enforcement
  * Add checks to setter functions to make sure we're in the right mode (position / velocity) and level (low / high)
- * Add checking to make sure connections succeed, such as in connect and initialise, and that coms succeed, like in the motor writes.
  */
 
 // #############################################
@@ -97,29 +95,6 @@ public:
     }
 
     /**
-     * @brief DriverUnitreeB1::Impl::ramp_upper_body_weight helper function for init / deinit. 
-     *        Ramps the control weight over Impl::weight_ramp_overall_duration_sec_ seconds
-     * @param target_weight The desired upper body control weight (1.0 for init, 0.0 for deinit)
-     */
-    void ramp_upper_body_control_weight(float target_weight){
-        
-        // Send the message, gradually ramp the weight each iteration
-        float num_time_steps = static_cast<float>(weight_ramp_overall_duration_sec_/weight_ramp_step_time_sec_);
-        float starting_weight = get_current_control_weight();
-        float weight = starting_weight;
-        for(int i=0; i<num_time_steps; i++){
-            weight = starting_weight + (static_cast<float>(i) / num_time_steps)*(target_weight-starting_weight);
-            cmd_msg_.motor_cmd().at(JOINT_INDEX::kNotUsedJoint).q(weight);
-            send_upper_body_control_message("DriverUnitreeH1::Impl::ramp_upper_body_control_weight");
-            std::this_thread::sleep_for(weight_ramp_step_time_sec_);
-        }
-
-        // Make sure the weight is now the final one
-        cmd_msg_.motor_cmd().at(JOINT_INDEX::kNotUsedJoint).q(target_weight);
-        send_upper_body_control_message("DriverUnitreeH1::Impl::ramp_upper_body_control_weight");
-    }
-
-    /**
      * @brief DriverUnitreeB1::Impl::set_joint_velocity_command helper function for velocity commands. 
      *        Called in a few places when joint velocities are being written to the motors. Centralises 
      *        the logic for this so it can be changed in only one place.
@@ -165,11 +140,6 @@ public:
         cmd.tau(target_torque_Nm);
     }
 
-    float get_current_control_weight(){
-        float current_weight = state_msg_.motor_state().at(JOINT_INDEX::kNotUsedJoint).q();
-        return current_weight;
-    }
-
     /**
      * @brief DriverUnitreeB1::Impl::send_upper_body_control_message helper function for the publisher. 
      *        Sends a message to the upper_body_publisher_ and throws a runtime_error if the write operation fails.
@@ -188,13 +158,13 @@ public:
     }
 
     /**
-     * @brief DriverUnitreeB1::Impl::check_upper_body_subscriber_connection helper function for the subscriber. 
+     * @brief DriverUnitreeB1::Impl::check_upper_body_subscriber_setup helper function for the subscriber. 
      *        Checks recent messages from the subscriber and throws a runtime_error if the channel is initialised 
      *        incorrectly, or if messages are not received within the expected window (which suggests that the robot
      *        is not connected to the channel).
-     * @param calling_function The function calling check_upper_body_subscriber_connection, used for informative runtime errors.
+     * @param calling_function The function calling check_upper_body_subscriber_setup, used for informative runtime errors.
      */
-    void check_upper_body_subscriber_connection(std::string calling_function){
+    void check_upper_body_subscriber_setup(std::string calling_function){
 
         // Check that the channel has been initialised (time is -1 if not)
         float result = upper_body_subscriber_->GetLastDataAvailableTime();
@@ -313,6 +283,19 @@ public:
         return this_function_return_value;
     }
 
+    void check_robot_still_connected(){  
+        int64_t most_recent_message_time = upper_body_subscriber_->GetLastDataAvailableTime();  
+        int64_t now = unitree::common::GetCurrentMonotonicTimeNanosecond();  
+        double elapsed_sec = static_cast<double>(now - most_recent_message_time) / 1e9;  
+    
+        if (elapsed_sec > comms_timeout_sec_) {  // comms_timeout_sec_ as a plain double, in seconds  
+            std::ostringstream oss;  
+            oss << "[DriverUnitreeH1::Impl::check_robot_still_connected] Robot state subscriber timed out, is it still connected? ("  
+                << std::fixed << std::setprecision(1) << elapsed_sec << " seconds since last message)";  
+            throw std::runtime_error(oss.str());  
+        }  
+    }
+
 };
 
 // #############################################
@@ -353,7 +336,7 @@ void DriverUnitreeH1::connect(){
         }, 1);
 
     // // Check the subscriber is working by reading the time that the last message was received
-    impl_->check_upper_body_subscriber_connection("DriverUnitreeH1::connect");
+    impl_->check_upper_body_subscriber_setup("DriverUnitreeH1::connect");
     std::cout << "        Done." << std::endl;
 
     // Start high level locomotion client.
@@ -470,9 +453,13 @@ void DriverUnitreeH1::disconnect(){
 
 VectorXd DriverUnitreeH1::get_upper_body_joint_positions() const {
     
+    // Check the robot is initialised
     if(current_status_!=STATUS::INITIALIZED){
         throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_positions] Function called when robot is not properly initialised!");
     }
+
+    // Check that the subscriber is still working
+    impl_->check_robot_still_connected();
 
     VectorXd current_jpos_rad = VectorXd::Zero(upper_body_joints_.size());
     for (int i = 0; i < upper_body_joints_.size(); ++i) {
@@ -487,6 +474,9 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_velocities() const {
         throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_velocities] Function called when robot is not properly initialised!");
     }
 
+    // Check that the subscriber is still working
+    impl_->check_robot_still_connected();
+
     VectorXd current_jvel_rad_per_sec = VectorXd::Zero(upper_body_joints_.size());
     for (int i = 0; i < upper_body_joints_.size(); ++i) {
         current_jvel_rad_per_sec(i) = impl_->state_msg_.motor_state().at(upper_body_joints_.at(i)).dq();
@@ -500,6 +490,9 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_torques() const {
         throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_torques] Function called when robot is not properly initialised!");
     }
 
+    // Check that the subscriber is still working
+    impl_->check_robot_still_connected();
+
     VectorXd current_jtorque_Nm = VectorXd::Zero(upper_body_joints_.size());
     for (int i = 0; i < upper_body_joints_.size(); ++i) {
         current_jtorque_Nm(i) = impl_->state_msg_.motor_state().at(upper_body_joints_.at(i)).tau_est();
@@ -512,6 +505,9 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_temperatures() const {
     if(current_status_!=STATUS::INITIALIZED){
         throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_temperatures] Function called when robot is not properly initialised!");
     }
+
+    // Check that the subscriber is still working
+    impl_->check_robot_still_connected();
 
     VectorXd current_j_casing_temp_C = VectorXd::Zero(upper_body_joints_.size());
     
@@ -531,6 +527,9 @@ VectorXd DriverUnitreeH1::get_torso_velocity() const {
             throw std::runtime_error("[DriverUnitreeH1::get_torso_velocity] Function called when robot is not properly initialised!");
     }
     
+    // Check that the subscriber is still working
+    impl_->check_robot_still_connected();
+
     std::cout<<"DriverUnitreeH1::get_torso_velocity is not yet implemented"<<std::endl;
     return VectorXd::Zero(3);
 }
@@ -540,6 +539,9 @@ DQ DriverUnitreeH1::get_IMU_orientation() const {
     if(current_status_!=STATUS::INITIALIZED){
             throw std::runtime_error("[DriverUnitreeH1::get_IMU_orientation] Function called when robot is not properly initialised!");
     }
+
+    // Check that the subscriber is still working
+    impl_->check_robot_still_connected();
 
     VectorXd current_imu_orientation = VectorXd::Zero(4);
     
@@ -557,6 +559,9 @@ VectorXd DriverUnitreeH1::get_gyroscope_data() const {
             throw std::runtime_error("[DriverUnitreeH1::get_gyroscope_data] Function called when robot is not properly initialised!");
     }
 
+    // Check that the subscriber is still working
+    impl_->check_robot_still_connected();
+
     VectorXd gyroscope_data = VectorXd::Zero(3);
     
     for (int i = 0; i < gyroscope_data.size(); ++i) {
@@ -571,6 +576,9 @@ VectorXd DriverUnitreeH1::get_accelerometer_data() const {
     if(current_status_!=STATUS::INITIALIZED){
             throw std::runtime_error("[DriverUnitreeH1::get_accelerometer_data] Function called when robot is not properly initialised!");
     }
+
+    // Check that the subscriber is still working
+    impl_->check_robot_still_connected();
 
     VectorXd accelerometer_data = VectorXd::Zero(3);
     
@@ -587,6 +595,9 @@ VectorXd DriverUnitreeH1::get_Euler_angles() const {
             throw std::runtime_error("[DriverUnitreeH1::get_Euler_angles] Function called when robot is not properly initialised!");
     }
 
+    // Check that the subscriber is still working
+    impl_->check_robot_still_connected();
+
     VectorXd Euler_angles = VectorXd::Zero(3);
     
     for (int i = 0; i < Euler_angles.size(); ++i) {
@@ -602,6 +613,8 @@ int DriverUnitreeH1::get_IMU_temperature() const {
             throw std::runtime_error("[DriverUnitreeH1::get_IMU_temperature] Function called when robot is not properly initialised!");
     }
 
+    // Check that the subscriber is still working
+    impl_->check_robot_still_connected();
     
     int IMU_temp = impl_->state_msg_.imu_state().temperature();
 
@@ -666,7 +679,7 @@ void DriverUnitreeH1::set_stand_height_percent(const float desired_height_percen
     impl_->send_lower_body_control_message("SetStandHeight","DriverUnitreeH1::set_stand_height_percent",{absolute});
 }
 
-// ------'--------------------------------------
+// --------------------------------------------
 //  Setter functions
 // --------------------------------------------
 

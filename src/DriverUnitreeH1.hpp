@@ -1,5 +1,5 @@
 /*
-# (C) Copyright 2024-2026 Adorno-Lab software developments
+# Copyright (c) 2026-2026 Adorno-Lab software developments
 #
 #    This file is part of sas_robot_driver_unitree_h1.
 #

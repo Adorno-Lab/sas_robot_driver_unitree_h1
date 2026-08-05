@@ -1,3 +1,28 @@
+/*
+# Copyright (c) 2026-2026 Adorno-Lab software developments
+#
+#    This file is part of sas_robot_driver_unitree_h1.
+#
+#    This is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Lesser General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This software is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public License
+#    along with this software.  If not, see <https://www.gnu.org/licenses/>.
+#
+# ################################################################
+#
+#   Author: Daniel S. J. Derwent, email: daniel.derwent@manchester.ac.uk
+#
+# ################################################################
+*/
+
 #include <chrono>
 #include <iostream>
 #include <thread> 
@@ -23,12 +48,6 @@
 
 using namespace DQ_robotics;
 using namespace Eigen;
-
-/** To Do List:
- * Add copyright statement
- * Add joint limit tracking and enforcement
- * Add joint velocity limit enforcement
- */
 
 // #############################################
 //  Define Implementation Class (Impl)
@@ -206,6 +225,14 @@ public:
         cmd.tau(target_torque_Nm);
     }
 
+    /**
+     * @brief Scales a joint command based on the joint's proximity to its position limits.
+     *        As the joint approaches its upper or lower limit, the command magnitude is reduced
+     *        to avoid hitting the hard limit too quickly.
+     * @param original_command The original command value, either velocity or torque.
+     * @param joint_id The Unitree joint index to evaluate.
+     * @return The scaled command that respects joint limit proximity.
+     */
     float scale_command_based_on_joint_position(float original_command, int joint_id){
         auto current_position = state_msg_.motor_state().at(joint_id).q();
         if (original_command > 0.0)
@@ -1043,7 +1070,6 @@ void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_
 // #############################################
 
 /**
-/**
  * @brief Writes position commands to all upper body joints without sending the message.
  * @param target_positions_rad A VectorXd of target joint positions in radians.
  */
@@ -1055,7 +1081,6 @@ void DriverUnitreeH1::set_all_upper_body_joint_position_commands_(const VectorXd
 }
 
 /**
-/**
  * @brief Writes velocity commands to all upper body joints without sending the message.
  * @param target_velocities_rad_per_sec A VectorXd of target joint velocities in radians per second.
  */
@@ -1065,7 +1090,6 @@ void DriverUnitreeH1::set_all_upper_body_joint_velocity_commands_(const VectorXd
     }
 }
 
-/**
 /**
  * @brief Writes torque commands to all upper body joints without sending the message.
  * @param target_torques_Nm A VectorXd of target joint torques in Newton-meters.

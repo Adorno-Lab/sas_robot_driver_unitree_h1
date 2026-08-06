@@ -19,7 +19,7 @@
 # ################################################################
 #
 #   Author: Daniel S. J. Derwent, email: daniel.derwent@manchester.ac.uk
-#   based on the version of this file in the unitree H1 driver by Juan Jose Quiroz Omana
+#   based on the version of this file in the unitree B1 driver by Juan Jose Quiroz Omana
 #   https://github.com/Adorno-Lab/sas_robot_driver_unitree_b1/tree/main
 #
 # ################################################################
@@ -51,12 +51,11 @@ namespace sas
 
 struct RobotDriverUnitreeH1Configuration
 {
-    std::string dummy_variable = "Hello I am a dummy variable";
-//     std::string mode;              //const std::string mode= "PositionControl";
-//     bool LIE_DOWN_ROBOT_WHEN_DEINITIALIZE;  //std::string LIE_DOWN_ROBOT_WHEN_DEINITIALIZE
+    std::string mode;              //const std::string mode= "PositionControl";
+    bool ENTER_DAMPING_MODE_ON_DEINIT;  //std::string LIE_DOWN_ROBOT_WHEN_DEINITIALIZE
 //     std::string ROBOT_IP; //"192.168.123.220",  // Target IP   //192.168.123.10 for low-level mode
 //     int ROBOT_PORT; //    8082,              // Target port  //8007 for low-level mode
-//     std::string robot_name;
+    std::string robot_name;
 //     //double watchdog_period_in_seconds;
 //     bool FORCE_STAND_MODE_WHEN_HIGH_LEVEL_VELOCITIES_ARE_ZERO; // to handle this https://github.com/Adorno-Lab/sas_robot_driver_unitree_b1/issues/4
 };
@@ -64,18 +63,18 @@ struct RobotDriverUnitreeH1Configuration
 
 class RobotDriverUnitreeH1: public LeggedRobotDriver
 {
-// protected:
+protected:
 //     std::atomic_bool* st_break_loops_;
-//     std::string topic_prefix_;
-//     RobotDriverUnitreeH1Configuration configuration_;
-//     std::shared_ptr<rclcpp::Node> node_;
+    std::string topic_prefix_;
+    RobotDriverUnitreeH1Configuration configuration_;
+    std::shared_ptr<rclcpp::Node> node_;
 
 private:
-    // double timer_period_;
+    double timer_period_;
 
-    // int print_count_;
+    int print_count_;
 
-    // sas::Clock clock_;
+    sas::Clock clock_;
 
 
     //also equivalent to rclcpp::TimerBase::SharedPtr
@@ -136,18 +135,16 @@ private:
 public:
 
     RobotDriverUnitreeH1(const RobotDriverUnitreeH1&)=delete;
-    // RobotDriverUnitreeB1()=delete;
+    RobotDriverUnitreeH1()=delete;
     ~RobotDriverUnitreeH1();
-
-    RobotDriverUnitreeH1();
 
     // RobotDriverUnitreeH1(std::shared_ptr<Node>& node,
     //                      const RobotDriverUnitreeH1Configuration &configuration,
     //                      std::atomic_bool* break_loops);
 
-    // RobotDriverUnitreeH1(std::shared_ptr<Node>& node,
-    //                      const RobotDriverUnitreeH1Configuration &configuration,
-    //                      const std::shared_ptr<ShutdownSignaler>& shutdown_signaler);
+    RobotDriverUnitreeH1(std::shared_ptr<Node>& node,
+                         const RobotDriverUnitreeH1Configuration &configuration,
+                         const std::shared_ptr<ShutdownSignaler>& shutdown_signaler);
 
     //void control_loop();
 

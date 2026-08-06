@@ -110,6 +110,7 @@ class DriverUnitreeH1
     DriverUnitreeH1() = delete;
     DriverUnitreeH1(const DriverUnitreeH1&) = delete;
     DriverUnitreeH1& operator= (const DriverUnitreeH1&) = delete;
+    DriverUnitreeH1(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT);
     DriverUnitreeH1(std::string network_interface, std::string control_mode);
     DriverUnitreeH1(std::string network_interface);
 

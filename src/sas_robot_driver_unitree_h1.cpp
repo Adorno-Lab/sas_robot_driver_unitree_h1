@@ -39,67 +39,84 @@ namespace sas
 class RobotDriverUnitreeH1::Impl
 {
 public:
-//    std::shared_ptr<DriverUnitreeH1> unitree_h1_driver_; // needs to have it's arguments provided
+   std::shared_ptr<DriverUnitreeH1> unitree_h1_driver_;
 
    Impl() = default;
 };
 
-RobotDriverUnitreeH1::RobotDriverUnitreeH1()
-  : LeggedRobotDriver(static_cast<std::atomic_bool*>(nullptr)),
-    impl_(std::make_unique<Impl>())
+RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
+                                           const RobotDriverUnitreeH1Configuration &configuration,
+                                           const std::shared_ptr<ShutdownSignaler> &shutdown_signaler)
+    :LeggedRobotDriver{shutdown_signaler},
+    topic_prefix_{configuration.robot_name},
+    configuration_{configuration},
+    node_{node},
+    timer_period_{0.002},
+    print_count_{0},
+    clock_{0.002}
 {
+    impl_ = std::make_unique<RobotDriverUnitreeH1::Impl>();
+
+    impl_->unitree_h1_driver_ = std::make_shared<DriverUnitreeH1>("eth0", "position_controlled", configuration_.ENTER_DAMPING_MODE_ON_DEINIT);
 }
 
 RobotDriverUnitreeH1::~RobotDriverUnitreeH1() = default;
 
 VectorXd RobotDriverUnitreeH1::get_joint_positions()
 {
-   return VectorXd::Zero(0);
+   return impl_->unitree_h1_driver_->get_upper_body_joint_positions();
 }
 
 void RobotDriverUnitreeH1::set_target_joint_positions(const VectorXd& desired_joint_positions_rad)
 {
-   (void)desired_joint_positions_rad;
+   impl_->unitree_h1_driver_->set_upper_body_joint_positions(desired_joint_positions_rad);
 }
 
 VectorXd RobotDriverUnitreeH1::get_joint_velocities()
 {
-   return VectorXd::Zero(0);
+   return impl_->unitree_h1_driver_->get_upper_body_joint_velocities();
 }
 
 VectorXd RobotDriverUnitreeH1::get_joint_torques()
 {
-   return VectorXd::Zero(0);
+   return impl_->unitree_h1_driver_->get_upper_body_joint_torques();
 }
 
 void RobotDriverUnitreeH1::connect()
 {
+   impl_->unitree_h1_driver_->connect();
 }
 
 void RobotDriverUnitreeH1::disconnect()
 {
+   impl_->unitree_h1_driver_->disconnect();
 }
 
 void RobotDriverUnitreeH1::initialize()
 {
+   impl_->unitree_h1_driver_->initialize();
 }
 
 void RobotDriverUnitreeH1::deinitialize()
 {
+   impl_->unitree_h1_driver_->deinitialize();
 }
 
 void RobotDriverUnitreeH1::set_target_twist(const DQ& twist)
 {
+   // Pull elements from twist and call set_torso_velocity
    (void)twist;
 }
 
 void RobotDriverUnitreeH1::set_target_base_orientation(const DQ& r)
 {
+   // Not sure if the H1 can do this one
    (void)r;
 }
 
 void RobotDriverUnitreeH1::set_target_base_height(const double& base_height)
 {
+   // Need to decide whether to keep percentage model or not.
    (void)base_height;
 }
 

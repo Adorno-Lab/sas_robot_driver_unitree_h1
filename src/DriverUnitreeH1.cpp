@@ -433,6 +433,36 @@ public:
  * @param control_mode The requested control mode string: "position_controlled", "velocity_controlled", or "torque_controlled".
  * @throws runtime_error if the provided control_mode string is invalid.
  */
+DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT){
+
+    // Create implementation object
+    impl_ = std::make_shared<DriverUnitreeH1::Impl>();
+
+    // Process arguments
+    impl_->network_interface_ = network_interface;
+    impl_->enter_damping_mode_on_deinit_ = ENTER_DAMPING_MODE_ON_DEINIT;
+
+    if(control_mode=="position_controlled"){
+        current_mode_ = MODE::POSITION_CONTROLLED;
+    }
+    else if(control_mode=="velocity_controlled"){
+        current_mode_ = MODE::VELOCITY_CONTROLLED;
+    }
+    else if(control_mode=="torque_controlled"){
+        current_mode_ = MODE::TORQUE_CONTROLLED;
+    }
+    else{
+        throw std::runtime_error("[DriverUnitreeH1::DriverUnitreeH1] Invalid control mode string passed to constructor: '"+control_mode+"'");
+    }
+    
+}
+
+/**
+ * @brief Construct a DriverUnitreeH1 object with explicit network interface and control mode.
+ * @param network_interface The network interface to use for Unitree communication.
+ * @param control_mode The requested control mode string: "position_controlled", "velocity_controlled", or "torque_controlled".
+ * @throws runtime_error if the provided control_mode string is invalid.
+ */
 DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, std::string control_mode){
 
     // Create implementation object
@@ -482,6 +512,7 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface){
 void DriverUnitreeH1::connect(){
 
     std::cout << "Connecting..." << std::endl;
+    std::this_thread::sleep_for(impl_->comms_timeout_chrono_sec_);
 
     std::cout << "    Opening communications channel..." << std::endl;
     // Initialize the robot communication system with the given network interface.
@@ -526,6 +557,8 @@ void DriverUnitreeH1::connect(){
  */
 void DriverUnitreeH1::initialize(){
     std::cout << "Initialising..." << std::endl;
+    std::this_thread::sleep_for(impl_->comms_timeout_chrono_sec_);
+
     if(current_status_!=STATUS::CONNECTED){
         throw std::runtime_error("[DriverUnitreeH1::initialize] Initialize called when robot is not properly connected!");
     }
@@ -551,6 +584,7 @@ void DriverUnitreeH1::initialize(){
 void DriverUnitreeH1::deinitialize(){
     // IMPORTANT NOTE: This function is called by the SAS destructor. Therfore, for safety reasons, it must not
     // generate any exceptions.
+    std::this_thread::sleep_for(impl_->comms_timeout_chrono_sec_);
 
     if(current_status_!=STATUS::INITIALIZED){
         std::cout << "[ERROR] [DriverUnitreeH1::initialize] Deinitialize called when robot is not properly initialised!"<<std::endl;
@@ -605,7 +639,8 @@ void DriverUnitreeH1::deinitialize(){
 void DriverUnitreeH1::disconnect(){
     // IMPORTANT NOTE: This function is called by the SAS destructor. Therfore, for safety reasons, it must not
     // generate any exceptions.
-
+    std::this_thread::sleep_for(impl_->comms_timeout_chrono_sec_);
+    
     if(current_status_!=STATUS::DEINITIALIZED){
         std::cout << "[ERROR] [DriverUnitreeH1::disconnect] Disconnect called when robot is not properly deinitialised!"<<std::endl;
         return;

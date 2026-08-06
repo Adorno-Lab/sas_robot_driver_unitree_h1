@@ -122,6 +122,37 @@ install(
 )
 
 
+# ----------------------------------
+# Node executable
+# ----------------------------------
+add_executable(sas_robot_driver_unitree_h1_node
+  src/sas_robot_driver_unitree_h1_node_main.cpp
+)
+
+target_link_libraries(sas_robot_driver_unitree_h1_node
+  ${PROJECT_NAME}
+)
+
+ament_target_dependencies(sas_robot_driver_unitree_h1_node
+  rclcpp
+  sas_core
+  sas_common
+  sas_robot_driver
+)
+
+install(TARGETS sas_robot_driver_unitree_h1_node
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+)
+
+####################################
+# Launch files
+####################################
+install(
+  DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}/
+)
+
+
 ####################################
 # Test executables
 ####################################

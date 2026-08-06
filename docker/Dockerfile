@@ -26,4 +26,13 @@ COPY . /sas_robot_driver_unitree_h1
 RUN cat <<'EOF' >> ~/.bashrc
 alias build_and_source='[ -d build ] && rm -rf build; [ -d install ] && rm -rf install; [ -d log ] && rm -rf log; colcon build && source install/setup.bash'
 
+launch_h1_driver() {
+    if [ $# -ne 1 ]; then
+        echo "Usage: launch_driver <launch_file>"
+        return 1
+    fi
+
+    ros2 launch sas_robot_driver_unitree_h1 $1_H1_launch.py
+}
+
 EOF

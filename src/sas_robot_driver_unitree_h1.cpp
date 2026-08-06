@@ -33,6 +33,14 @@
 #include <sas_conversions/DQ_geometry_msgs_conversions.hpp>
 
 
+/* 
+To Add:
+- Set joint velocities and torques
+- Get stand height
+- IMU publishers
+- Temperature publishers
+*/
+
 namespace sas
 {
 
@@ -57,7 +65,9 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
 {
     impl_ = std::make_unique<RobotDriverUnitreeH1::Impl>();
 
-    impl_->unitree_h1_driver_ = std::make_shared<DriverUnitreeH1>("eth0", "position_controlled", configuration_.ENTER_DAMPING_MODE_ON_DEINIT);
+    impl_->unitree_h1_driver_ = std::make_shared<DriverUnitreeH1>(configuration_.network_interface, 
+                                                                  configuration_.mode, 
+                                                                  configuration_.ENTER_DAMPING_MODE_ON_DEINIT);
 }
 
 RobotDriverUnitreeH1::~RobotDriverUnitreeH1() = default;
@@ -104,20 +114,30 @@ void RobotDriverUnitreeH1::deinitialize()
 
 void RobotDriverUnitreeH1::set_target_twist(const DQ& twist)
 {
-   // Pull elements from twist and call set_torso_velocity
-   (void)twist;
+   const VectorXd twist_vec = twist.vec6();
+    //    0  1  2  3  4  5
+    //   wx wy wz vx vy vz
+    double vx = twist_vec(3);
+    double vy = twist_vec(4);
+    double wz = twist_vec(2);
+   VectorXd desired_velocity(3);
+   desired_velocity << vx, vy, wz;
+
+   impl_->unitree_h1_driver_->set_torso_velocity(desired_velocity);
 }
 
 void RobotDriverUnitreeH1::set_target_base_orientation(const DQ& r)
 {
-   // Not sure if the H1 can do this one
+   // Not implemented - unsure if the H1 supports this action
    (void)r;
 }
 
 void RobotDriverUnitreeH1::set_target_base_height(const double& base_height)
 {
-   // Need to decide whether to keep percentage model or not.
-   (void)base_height;
+   // Note that this function presumes the input, base_height, is between 0 and 100, denoting a 
+   // percentage of the configured standing height range, rather than an absolute number.
+   // This may need to change to maintain compatibility with other drivers.
+   impl_->unitree_h1_driver_->set_stand_height_percent(base_height);
 }
 
 }

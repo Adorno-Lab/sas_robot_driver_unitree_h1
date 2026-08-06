@@ -1,3 +1,6 @@
 [submodule "src/unitree_sdk2"]
 	path = src/unitree_sdk2
 	url = https://github.com/unitreerobotics/unitree_sdk2.git
+[submodule "src/sas_tools"]
+	path = src/sas_tools
+	url = https://github.com/Adorno-Lab/sas_tools

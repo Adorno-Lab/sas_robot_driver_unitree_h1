@@ -50,6 +50,8 @@ add_subdirectory(
 
 add_library(${PROJECT_NAME} SHARED
   src/DriverUnitreeH1.cpp
+  src/sas_robot_driver_unitree_h1.cpp
+  src/sas_tools/src/LeggedRobotDriver.cpp
 )
 
 
@@ -67,6 +69,8 @@ target_include_directories(${PROJECT_NAME}
     $<INSTALL_INTERFACE:include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:src>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/sas_tools/include>
+    $<INSTALL_INTERFACE:include>
 
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/unitree_sdk2/include

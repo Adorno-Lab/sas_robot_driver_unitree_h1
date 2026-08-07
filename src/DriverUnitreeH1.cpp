@@ -754,7 +754,7 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_torques() const {
  * @return A VectorXd of joint temperatures in degrees Celsius.
  * @throws runtime_error if the robot is not initialized or if the state subscriber has timed out.
  */
-VectorXd DriverUnitreeH1::get_upper_body_joint_temperatures() const {
+VectorXd DriverUnitreeH1::get_joint_temperatures() const {
     
     if(current_status_!=STATUS::INITIALIZED){
         throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_temperatures] Function called when robot is not properly initialised!");
@@ -763,10 +763,10 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_temperatures() const {
     // Check that the subscriber is still working
     impl_->check_robot_still_connected();
 
-    VectorXd current_j_casing_temp_C = VectorXd::Zero(upper_body_joints_.size());
+    VectorXd current_j_casing_temp_C = VectorXd::Zero(robot_joints_.size());
     
-    for (int i = 0; i < upper_body_joints_.size(); ++i) {
-        current_j_casing_temp_C(i) = static_cast<double>(impl_->state_msg_.motor_state().at(upper_body_joints_.at(i)).temperature());
+    for (int i = 0; i < robot_joints_.size(); ++i) {
+        current_j_casing_temp_C(i) = static_cast<double>(impl_->state_msg_.motor_state().at(robot_joints_.at(i)).temperature());
     }
     return current_j_casing_temp_C;
 }
@@ -814,7 +814,7 @@ DQ DriverUnitreeH1::get_IMU_orientation() const {
     }
 
     DQ imu_quat(current_imu_orientation);
-    return imu_quat;
+    return imu_quat.normalize();
 }
 
 /**

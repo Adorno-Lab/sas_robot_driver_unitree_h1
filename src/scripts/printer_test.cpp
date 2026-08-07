@@ -41,6 +41,7 @@ int main()
     // Create robot driver
     std::cout << "Creating robot driver..." << std::endl;
     DriverUnitreeH1 driver("eth0");
+    driver.enter_dummy_mode();
     std::cout << "    Done." << std::endl;
 
     // Connect
@@ -68,7 +69,7 @@ int main()
             auto positions = driver.get_upper_body_joint_positions();
             auto velocities = driver.get_upper_body_joint_velocities();
             auto torques = driver.get_upper_body_joint_torques();
-            auto joint_temps = driver.get_upper_body_joint_temperatures();
+            auto joint_temps = driver.get_joint_temperatures();
             // auto battery_soc = driver.get_battery_state_of_charge();
             // auto battery_temps = driver.get_battery_temperatures();
             auto IMU_quat = driver.get_IMU_orientation();

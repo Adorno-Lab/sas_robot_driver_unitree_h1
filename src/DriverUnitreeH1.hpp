@@ -122,7 +122,7 @@ class DriverUnitreeH1
     VectorXd get_upper_body_joint_positions() const;
     VectorXd get_upper_body_joint_velocities() const;
     VectorXd get_upper_body_joint_torques() const;
-    VectorXd get_upper_body_joint_temperatures() const;
+    VectorXd get_joint_temperatures() const;
 
     VectorXd get_torso_velocity() const;
 

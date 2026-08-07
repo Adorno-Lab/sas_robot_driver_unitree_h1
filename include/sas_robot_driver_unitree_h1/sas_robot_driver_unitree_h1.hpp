@@ -83,6 +83,8 @@ private:
 
     Publisher<sensor_msgs::msg::Imu>::SharedPtr publisher_IMU_state_;
     Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_IMU_orientation_;
+    Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr publisher_temperatures_;
+    
 //    // Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_last_IMU_orientation_when_robot_stopped_;
 //     Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_pose_state_;
 //     Publisher<sensor_msgs::msg::BatteryState>::SharedPtr publisher_battery_state_;
@@ -117,6 +119,7 @@ protected:
 
 //     void _read_joint_states_and_publish();
     void _read_imu_state_and_publish();
+    void _read_temperatures_and_publish();
 //     void _read_twist_state_and_publish();
 //    //publisher_rpy_angles_ void _read_rpy_angles_state_and_publish();
 //     void _read_battery_state();
@@ -156,7 +159,10 @@ public:
     void set_target_base_orientation(const DQ& r) override;
     void set_target_base_height(const double& base_height) override;
 
+    // Extra methods
+    void set_target_joint_velocities(const VectorXd& desired_joint_velocities_radps) override;
 
+    void set_target_joint_torques(const VectorXd& desired_joint_torques_Nm) override;
 
 };
 

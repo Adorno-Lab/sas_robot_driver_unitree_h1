@@ -81,8 +81,8 @@ private:
     // Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher_RR_joint_states_;
     // Publisher<sensor_msgs::msg::JointState>::SharedPtr publisher_RL_joint_states_;
 
-//     Publisher<sensor_msgs::msg::Imu>::SharedPtr publisher_IMU_state_;
-//     Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_IMU_orientation_;
+    Publisher<sensor_msgs::msg::Imu>::SharedPtr publisher_IMU_state_;
+    Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_IMU_orientation_;
 //    // Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_last_IMU_orientation_when_robot_stopped_;
 //     Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_pose_state_;
 //     Publisher<sensor_msgs::msg::BatteryState>::SharedPtr publisher_battery_state_;
@@ -108,16 +108,15 @@ private:
    // Subscription<sas_msgs::msg::Bool>::SharedPtr subscriber_emergency_stop_device_signal_;
    // void _callback_emergency_stop_device_signal(const sas_msgs::msg::Bool& msg);
 
-    //Implementation details that depend on FRI source files.
     class Impl;
     std::unique_ptr<Impl> impl_;
 
     // void _initial_settings();
 
-// protected:
+protected:
 
 //     void _read_joint_states_and_publish();
-//     void _read_imu_state_and_publish();
+    void _read_imu_state_and_publish();
 //     void _read_twist_state_and_publish();
 //    //publisher_rpy_angles_ void _read_rpy_angles_state_and_publish();
 //     void _read_battery_state();

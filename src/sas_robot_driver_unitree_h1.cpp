@@ -36,9 +36,10 @@
 /* 
 To Add:
 - Set joint velocities and torques
-- Get stand height
+- Get and set stand height
 - IMU publishers
 - Temperature publishers
+- Subscriber for desired twist
 */
 
 namespace sas
@@ -51,6 +52,10 @@ public:
 
    Impl() = default;
 };
+
+// ###########################################
+// Required Functions due to inheritance
+// ###########################################
 
 RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
                                            const RobotDriverUnitreeH1Configuration &configuration,
@@ -73,6 +78,22 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
       // This is the dummy robot, tell the driver that there is no real robot connected
       impl_->unitree_h1_driver_->enter_dummy_mode();
    }
+
+   // Create publishers and subscribers that aren't part of the base class
+   publisher_IMU_state_ = node_->create_publisher<sensor_msgs::msg::Imu>(topic_prefix_ + "/get/IMU_state", 1);
+   publisher_IMU_orientation_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(topic_prefix_ + "/get/imu_orientation",1);
+
+   // set the callback here
+   set_control_loop_callback([this]() {
+      try {
+         // _read_joint_states_and_publish();
+         _read_imu_state_and_publish();
+         // _read_battery_state();
+         // _read_twist_state_and_publish();
+         // _set_target_velocities_from_subscriber();
+         //_read_rpy_angles_state_and_publish();
+      } catch (...) {}
+    });
 }
 
 RobotDriverUnitreeH1::~RobotDriverUnitreeH1() = default;
@@ -145,4 +166,40 @@ void RobotDriverUnitreeH1::set_target_base_height(const double& base_height)
    impl_->unitree_h1_driver_->set_stand_height_percent(base_height);
 }
 
+// ###########################################
+// Additional Functions
+// ###########################################
+
+void RobotDriverUnitreeH1::_read_imu_state_and_publish()
+{
+    sensor_msgs::msg::Imu ros_msg_imu;
+    ros_msg_imu.header.stamp = node_->get_clock()->now();
+
+    geometry_msgs::msg::PoseStamped ros_msg_pose;
+    ros_msg_pose.header.stamp = node_->get_clock()->now();
+
+    DQ orientation = impl_->unitree_h1_driver_->get_IMU_orientation();
+
+    if (is_unit(orientation))
+    {
+        VectorXd vec_orientation = orientation.vec4();
+        ros_msg_imu.orientation.w = vec_orientation(0);
+        ros_msg_imu.orientation.x = vec_orientation(1);
+        ros_msg_imu.orientation.y = vec_orientation(2);
+        ros_msg_imu.orientation.z = vec_orientation(3);
+        publisher_IMU_orientation_->publish(sas::dq_to_geometry_msgs_pose_stamped(orientation));
+
+        VectorXd vec_angular_velocity = impl_->unitree_h1_driver_->get_gyroscope_data();
+        ros_msg_imu.angular_velocity.x = vec_angular_velocity(0);
+        ros_msg_imu.angular_velocity.y = vec_angular_velocity(1);
+        ros_msg_imu.angular_velocity.z = vec_angular_velocity(2);
+
+        VectorXd vec_acceleration = impl_->unitree_h1_driver_->get_accelerometer_data();
+        ros_msg_imu.linear_acceleration.x = vec_acceleration(0);
+        ros_msg_imu.linear_acceleration.y = vec_acceleration(1);
+        ros_msg_imu.linear_acceleration.z = vec_acceleration(2);
+
+        publisher_IMU_state_->publish(ros_msg_imu);
+    }
+   }
 }

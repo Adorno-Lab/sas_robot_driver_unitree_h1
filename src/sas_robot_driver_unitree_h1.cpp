@@ -33,12 +33,6 @@
 #include <sas_conversions/DQ_geometry_msgs_conversions.hpp>
 
 
-/* 
-To Add:
-- Get and set stand height
-- Subscriber for desired twist
-*/
-
 namespace sas
 {
 
@@ -80,12 +74,19 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
    publisher_IMU_state_ = node_->create_publisher<sensor_msgs::msg::Imu>(topic_prefix_ + "/get/IMU_state", 1);
    publisher_IMU_orientation_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(topic_prefix_ + "/get/imu_orientation",1);
    publisher_temperatures_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(topic_prefix_ + "/get/temperatures",1);
+   publisher_stand_height_percent_ = node_->create_publisher<std_msgs::msg::Float64>(topic_prefix_ + "/get/stand_height_percent",1);
 
    subscriber_target_twist_ = node_->create_subscription<geometry_msgs::msg::TwistStamped>(
-        topic_prefix_ + "/set/target_twist",
-        1,
-        std::bind(&RobotDriverUnitreeH1::_callback_target_twist, this, std::placeholders::_1)
-        );
+      topic_prefix_ + "/set/target_twist",
+      1,
+      std::bind(&RobotDriverUnitreeH1::_callback_target_twist, this, std::placeholders::_1)
+   );
+
+   subscriber_target_stand_height_percent_ = node_->create_subscription<std_msgs::msg::Float64>(
+      topic_prefix_ + "/set/stand_height_percent",
+      1,
+      std::bind(&RobotDriverUnitreeH1::_callback_target_stand_height_percent, this, std::placeholders::_1)
+   );
 
    // set the callback here
    set_control_loop_callback([this]() {
@@ -96,6 +97,8 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
          // _read_battery_state();
          // _read_twist_state_and_publish();
          _set_torso_velocities_from_subscriber();
+         _read_stand_height_and_publish();
+         
          // _set_target_velocities_from_subscriber();
          //_read_rpy_angles_state_and_publish();
       } catch (const std::exception& e) {
@@ -231,16 +234,34 @@ void RobotDriverUnitreeH1::_read_temperatures_and_publish()
    publisher_temperatures_->publish(msg);
 }
 
+void RobotDriverUnitreeH1::_read_stand_height_and_publish()
+{
+   auto stand_height_percent = impl_->unitree_h1_driver_->get_stand_height_percent();
+      
+   std_msgs::msg::Float64 msg;
+
+   msg.data=stand_height_percent;
+
+   publisher_stand_height_percent_->publish(msg);
+}
+
 void RobotDriverUnitreeH1::_callback_target_twist(const geometry_msgs::msg::TwistStamped& msg)
 {
-    target_twist_ <<msg.twist.angular.x,
-                    msg.twist.angular.y,
-                    msg.twist.angular.z,
-                    msg.twist.linear.x,
-                    msg.twist.linear.y,
-                    msg.twist.linear.z;
+   target_twist_ <<msg.twist.angular.x,
+                  msg.twist.angular.y,
+                  msg.twist.angular.z,
+                  msg.twist.linear.x,
+                  msg.twist.linear.y,
+                  msg.twist.linear.z;
 
-    new_target_twist_available_ = true;
+   new_target_twist_available_ = true;
+}
+
+void RobotDriverUnitreeH1::_callback_target_stand_height_percent(const std_msgs::msg::Float64& msg)
+{
+   target_stand_height_percent_=msg.data;
+
+   new_target_stand_height_percent_available_ = true;
 }
 
 void RobotDriverUnitreeH1::_set_torso_velocities_from_subscriber()
@@ -256,6 +277,15 @@ void RobotDriverUnitreeH1::_set_torso_velocities_from_subscriber()
 
         new_target_twist_available_ = false;
     }
+}
+
+void RobotDriverUnitreeH1::_set_stand_height_percent_from_subscriber()
+{
+   if (new_target_stand_height_percent_available_)
+   {
+      impl_->unitree_h1_driver_->set_stand_height_percent(target_stand_height_percent_);
+      new_target_stand_height_percent_available_ = false;
+   }
 }
 
 void RobotDriverUnitreeH1::set_target_joint_velocities(const VectorXd& desired_joint_velocities_radps){

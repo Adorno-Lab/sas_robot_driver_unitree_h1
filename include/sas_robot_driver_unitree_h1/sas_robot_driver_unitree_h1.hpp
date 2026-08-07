@@ -33,6 +33,7 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
+#include "std_msgs/msg/float64.hpp"
 #include <std_msgs/msg/int32_multi_array.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <sensor_msgs/msg/imu.hpp>
@@ -84,6 +85,7 @@ private:
     Publisher<sensor_msgs::msg::Imu>::SharedPtr publisher_IMU_state_;
     Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_IMU_orientation_;
     Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr publisher_temperatures_;
+    Publisher<std_msgs::msg::Float64>::SharedPtr publisher_stand_height_percent_;
     
 //    // Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_last_IMU_orientation_when_robot_stopped_;
 //     Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_pose_state_;
@@ -103,6 +105,11 @@ private:
     void _callback_target_twist(const geometry_msgs::msg::TwistStamped& msg);
     bool new_target_twist_available_{false};
 
+    Subscription<std_msgs::msg::Float64>::SharedPtr subscriber_target_stand_height_percent_;
+    double target_stand_height_percent_ = 50;
+    void _callback_target_stand_height_percent(const std_msgs::msg::Float64& msg);
+    bool new_target_stand_height_percent_available_{false};
+
    // Subscription<sas_msgs::msg::Bool>::SharedPtr subscriber_shutdown_signal_;
    // void _callback_shutdown_signal_(const sas_msgs::msg::Bool& msg);
    // bool shutdown_signal_;
@@ -121,6 +128,8 @@ protected:
     void _read_imu_state_and_publish();
     void _read_temperatures_and_publish();
     void _set_torso_velocities_from_subscriber();
+    void _set_stand_height_percent_from_subscriber();
+    void _read_stand_height_and_publish();
 //     void _read_twist_state_and_publish();
 //    //publisher_rpy_angles_ void _read_rpy_angles_state_and_publish();
 //     void _read_battery_state();

@@ -81,6 +81,12 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
    publisher_IMU_orientation_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(topic_prefix_ + "/get/imu_orientation",1);
    publisher_temperatures_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(topic_prefix_ + "/get/temperatures",1);
 
+   subscriber_target_twist_ = node_->create_subscription<geometry_msgs::msg::TwistStamped>(
+        topic_prefix_ + "/set/target_twist",
+        1,
+        std::bind(&RobotDriverUnitreeH1::_callback_target_twist, this, std::placeholders::_1)
+        );
+
    // set the callback here
    set_control_loop_callback([this]() {
       try {
@@ -89,6 +95,7 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
          _read_temperatures_and_publish();
          // _read_battery_state();
          // _read_twist_state_and_publish();
+         _set_torso_velocities_from_subscriber();
          // _set_target_velocities_from_subscriber();
          //_read_rpy_angles_state_and_publish();
       } catch (const std::exception& e) {
@@ -139,6 +146,9 @@ void RobotDriverUnitreeH1::deinitialize()
    impl_->unitree_h1_driver_->deinitialize();
 }
 
+// This function is required by the base class, but there isn't a subscriber to set it by default, so
+// this functionality needs to be handled in the control loop anyway. Thus, im not sure why this function
+// needs to be here, since it isn't called anywhere.
 void RobotDriverUnitreeH1::set_target_twist(const DQ& twist)
 {
    const VectorXd twist_vec = twist.vec6();
@@ -219,6 +229,33 @@ void RobotDriverUnitreeH1::_read_temperatures_and_publish()
                   joint_temps.data(),
                   joint_temps.data() + joint_temps.size());
    publisher_temperatures_->publish(msg);
+}
+
+void RobotDriverUnitreeH1::_callback_target_twist(const geometry_msgs::msg::TwistStamped& msg)
+{
+    target_twist_ <<msg.twist.angular.x,
+                    msg.twist.angular.y,
+                    msg.twist.angular.z,
+                    msg.twist.linear.x,
+                    msg.twist.linear.y,
+                    msg.twist.linear.z;
+
+    new_target_twist_available_ = true;
+}
+
+void RobotDriverUnitreeH1::_set_torso_velocities_from_subscriber()
+{
+    if (new_target_twist_available_)
+    {
+        //    0  1  2  3  4  5
+        //   wx wy wz vx vy vz
+        VectorXd desired_velocities(3);
+        desired_velocities << target_twist_(3), target_twist_(4), target_twist_(2);
+
+        impl_->unitree_h1_driver_->set_torso_velocity(desired_velocities);
+
+        new_target_twist_available_ = false;
+    }
 }
 
 void RobotDriverUnitreeH1::set_target_joint_velocities(const VectorXd& desired_joint_velocities_radps){

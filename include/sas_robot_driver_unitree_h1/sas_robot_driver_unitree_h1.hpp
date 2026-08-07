@@ -98,10 +98,10 @@ private:
     // bool new_target_velocities_available_{false};
     // //-------------------------------------------------------------------------------------------------------//
 
-    // Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr subscriber_target_twist_;
-    // VectorXd target_twist_ = VectorXd::Zero(6);
-    // void _callback_target_twist(const geometry_msgs::msg::TwistStamped& msg);
-    // bool new_target_twist_available_{false};
+    Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr subscriber_target_twist_;
+    VectorXd target_twist_ = VectorXd::Zero(6);
+    void _callback_target_twist(const geometry_msgs::msg::TwistStamped& msg);
+    bool new_target_twist_available_{false};
 
    // Subscription<sas_msgs::msg::Bool>::SharedPtr subscriber_shutdown_signal_;
    // void _callback_shutdown_signal_(const sas_msgs::msg::Bool& msg);
@@ -120,6 +120,7 @@ protected:
 //     void _read_joint_states_and_publish();
     void _read_imu_state_and_publish();
     void _read_temperatures_and_publish();
+    void _set_torso_velocities_from_subscriber();
 //     void _read_twist_state_and_publish();
 //    //publisher_rpy_angles_ void _read_rpy_angles_state_and_publish();
 //     void _read_battery_state();

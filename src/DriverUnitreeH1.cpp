@@ -62,6 +62,7 @@ public:
     // #############################################
 
     std::string network_interface_ = "Not Initialised";
+    bool is_dummy_robot_ = false;
 
     std::shared_ptr<unitree::robot::h1::LocoClient> locomotion_client_;
 
@@ -280,6 +281,11 @@ public:
      */
     void check_upper_body_subscriber_setup(std::string calling_function){
 
+        // Skip this check if the driver is in dummy mode.
+        if(is_dummy_robot_){
+            return;
+        }
+
         // Check that the channel has been initialised (time is -1 if not)
         float result = upper_body_subscriber_->GetLastDataAvailableTime();
         if (result<0)
@@ -355,6 +361,11 @@ public:
         int32_t loco_client_return_code = 0;
         float this_function_return_value = 0.0f;
 
+        // Skip this check if the driver is in dummy mode.
+        if(is_dummy_robot_){
+            return this_function_return_value;
+        }
+
         if (message == "Init") {
             locomotion_client_->Init(); // initialize the connection
         }
@@ -409,6 +420,12 @@ public:
      * @throws runtime_error if the state subscriber has not received a recent message within the configured timeout.
      */
     void check_robot_still_connected(){  
+
+        // Skip this check if the driver is in dummy mode.
+        if(is_dummy_robot_){
+            return;
+        }
+
         int64_t most_recent_message_time = upper_body_subscriber_->GetLastDataAvailableTime();  
         int64_t now = unitree::common::GetCurrentMonotonicTimeNanosecond();  
         double elapsed_sec = static_cast<double>(now - most_recent_message_time) / 1e9;  
@@ -962,6 +979,11 @@ void DriverUnitreeH1::set_stand_height_percent(const float desired_height_percen
     float absolute = ((desired_height_percent/100)*0.2)+0.6;
     // impl_->locomotion_client_->SetStandHeight(absolute);
     impl_->send_lower_body_control_message("SetStandHeight","DriverUnitreeH1::set_stand_height_percent",{absolute});
+}
+
+void DriverUnitreeH1::enter_dummy_mode(){
+    std::cout<<"DRIVER ENTERING DUMMY MODE! This will disable some safety checks! Do not do this if you are connected to a real robot!"<<std::endl;
+    impl_->is_dummy_robot_ = true;
 }
 
 // --------------------------------------------

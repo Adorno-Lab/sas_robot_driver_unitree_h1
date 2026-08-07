@@ -146,6 +146,8 @@ class DriverUnitreeH1
 
     void set_stand_height_percent(const float desired_height_percent);
 
+    void enter_dummy_mode();
+
     private:
 
     void set_all_upper_body_joint_position_commands_(const VectorXd& target_positions_rad);

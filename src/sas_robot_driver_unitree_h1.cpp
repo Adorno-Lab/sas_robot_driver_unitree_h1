@@ -68,6 +68,11 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
     impl_->unitree_h1_driver_ = std::make_shared<DriverUnitreeH1>(configuration_.network_interface, 
                                                                   configuration_.mode, 
                                                                   configuration_.ENTER_DAMPING_MODE_ON_DEINIT);
+
+   if(configuration_.robot_name=="Dummy"){
+      // This is the dummy robot, tell the driver that there is no real robot connected
+      impl_->unitree_h1_driver_->enter_dummy_mode();
+   }
 }
 
 RobotDriverUnitreeH1::~RobotDriverUnitreeH1() = default;

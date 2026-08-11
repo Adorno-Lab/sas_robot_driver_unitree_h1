@@ -1,13 +1,8 @@
-# sas_robot_driver_unitree_h1 - "Clean Slate" branch
+# sas_robot_driver_unitree_h1
 
 ![GitHub License](https://img.shields.io/github/license/Adorno-Lab/sas_robot_driver_unitree_z1)![Static Badge](https://img.shields.io/badge/ROS2-Jazzy-blue)![Static Badge](https://img.shields.io/badge/powered_by-DQ_Robotics-red)![Static Badge](https://img.shields.io/badge/SmartArmStack-green)![Static Badge](https://img.shields.io/badge/Ubuntu-24.04_LTS-orange)
 
-> [!CAUTION]
-> This repository stores a WIP SAS driver for the Unitree H1. The driver is in very early development. Currently, this code is not suitable for use by anyone.
-
-This branch contains a different approach to the H1 SAS driver development in which, rather than editing the B1 driver to fit the H1, we instead start developing the H1 driver from a "clean slate". Beginning by developing a simple C++ class for interfacing with the robot, which will then be wrapped with a different class that handles the SAS interface. This was the approach taken by Juan to develop the B1 driver.
-
-Currently a minimum viable version of the C++ class has been created, but there remain many features to add. SAS has not yet been integrated.
+This repository contains a SAS driver for the Unitree H1, developed based on that for the Unitree B1 by Juan José Quiroz Omaña. The H1 drivers are being maintained by Daniel S. J. Derwent. Feel free to contact me at [daniel.derwent@manchester.ac.uk](mailti:daniel.derwent@manchester.ac.uk) with any questions or issues.
 
 ## Instructions
 

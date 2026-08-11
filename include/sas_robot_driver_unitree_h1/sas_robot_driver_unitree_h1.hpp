@@ -34,6 +34,7 @@
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 #include "std_msgs/msg/float64.hpp"
+#include <std_msgs/msg/string.hpp>
 #include <std_msgs/msg/int32_multi_array.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <sensor_msgs/msg/imu.hpp>
@@ -43,6 +44,7 @@
 #include <sas_msgs/msg/bool.hpp>
 #include <sas_core/sas_robot_driver.hpp>
 #include <sas_tools/LeggedRobotDriver.hpp>
+
 //using namespace Eigen;
 
 using namespace rclcpp;
@@ -109,6 +111,9 @@ private:
     double target_stand_height_percent_ = 50;
     void _callback_target_stand_height_percent(const std_msgs::msg::Float64& msg);
     bool new_target_stand_height_percent_available_{false};
+
+    Subscription<std_msgs::msg::String>::SharedPtr subscriber_set_control_mode_;
+    void _callback_set_control_mode(const std_msgs::msg::String& msg);
 
    // Subscription<sas_msgs::msg::Bool>::SharedPtr subscriber_shutdown_signal_;
    // void _callback_shutdown_signal_(const sas_msgs::msg::Bool& msg);

@@ -123,7 +123,7 @@ install(
 
 
 # ----------------------------------
-# Node executable
+# Node executables
 # ----------------------------------
 add_executable(sas_robot_driver_unitree_h1_node
   src/sas_robot_driver_unitree_h1_node_main.cpp
@@ -144,6 +144,7 @@ install(TARGETS sas_robot_driver_unitree_h1_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
+
 ####################################
 # Launch files
 ####################################
@@ -158,7 +159,7 @@ install(
 ####################################
 
 add_executable(basic_test
-  src/scripts/basic_test.cpp
+  src/standalone_scripts/basic_test.cpp
 )
 
 target_link_libraries(basic_test
@@ -167,7 +168,7 @@ target_link_libraries(basic_test
 
 
 add_executable(velocity_test
-  src/scripts/velocity_test.cpp
+  src/standalone_scripts/velocity_test.cpp
 )
 
 target_link_libraries(velocity_test
@@ -176,7 +177,7 @@ target_link_libraries(velocity_test
 
 
 add_executable(printer_test
-  src/scripts/printer_test.cpp
+  src/standalone_scripts/printer_test.cpp
 )
 
 target_link_libraries(printer_test
@@ -185,7 +186,7 @@ target_link_libraries(printer_test
 
 
 add_executable(torque_test
-  src/scripts/torque_test.cpp
+  src/standalone_scripts/torque_test.cpp
 )
 
 target_link_libraries(torque_test
@@ -193,7 +194,7 @@ target_link_libraries(torque_test
 )
 
 add_executable(standing_test
-  src/scripts/standing_test.cpp
+  src/standalone_scripts/standing_test.cpp
 )
 
 target_link_libraries(standing_test
@@ -201,7 +202,7 @@ target_link_libraries(standing_test
 )
 
 add_executable(mode_test
-  src/scripts/mode_test.cpp
+  src/standalone_scripts/mode_test.cpp
 )
 
 target_link_libraries(mode_test
@@ -209,10 +210,26 @@ target_link_libraries(mode_test
 )
 
 add_executable(limit_test
-  src/scripts/limit_test.cpp
+  src/standalone_scripts/limit_test.cpp
 )
 
 target_link_libraries(limit_test
+  ${PROJECT_NAME}
+)
+
+add_executable(ROS2_basic_test
+  src/ROS2_scripts/ROS2_basic_test.cpp
+)
+
+target_link_libraries(ROS2_basic_test
+  ${PROJECT_NAME}
+)
+
+add_executable(ROS2_velocity_test
+  src/ROS2_scripts/ROS2_velocity_test.cpp
+)
+
+target_link_libraries(ROS2_velocity_test
   ${PROJECT_NAME}
 )
 

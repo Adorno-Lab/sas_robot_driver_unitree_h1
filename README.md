@@ -71,10 +71,18 @@ Then the code can be build with the alias:
 build_and_source
 ```
 
-And executables can be run using:
+The test executables can be run using:
 
 ```shell
 build/sas_robot_driver_unitree_h1/<executable_name>
 ```
 
-for example, `build/sas_robot_driver_unitree_h1/basic_test`, will run the example in `basic_test.cpp`.
+for example, `build/sas_robot_driver_unitree_h1/basic_test`, will run the example in `basic_test.cpp`. The scripts in `src/standalone_scripts` use the standalone C++ driver class (with no SAS / ROS functionality) in order to test basic features. In contrast, those in `src/ROS2_scripts` use the full SAS / ROS2 driver interface, and the drivers must already be running in another terminal before these scripts can be used.
+
+To launch the drivers use
+
+```shell
+launch_h1_driver <robot>
+```
+
+where `<robot>` is `yellow` or `blue` (for the real robots) or `dummy` for the dummy robot. The dummy robot allows the drivers to be tested while not connected to a real robot, disabling the checks that ensure that a real robot is connected and communicating. 

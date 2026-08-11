@@ -43,6 +43,7 @@ class DriverUnitreeH1
         TORQUE_CONTROLLED
     };
     MODE current_mode_{MODE::POSITION_CONTROLLED};
+    std::string current_mode_string_ = "position_controlled";
 
     enum class STATUS{
         IDLE,
@@ -138,6 +139,8 @@ class DriverUnitreeH1
     int get_battery_state_of_charge() const;
 
     void change_control_mode(const std::string& new_mode);
+    std::string get_control_mode();
+
     void set_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad);
     void set_upper_body_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec);
     void set_upper_body_joint_torques(const VectorXd& desired_joint_torques_Nm);

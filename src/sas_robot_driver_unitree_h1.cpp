@@ -32,7 +32,6 @@
 #include <sas_core/eigen3_std_conversions.hpp>
 #include <sas_conversions/DQ_geometry_msgs_conversions.hpp>
 
-
 namespace sas
 {
 
@@ -88,16 +87,23 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
       std::bind(&RobotDriverUnitreeH1::_callback_target_stand_height_percent, this, std::placeholders::_1)
    );
 
+   subscriber_set_control_mode_ = node_->create_subscription<std_msgs::msg::String>(
+      topic_prefix_ + "/set/control_mode",
+      1,
+      std::bind(&RobotDriverUnitreeH1::_callback_set_control_mode, this, std::placeholders::_1)
+   );
+
    // set the callback here
    set_control_loop_callback([this]() {
       try {
          // _read_joint_states_and_publish();
          _read_imu_state_and_publish();
          _read_temperatures_and_publish();
+         _read_stand_height_and_publish();
          // _read_battery_state();
          // _read_twist_state_and_publish();
          _set_torso_velocities_from_subscriber();
-         _read_stand_height_and_publish();
+         _set_stand_height_percent_from_subscriber();
          
          // _set_target_velocities_from_subscriber();
          //_read_rpy_angles_state_and_publish();
@@ -186,16 +192,15 @@ void RobotDriverUnitreeH1::set_target_base_height(const double& base_height)
 
 void RobotDriverUnitreeH1::_read_imu_state_and_publish()
 {
-    sensor_msgs::msg::Imu ros_msg_imu;
-    ros_msg_imu.header.stamp = node_->get_clock()->now();
+   sensor_msgs::msg::Imu ros_msg_imu;
+   ros_msg_imu.header.stamp = node_->get_clock()->now();
 
-    geometry_msgs::msg::PoseStamped ros_msg_pose;
-    ros_msg_pose.header.stamp = node_->get_clock()->now();
+   geometry_msgs::msg::PoseStamped ros_msg_pose;
+   ros_msg_pose.header.stamp = node_->get_clock()->now();
 
-    DQ orientation = impl_->unitree_h1_driver_->get_IMU_orientation();
+   DQ orientation = impl_->unitree_h1_driver_->get_IMU_orientation();
 
-    if (is_unit(orientation))
-    {
+   if (is_unit(orientation)){
       VectorXd vec_orientation = orientation.vec4();
       ros_msg_imu.orientation.w = vec_orientation(0);
       ros_msg_imu.orientation.x = vec_orientation(1);
@@ -214,9 +219,9 @@ void RobotDriverUnitreeH1::_read_imu_state_and_publish()
       ros_msg_imu.linear_acceleration.y = vec_acceleration(1);
       ros_msg_imu.linear_acceleration.z = vec_acceleration(2);
 
-        publisher_IMU_state_->publish(ros_msg_imu);
-      }
+      publisher_IMU_state_->publish(ros_msg_imu);
    }
+}
 
 void RobotDriverUnitreeH1::_read_temperatures_and_publish()
 {
@@ -262,6 +267,11 @@ void RobotDriverUnitreeH1::_callback_target_stand_height_percent(const std_msgs:
    target_stand_height_percent_=msg.data;
 
    new_target_stand_height_percent_available_ = true;
+}
+
+void RobotDriverUnitreeH1::_callback_set_control_mode(const std_msgs::msg::String& msg)
+{
+   impl_->unitree_h1_driver_->change_control_mode(msg.data);
 }
 
 void RobotDriverUnitreeH1::_set_torso_velocities_from_subscriber()

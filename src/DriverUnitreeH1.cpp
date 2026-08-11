@@ -78,7 +78,7 @@ public:
     static constexpr std::chrono::duration<double> comms_timeout_chrono_sec_ {comms_timeout_sec_};
     static constexpr float kp_ = 60.f;
     static constexpr float pos_cmd_kd_ = 1.5f;
-    static constexpr float vel_cmd_kd_ = 10.f;
+    static constexpr float vel_cmd_kd_ = 9.f;
     static constexpr std::chrono::duration<double> weight_ramp_overall_duration_sec_{4.0};
     static constexpr float expected_firmware_update_period_sec_ = 0.02;
     static constexpr std::chrono::duration<double> expected_firmware_update_period_chrono_sec_ {expected_firmware_update_period_sec_};
@@ -471,6 +471,7 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, std::string cont
     else{
         throw std::runtime_error("[DriverUnitreeH1::DriverUnitreeH1] Invalid control mode string passed to constructor: '"+control_mode+"'");
     }
+    current_mode_string_ = control_mode;
     
 }
 
@@ -500,7 +501,7 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, std::string cont
     else{
         throw std::runtime_error("[DriverUnitreeH1::DriverUnitreeH1] Invalid control mode string passed to constructor: '"+control_mode+"'");
     }
-    
+    current_mode_string_ = control_mode;
 }
 
 /**
@@ -517,6 +518,7 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface){
 
     // Enact defaults
     current_mode_ = MODE::POSITION_CONTROLLED;
+    current_mode_string_ = "position_controlled";
     
 }
 
@@ -1000,7 +1002,7 @@ void DriverUnitreeH1::change_control_mode(const std::string& new_mode) {
     if(current_status_!=STATUS::INITIALIZED){
         throw std::runtime_error("[DriverUnitreeH1::change_control_mode] Function called when robot is not properly initialised!");
     }
-
+    std::string old_mode = current_mode_string_;
     if(new_mode=="position_controlled"){
         current_mode_ = MODE::POSITION_CONTROLLED;
     }
@@ -1013,6 +1015,19 @@ void DriverUnitreeH1::change_control_mode(const std::string& new_mode) {
     else{
         throw std::runtime_error("[DriverUnitreeH1::change_control_mode] Invalid control mode string passed to function: '"+new_mode+"'");
     }
+    current_mode_string_ = new_mode;
+
+    std::cout<<"[WARNING] CONTROL MODE CHANGED FROM '"<<old_mode<<"' TO '"<<new_mode<<"'"<<std::endl;
+
+}
+
+std::string DriverUnitreeH1::get_control_mode() {
+    
+    if(current_status_!=STATUS::INITIALIZED){
+        throw std::runtime_error("[DriverUnitreeH1::get_control_mode] Function called when robot is not properly initialised!");
+    }
+
+    return current_mode_string_;
 }
 
 /**

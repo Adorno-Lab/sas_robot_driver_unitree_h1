@@ -2,11 +2,37 @@
 
 ![GitHub License](https://img.shields.io/github/license/Adorno-Lab/sas_robot_driver_unitree_z1)![Static Badge](https://img.shields.io/badge/ROS2-Jazzy-blue)![Static Badge](https://img.shields.io/badge/powered_by-DQ_Robotics-red)![Static Badge](https://img.shields.io/badge/SmartArmStack-green)![Static Badge](https://img.shields.io/badge/Ubuntu-24.04_LTS-orange)
 
-This repository contains a SAS driver for the Unitree H1, developed based on that for the Unitree B1 by Juan José Quiroz Omaña. The H1 drivers are being maintained by Daniel S. J. Derwent. Feel free to contact me at [daniel.derwent@manchester.ac.uk](mailto:daniel.derwent@manchester.ac.uk) with any questions or issues.
+This repository contains a SAS driver and simulation capabilities for the Unitree H1, developed based on that for the Unitree B1 by Juan José Quiroz Omaña. The H1 drivers are being maintained by Daniel S. J. Derwent. Feel free to contact me at [daniel.derwent@manchester.ac.uk](mailto:daniel.derwent@manchester.ac.uk) with any questions or issues.
 
-## Instructions
 
-To use this driver, first ensure that you have a computer with docker installed, and set up the H1 on a crane (though don't power it on yet). The robot is not currently connected to the internet, so file transfer must be via your computer. Begin by pulling the files you will need to transfer to the robot, these include this repo:
+## How to use the simulator
+To use the simulator, first ensure that you have a computer with docker installed, and then close this repo with its submodules:
+
+```shell
+git clone git@github.com:Adorno-Lab/sas_robot_driver_unitree_h1.git --recursive
+```
+
+Then, you can build the simulator image with
+
+```shell
+sh h1_simulator_build.sh
+```
+
+and once that's built, you can start it using
+
+```shell
+sh h1_simulator_start.sh
+```
+
+The simulator uses the [sas_robot_driver_coppeliasim package](https://github.com/MarinhoLab/sas_robot_driver_coppeliasim), which allows the simulated robot to be controlled using a standard SAS interface.
+
+At time of writing, the simulator is currently limited to scenarios where the robot base is fixed and only the upper body joints are actuated, but more generalised capabilities are planned soon.
+
+## How to use the hardware drivers
+
+To use the drivers on the real robot, first ensure that you have a computer with docker installed, and set up the H1 on a crane (though don't power it on yet). The robot is not currently connected to the internet, so file transfer must be via your computer. 
+
+Begin, by pulling the files you will need to transfer to the robot, these include this repo:
 
 ```shell
 git clone git@github.com:Adorno-Lab/sas_robot_driver_unitree_h1.git --recursive
@@ -51,13 +77,13 @@ Then build the container
 
 ```shell
 cd sas_robot_driver_unitree_h1
-sh dev_build.sh
+sh h1_driver_build.sh
 ```
 
 Once the container has been built, you can enter it with
 
 ```shell
-sh dev_start.sh
+sh h1_driver_start.sh
 ```
 
 Then the code can be build with the alias:

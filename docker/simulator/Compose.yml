@@ -1,0 +1,28 @@
+# This file was adapted from that originally distributed 
+# with the sas_robot_driver_coppeliasim package by Murilo
+# M. Marinho
+# https://github.com/MarinhoLab/sas_robot_driver_coppeliasim
+
+services:
+  coppeliasim:
+    # image: murilomarinho/coppeliasim:latest
+    build: .
+    stop_signal: SIGINT
+    platform: linux/amd64 # No current build for arm64
+    environment:
+      - DISPLAY
+      - ROS_DOMAIN_ID
+      - COPPELIA_SIM_SCENE_FILE=h1FixedBaseScene.ttt
+      - COPPELIA_SIM_CONTAINER_SCENE_PATH=/root/sas_tutorial_workspace/src/scenes
+    privileged: true # Needed for some gpu configurations.
+    volumes:
+      - ../../simulation/:/root/sas_tutorial_workspace/src/ # share simulation directory in host with /root/sas_tutorial_workspace/src/ in container
+      - /tmp/.X11-unix:/tmp/.X11-unix # x server related
+      - ~/.Xauthority:/root/.Xauthority # x server related
+    command: /bin/bash -c "
+      ls "$$COPPELIA_SIM_CONTAINER_SCENE_PATH"
+      && [ -f "$$COPPELIA_SIM_CONTAINER_SCENE_PATH/$$COPPELIA_SIM_SCENE_FILE" ]
+      && cd "$$COPPELIASIM_PATH"
+      && ./coppeliaSim.sh 
+      -s0 \
+      "$$COPPELIA_SIM_CONTAINER_SCENE_PATH/$$COPPELIA_SIM_SCENE_FILE""

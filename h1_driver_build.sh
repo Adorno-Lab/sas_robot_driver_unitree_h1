@@ -4,5 +4,5 @@
 docker build \
     --build-arg BUILD_CODE=false \
     -t sas_robot_driver_unitree_h1 \
-    -f docker/Dockerfile \
+    -f docker/driver/Dockerfile \
     .

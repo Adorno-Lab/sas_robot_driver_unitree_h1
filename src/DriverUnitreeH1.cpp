@@ -809,8 +809,15 @@ DQ DriverUnitreeH1::get_IMU_orientation() const {
     // Check that the subscriber is still working
     impl_->check_robot_still_connected();
 
+    // If this is the dummy, then return 1.
+    if (impl_->is_dummy_robot_){
+        DQ imu_quat(1, 0, 0, 0, 0, 0, 0, 0);
+        return imu_quat.normalize();
+    }
+
+    // Otherwise, return the real IMU data
     VectorXd current_imu_orientation = VectorXd::Zero(4);
-    
+
     for (int i = 0; i < current_imu_orientation.size(); ++i) {
         current_imu_orientation(i) = impl_->state_msg_.imu_state().quaternion()[i];
     }
@@ -834,7 +841,13 @@ VectorXd DriverUnitreeH1::get_gyroscope_data() const {
     impl_->check_robot_still_connected();
 
     VectorXd gyroscope_data = VectorXd::Zero(3);
+
+    // If this is the dummy, then return 0.
+    if (impl_->is_dummy_robot_){
+        return gyroscope_data;
+    }
     
+    // Otherwise read the real gyro
     for (int i = 0; i < gyroscope_data.size(); ++i) {
         gyroscope_data(i) = impl_->state_msg_.imu_state().gyroscope()[i];
     }
@@ -857,7 +870,13 @@ VectorXd DriverUnitreeH1::get_accelerometer_data() const {
     impl_->check_robot_still_connected();
 
     VectorXd accelerometer_data = VectorXd::Zero(3);
+
+    // If this is the dummy, then return 0.
+    if (impl_->is_dummy_robot_){
+        return accelerometer_data;
+    }
     
+    // Otherwise read the real accelerometer
     for (int i = 0; i < accelerometer_data.size(); ++i) {
         accelerometer_data(i) = impl_->state_msg_.imu_state().accelerometer()[i];
     }

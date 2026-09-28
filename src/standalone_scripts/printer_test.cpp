@@ -36,12 +36,13 @@
 using namespace Eigen;
 using namespace DQ_robotics;
 
+bool simulation_mode = false; // Set to true to use the simulator rather than the real robot
+
 int main()
 {
     // Create robot driver
     std::cout << "Creating robot driver..." << std::endl;
-    DriverUnitreeH1 driver("eth0");
-    driver.enter_dummy_mode();
+    DriverUnitreeH1 driver("eth0", "position_controlled", false, simulation_mode);
     std::cout << "    Done." << std::endl;
 
     // Connect

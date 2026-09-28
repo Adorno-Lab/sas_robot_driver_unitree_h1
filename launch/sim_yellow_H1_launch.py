@@ -24,9 +24,9 @@
 # ################################################################
 
 """
-This launch file is for testing purposes only! It launches a dummy version of the driver that can run without a robot
-connected. This is achieved by disabling safety features and measures that ensure the connection is stable and maintained.
-This launch file should NEVER be used for a real robot.
+This launch file is for simulation purposes only. It launches the driver in simulation mode.
+This disables some safety features and measures that ensure the hardware connection
+is stable and maintained. Therefore, this launch file should NEVER be used for a real robot.
 """
 
 from launch import LaunchDescription
@@ -42,17 +42,18 @@ def generate_launch_description():
             Node(
                 package="sas_robot_driver_unitree_h1",
                 executable="sas_robot_driver_unitree_h1_node",
-                name="Dummy",
+                name="P_Body",
                 namespace="sas_h1",
                 output="screen",
                 emulate_tty=True,
                 parameters=[
                     {
-                        "robot_name": "Dummy",
+                        "robot_name": "P_Body",
                         "thread_sampling_time_sec": 0.002,
                         "mode": "position_controlled",
                         "ENTER_DAMPING_MODE_ON_DEINIT": False,
                         "network_interface": "eth0",
+                        "SIMULATION_MODE": True,
                         # "ROBOT_IP": "192.168.8.226", #192.168.123.220
                         # "ROBOT_PORT": 8082,
                     }

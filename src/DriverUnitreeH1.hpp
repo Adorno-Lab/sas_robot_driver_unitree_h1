@@ -111,9 +111,11 @@ class DriverUnitreeH1
     DriverUnitreeH1() = delete;
     DriverUnitreeH1(const DriverUnitreeH1&) = delete;
     DriverUnitreeH1& operator= (const DriverUnitreeH1&) = delete;
-    DriverUnitreeH1(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT);
+    DriverUnitreeH1(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool SIMULATION_MODE);
     DriverUnitreeH1(std::string network_interface, std::string control_mode);
     DriverUnitreeH1(std::string network_interface);
+
+    void common_construction_tasks(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool SIMULATION_MODE);
 
     void connect();
     void initialize();
@@ -135,6 +137,8 @@ class DriverUnitreeH1
 
     float get_stand_height_percent() const;
 
+    void update_sim_joint_states(const VectorXd& sim_joint_positions, const VectorXd& sim_joint_velocities, const VectorXd& sim_joint_torques);
+
     VectorXd get_battery_temperatures() const;
     int get_battery_state_of_charge() const;
 
@@ -148,8 +152,6 @@ class DriverUnitreeH1
     void set_torso_velocity(const VectorXd& desired_torso_velocity_mps_radps);
 
     void set_stand_height_percent(const float desired_height_percent);
-
-    void enter_dummy_mode();
 
     private:
 

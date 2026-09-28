@@ -14,8 +14,7 @@ from sensor_msgs.msg import Imu, JointState
 # USER SETTINGS
 # ============================================================
 
-# ROBOT_NAME = "P_Body"
-ROBOT_NAME = "Dummy"
+ROBOT_NAME = "P_Body"
 
 # Logging frequency [Hz]
 LOG_FREQUENCY = 20.0

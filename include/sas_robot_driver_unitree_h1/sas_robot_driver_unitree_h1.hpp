@@ -57,6 +57,7 @@ struct RobotDriverUnitreeH1Configuration
     std::string network_interface;
     std::string mode;
     bool ENTER_DAMPING_MODE_ON_DEINIT;
+    bool SIMULATION_MODE;
     std::string robot_name;
 };
 
@@ -65,6 +66,7 @@ class RobotDriverUnitreeH1: public LeggedRobotDriver
 {
 protected:
     std::string topic_prefix_;
+    std::string sim_topic_prefix_ = "/sas_robot_driver_coppeliasim/h1";
     RobotDriverUnitreeH1Configuration configuration_;
     std::shared_ptr<rclcpp::Node> node_;
 
@@ -88,6 +90,8 @@ private:
     Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_IMU_orientation_;
     Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr publisher_temperatures_;
     Publisher<std_msgs::msg::Float64>::SharedPtr publisher_stand_height_percent_;
+
+    Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr publisher_set_sim_target_joint_forces_;
     
 //    // Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_last_IMU_orientation_when_robot_stopped_;
 //     Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_pose_state_;
@@ -115,6 +119,13 @@ private:
     Subscription<std_msgs::msg::String>::SharedPtr subscriber_set_control_mode_;
     void _callback_set_control_mode(const std_msgs::msg::String& msg);
 
+    Subscription<sensor_msgs::msg::JointState>::SharedPtr subscriber_get_sim_joint_states_;
+    VectorXd sim_joint_positions_ = VectorXd::Zero(9);
+    VectorXd sim_joint_velocities_ = VectorXd::Zero(9);
+    VectorXd sim_joint_torques_ = VectorXd::Zero(9);
+    void _callback_get_sim_joint_states(const sensor_msgs::msg::JointState& msg);
+    bool new_sim_joint_states_available_{false};
+
    // Subscription<sas_msgs::msg::Bool>::SharedPtr subscriber_shutdown_signal_;
    // void _callback_shutdown_signal_(const sas_msgs::msg::Bool& msg);
    // bool shutdown_signal_;
@@ -141,6 +152,7 @@ protected:
 //    // bool _should_shutdown() const;
 //     void _set_target_velocities_from_subscriber();
 //     void _set_target_stand_commands_from_subscriber();
+    void _communicate_with_simulator();
 
 
 public:

@@ -59,6 +59,7 @@ int main(int argc, char** argv)
         sas::get_ros_parameter(node,"network_interface", robot_driver_unitree_h1_configuration.network_interface);
         sas::get_ros_parameter(node,"mode", robot_driver_unitree_h1_configuration.mode);
         sas::get_ros_parameter(node,"ENTER_DAMPING_MODE_ON_DEINIT", robot_driver_unitree_h1_configuration.ENTER_DAMPING_MODE_ON_DEINIT);
+        sas::get_ros_parameter(node,"SIMULATION_MODE", robot_driver_unitree_h1_configuration.SIMULATION_MODE);
         sas::get_ros_parameter(node,"robot_name", robot_driver_unitree_h1_configuration.robot_name);
         // sas::get_ros_parameter(node,"ROBOT_IP", robot_driver_unitree_h1_configuration.ROBOT_IP);
         // sas::get_ros_parameter(node,"ROBOT_PORT", robot_driver_unitree_h1_configuration.ROBOT_PORT);

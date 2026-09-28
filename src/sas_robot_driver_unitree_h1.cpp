@@ -39,6 +39,7 @@ class RobotDriverUnitreeH1::Impl
 {
 public:
    std::shared_ptr<DriverUnitreeH1> unitree_h1_driver_;
+   bool is_simulation_;
 
    Impl() = default;
 };
@@ -62,18 +63,18 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
 
     impl_->unitree_h1_driver_ = std::make_shared<DriverUnitreeH1>(configuration_.network_interface, 
                                                                   configuration_.mode, 
-                                                                  configuration_.ENTER_DAMPING_MODE_ON_DEINIT);
+                                                                  configuration_.ENTER_DAMPING_MODE_ON_DEINIT,
+                                                                  configuration_.SIMULATION_MODE);
 
-   if(configuration_.robot_name=="Dummy"){
-      // This is the dummy robot, tell the driver that there is no real robot connected
-      impl_->unitree_h1_driver_->enter_dummy_mode();
-   }
+   impl_->is_simulation_ = configuration_.SIMULATION_MODE;
 
    // Create publishers and subscribers that aren't part of the base class
    publisher_IMU_state_ = node_->create_publisher<sensor_msgs::msg::Imu>(topic_prefix_ + "/get/IMU_state", 1);
    publisher_IMU_orientation_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(topic_prefix_ + "/get/imu_orientation",1);
    publisher_temperatures_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(topic_prefix_ + "/get/temperatures",1);
    publisher_stand_height_percent_ = node_->create_publisher<std_msgs::msg::Float64>(topic_prefix_ + "/get/stand_height_percent",1);
+   
+   publisher_set_sim_target_joint_forces_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(sim_topic_prefix_ + "/set/target_joint_forces",1);
 
    subscriber_target_twist_ = node_->create_subscription<geometry_msgs::msg::TwistStamped>(
       topic_prefix_ + "/set/target_twist",
@@ -93,6 +94,12 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
       std::bind(&RobotDriverUnitreeH1::_callback_set_control_mode, this, std::placeholders::_1)
    );
 
+   subscriber_get_sim_joint_states_ = node_->create_subscription<sensor_msgs::msg::JointState>(
+      sim_topic_prefix_ + "/get/joint_states",
+      1,
+      std::bind(&RobotDriverUnitreeH1::_callback_get_sim_joint_states, this, std::placeholders::_1)
+   );
+
    // set the callback here
    set_control_loop_callback([this]() {
       try {
@@ -107,6 +114,7 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
          
          // _set_target_velocities_from_subscriber();
          //_read_rpy_angles_state_and_publish();
+         _communicate_with_simulator();
       } catch (const std::exception& e) {
          std::cout << "[ERROR] [DriverUnitreeH1 Callback Function] Exception caught: "<<e.what()<<std::endl;
       }
@@ -306,4 +314,28 @@ void RobotDriverUnitreeH1::set_target_joint_torques(const VectorXd& desired_join
    impl_->unitree_h1_driver_->set_upper_body_joint_torques(desired_joint_torques_Nm);
 }
 
+void RobotDriverUnitreeH1::_communicate_with_simulator(){
+   // If the driver is running in simulation mode, then this function handles communications between the driver and the simulator.
+   if(impl_->is_simulation_){
+
+      if(new_sim_joint_states_available_){
+         impl_->unitree_h1_driver_->update_sim_joint_states(sim_joint_positions_, 
+                                                            sim_joint_velocities_, 
+                                                            sim_joint_torques_);
+
+         new_sim_joint_states_available_ = false;
+      }
+
+   }
 }
+
+void RobotDriverUnitreeH1::_callback_get_sim_joint_states(const sensor_msgs::msg::JointState& msg){
+
+   sim_joint_positions_ = Eigen::Map<const Eigen::VectorXd>(msg.position.data(), msg.position.size());
+   sim_joint_velocities_ = Eigen::Map<const Eigen::VectorXd>(msg.velocity.data(), msg.velocity.size());
+   sim_joint_torques_ = Eigen::Map<const Eigen::VectorXd>(msg.effort.data(), msg.effort.size());
+
+   new_sim_joint_states_available_ = true;
+}
+
+} // End of namespace sas

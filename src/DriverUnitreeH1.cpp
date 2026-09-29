@@ -136,6 +136,13 @@ public:
     VectorXd sim_joint_positions_ = VectorXd::Zero(9);
     VectorXd sim_joint_velocities_ = VectorXd::Zero(9);
     VectorXd sim_joint_torques_ = VectorXd::Zero(9);
+    VectorXd sim_target_positions_ = VectorXd::Zero(9);
+    VectorXd sim_target_velocities_ = VectorXd::Zero(9);
+    VectorXd sim_target_offset_torques_ = VectorXd::Zero(9);
+    VectorXd sim_kd_ = VectorXd::Zero(9);
+    VectorXd sim_kp_ = VectorXd::Zero(9);
+
+    std::array<DriverUnitreeH1::JOINT_INDEX, 9> upper_body_joints_;
 
     // #############################################
     //  Impl member functions
@@ -156,6 +163,7 @@ public:
      */
     void set_joint_position_command(int joint_id, float target_position_rad)
     {
+
         // If the position target is changing too quickly, then set a new target that will respect the
         // velocity limit.
         auto current_position = state_msg_.motor_state().at(joint_id).q();
@@ -166,9 +174,9 @@ public:
         else if(estimated_speed<-global_joint_velocity_limit_radps_){
             target_position_rad = current_position - global_joint_velocity_limit_radps_ * expected_movement_period_sec_;
         }
-        
-        auto &cmd = cmd_msg_.motor_cmd().at(joint_id);
 
+        auto &cmd = cmd_msg_.motor_cmd().at(joint_id);
+        
         // Motors are torque controlled using the eqn:
         // Torque = kp * (q_des - q_curr) + kd * (dq_des - dq_curr) + tau_ff
         // So, here we set dq_des as 0, so there is some damping proportional to the speed.
@@ -268,9 +276,22 @@ public:
      */
     void send_upper_body_control_message(std::string calling_function)
     {
+        // Send the message to the hardware and throw an error if it fails to send
         if (!upper_body_publisher_->Write(cmd_msg_))
         {
             throw std::runtime_error("[" + calling_function + "] Upper body control message failed to send!");
+        }
+
+        // Update simulator values too
+        for(int i=0; i<upper_body_joints_.size(); i++){
+            int joint_id = upper_body_joints_.at(i);
+            auto &cmd = cmd_msg_.motor_cmd().at(joint_id);
+
+            sim_target_positions_(i) = cmd.q();
+            sim_target_velocities_(i) = cmd.dq();
+            sim_kp_(i) = cmd.kp();
+            sim_kd_(i) = cmd.kd();
+            sim_target_offset_torques_(i) = cmd.tau();
         }
     }
 
@@ -441,6 +462,15 @@ public:
         }  
     }
 
+    VectorXd get_sim_torque_command(){
+        // Motors are torque controlled using the eqn:
+        // Torque = kp * (q_des - q_curr) + kd * (dq_des - dq_curr) + tau_ff
+        // VectorXd torque_command = sim_kp_.cwiseProduct(sim_target_positions_ - sim_joint_positions_) + sim_kd_.cwiseProduct(sim_target_velocities_ - sim_joint_velocities_) + sim_target_offset_torques_;
+        
+        return (sim_target_positions_);
+    }
+    
+
 };
 
 // #############################################
@@ -499,6 +529,7 @@ void DriverUnitreeH1::common_construction_tasks(std::string network_interface, s
     impl_->network_interface_ = network_interface;
     impl_->enter_damping_mode_on_deinit_ = ENTER_DAMPING_MODE_ON_DEINIT;
     impl_->is_simulation_ = SIMULATION_MODE;
+    impl_->upper_body_joints_ = upper_body_joints_;
 
     if(control_mode=="position_controlled"){
         current_mode_ = MODE::POSITION_CONTROLLED;
@@ -1020,6 +1051,10 @@ void DriverUnitreeH1::update_sim_joint_states(const VectorXd& sim_joint_position
     impl_->sim_joint_torques_ = sim_joint_torques;
 }
 
+VectorXd DriverUnitreeH1::get_sim_torque_command() const {
+    return impl_->get_sim_torque_command();
+}
+
 // --------------------------------------------
 //  Setter functions
 // --------------------------------------------
@@ -1179,8 +1214,7 @@ void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_
  */
 void DriverUnitreeH1::set_all_upper_body_joint_position_commands_(const VectorXd& target_positions_rad){
     for(int i=0; i<upper_body_joints_.size(); i++){
-        impl_->set_joint_position_command(upper_body_joints_.at(i),target_positions_rad(i));
-        
+        impl_->set_joint_position_command(upper_body_joints_.at(i), target_positions_rad(i));
     }
 }
 

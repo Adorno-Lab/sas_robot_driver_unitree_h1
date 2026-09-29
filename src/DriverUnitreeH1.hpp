@@ -37,6 +37,8 @@ class DriverUnitreeH1
     class Impl;
     std::shared_ptr<Impl> impl_;
 
+    protected:
+
     enum class MODE{
         POSITION_CONTROLLED,
         VELOCITY_CONTROLLED,
@@ -138,6 +140,7 @@ class DriverUnitreeH1
     float get_stand_height_percent() const;
 
     void update_sim_joint_states(const VectorXd& sim_joint_positions, const VectorXd& sim_joint_velocities, const VectorXd& sim_joint_torques);
+    VectorXd get_sim_torque_command() const;
 
     VectorXd get_battery_temperatures() const;
     int get_battery_state_of_charge() const;

@@ -74,7 +74,7 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
    publisher_temperatures_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(topic_prefix_ + "/get/temperatures",1);
    publisher_stand_height_percent_ = node_->create_publisher<std_msgs::msg::Float64>(topic_prefix_ + "/get/stand_height_percent",1);
    
-   publisher_set_sim_target_joint_forces_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(sim_topic_prefix_ + "/set/target_joint_forces",1);
+   publisher_set_sim_target_joint_forces_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(sim_topic_prefix_ + "/set/target_joint_positions",1);
 
    subscriber_target_twist_ = node_->create_subscription<geometry_msgs::msg::TwistStamped>(
       topic_prefix_ + "/set/target_twist",
@@ -318,6 +318,7 @@ void RobotDriverUnitreeH1::_communicate_with_simulator(){
    // If the driver is running in simulation mode, then this function handles communications between the driver and the simulator.
    if(impl_->is_simulation_){
 
+      // Get joint states from sim
       if(new_sim_joint_states_available_){
          impl_->unitree_h1_driver_->update_sim_joint_states(sim_joint_positions_, 
                                                             sim_joint_velocities_, 
@@ -325,6 +326,17 @@ void RobotDriverUnitreeH1::_communicate_with_simulator(){
 
          new_sim_joint_states_available_ = false;
       }
+
+      // Publish joint torque commands
+      VectorXd torque_command = impl_->unitree_h1_driver_->get_sim_torque_command();
+      
+      std_msgs::msg::Float64MultiArray msg;
+      msg.data.reserve(9);
+
+      msg.data.insert(msg.data.end(),
+                     torque_command.data(),
+                     torque_command.data() + torque_command.size());
+      publisher_set_sim_target_joint_forces_->publish(msg);
 
    }
 }

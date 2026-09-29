@@ -56,7 +56,7 @@ Once the robot is in preparation mode, assuming you are connected to the etherne
 
 ```shell
 scp sas.tar unitree@192.168.123.162:~
-scp sas_robot_driver_unitree_h1/ unitree@192.168.123.162:~
+scp -r sas_robot_driver_unitree_h1/ unitree@192.168.123.162:~
 ```
 
 This will prompt you for a password (ask Daniel if required).

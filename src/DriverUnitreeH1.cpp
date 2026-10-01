@@ -63,7 +63,7 @@ public:
 
     std::string network_interface_ = "Not Initialised";
     bool enter_damping_mode_on_deinit_ = false;
-    bool is_simulation_ = false;
+    bool is_dummy_ = false;
 
     std::shared_ptr<unitree::robot::h1::LocoClient> locomotion_client_;
 
@@ -132,17 +132,6 @@ public:
     {18, 4.45-global_joint_caution_factor_},
     {19, 2.61-global_joint_caution_factor_},
     };
-
-    VectorXd sim_joint_positions_ = VectorXd::Zero(9);
-    VectorXd sim_joint_velocities_ = VectorXd::Zero(9);
-    VectorXd sim_joint_torques_ = VectorXd::Zero(9);
-    VectorXd sim_target_positions_ = VectorXd::Zero(9);
-    VectorXd sim_target_velocities_ = VectorXd::Zero(9);
-    VectorXd sim_target_offset_torques_ = VectorXd::Zero(9);
-    VectorXd sim_kd_ = VectorXd::Zero(9);
-    VectorXd sim_kp_ = VectorXd::Zero(9);
-
-    std::array<DriverUnitreeH1::JOINT_INDEX, 9> upper_body_joints_;
 
     // #############################################
     //  Impl member functions
@@ -281,18 +270,6 @@ public:
         {
             throw std::runtime_error("[" + calling_function + "] Upper body control message failed to send!");
         }
-
-        // Update simulator values too
-        for(int i=0; i<upper_body_joints_.size(); i++){
-            int joint_id = upper_body_joints_.at(i);
-            auto &cmd = cmd_msg_.motor_cmd().at(joint_id);
-
-            sim_target_positions_(i) = cmd.q();
-            sim_target_velocities_(i) = cmd.dq();
-            sim_kp_(i) = cmd.kp();
-            sim_kd_(i) = cmd.kd();
-            sim_target_offset_torques_(i) = cmd.tau();
-        }
     }
 
     /**
@@ -305,8 +282,8 @@ public:
      */
     void check_upper_body_subscriber_setup(std::string calling_function){
 
-        // Skip this check if the driver is in simulation mode.
-        if(is_simulation_){
+        // Skip this check if the driver is in dummy mode.
+        if(is_dummy_){
             return;
         }
 
@@ -385,8 +362,8 @@ public:
         int32_t loco_client_return_code = 0;
         float this_function_return_value = 0.0f;
 
-        // Skip this check if the driver is in simulation mode.
-        if(is_simulation_){
+        // Skip this check if the driver is in dummy mode.
+        if(is_dummy_){
             return this_function_return_value;
         }
 
@@ -445,8 +422,8 @@ public:
      */
     void check_robot_still_connected(){  
 
-        // Skip this check if the driver is in simulation mode.
-        if(is_simulation_){
+        // Skip this check if the driver is in dummy mode.
+        if(is_dummy_){
             return;
         }
 
@@ -460,16 +437,7 @@ public:
                 << std::fixed << std::setprecision(1) << elapsed_sec << " seconds since last message)";  
             throw std::runtime_error(oss.str());  
         }  
-    }
-
-    VectorXd get_sim_torque_command(){
-        // Motors are torque controlled using the eqn:
-        // Torque = kp * (q_des - q_curr) + kd * (dq_des - dq_curr) + tau_ff
-        // VectorXd torque_command = sim_kp_.cwiseProduct(sim_target_positions_ - sim_joint_positions_) + sim_kd_.cwiseProduct(sim_target_velocities_ - sim_joint_velocities_) + sim_target_offset_torques_;
-        
-        return (sim_target_positions_);
-    }
-    
+    }   
 
 };
 
@@ -482,12 +450,12 @@ public:
  * @param network_interface The network interface to use for Unitree communication.
  * @param control_mode The requested control mode string: "position_controlled", "velocity_controlled", or "torque_controlled".
  * @param ENTER_DAMPING_MODE_ON_DEINIT True to enter damping mode automatically on deinit, false otherwise
- * @param SIMULATION_MODE True if connected to the simulator, false otherwise
+ * @param DUMMY_MODE True if driver started in dummy mode, false otherwise
  * @throws runtime_error if the provided control_mode string is invalid.
  */
-DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool SIMULATION_MODE){
+DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE){
 
-    common_construction_tasks(network_interface, control_mode, ENTER_DAMPING_MODE_ON_DEINIT, SIMULATION_MODE);
+    common_construction_tasks(network_interface, control_mode, ENTER_DAMPING_MODE_ON_DEINIT, DUMMY_MODE);
     
 }
 
@@ -517,10 +485,10 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface){
  * @param network_interface The network interface to use for Unitree communication.
  * @param control_mode The requested control mode string: "position_controlled", "velocity_controlled", or "torque_controlled".
  * @param ENTER_DAMPING_MODE_ON_DEINIT True to enter damping mode automatically on deinit, false otherwise
- * @param SIMULATION_MODE True if connected to the simulator, false otherwise
+ * @param DUMMY_MODE True if driver started in dummy mode, false otherwise
  * @throws runtime_error if the provided control_mode string is invalid.
  */
-void DriverUnitreeH1::common_construction_tasks(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool SIMULATION_MODE){
+void DriverUnitreeH1::common_construction_tasks(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE){
 
     // Create implementation object
     impl_ = std::make_shared<DriverUnitreeH1::Impl>();
@@ -528,8 +496,7 @@ void DriverUnitreeH1::common_construction_tasks(std::string network_interface, s
     // Process arguments
     impl_->network_interface_ = network_interface;
     impl_->enter_damping_mode_on_deinit_ = ENTER_DAMPING_MODE_ON_DEINIT;
-    impl_->is_simulation_ = SIMULATION_MODE;
-    impl_->upper_body_joints_ = upper_body_joints_;
+    impl_->is_dummy_ = DUMMY_MODE;
 
     if(control_mode=="position_controlled"){
         current_mode_ = MODE::POSITION_CONTROLLED;
@@ -724,10 +691,6 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_positions() const {
         throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_positions] Function called when robot is not properly initialised!");
     }
 
-    if(impl_->is_simulation_){
-        return impl_->sim_joint_positions_;
-    }
-
     // Check that the subscriber is still working
     impl_->check_robot_still_connected();
 
@@ -749,10 +712,6 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_velocities() const {
         throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_velocities] Function called when robot is not properly initialised!");
     }
 
-    if(impl_->is_simulation_){
-        return impl_->sim_joint_velocities_;
-    }
-
     // Check that the subscriber is still working
     impl_->check_robot_still_connected();
 
@@ -772,10 +731,6 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_torques() const {
     
     if(current_status_!=STATUS::INITIALIZED){
         throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_torques] Function called when robot is not properly initialised!");
-    }
-
-    if(impl_->is_simulation_){
-        return impl_->sim_joint_torques_;
     }
 
     // Check that the subscriber is still working
@@ -846,8 +801,8 @@ DQ DriverUnitreeH1::get_IMU_orientation() const {
     // Check that the subscriber is still working
     impl_->check_robot_still_connected();
 
-    // If this is the simulation, then return 1.
-    if (impl_->is_simulation_){
+    // If this is the dummy driver, then return 1.
+    if (impl_->is_dummy_){
         DQ imu_quat(1, 0, 0, 0, 0, 0, 0, 0);
         return imu_quat.normalize();
     }
@@ -879,8 +834,8 @@ VectorXd DriverUnitreeH1::get_gyroscope_data() const {
 
     VectorXd gyroscope_data = VectorXd::Zero(3);
 
-    // If this is the simulation, then return 0.
-    if (impl_->is_simulation_){
+    // If this is the dummy driver, then return 0.
+    if (impl_->is_dummy_){
         return gyroscope_data;
     }
     
@@ -908,8 +863,8 @@ VectorXd DriverUnitreeH1::get_accelerometer_data() const {
 
     VectorXd accelerometer_data = VectorXd::Zero(3);
 
-    // If this is the simulation, then return 0.
-    if (impl_->is_simulation_){
+    // If this is the dummy driver, then return 0.
+    if (impl_->is_dummy_){
         return accelerometer_data;
     }
     
@@ -1037,22 +992,6 @@ void DriverUnitreeH1::set_stand_height_percent(const float desired_height_percen
     float absolute = ((desired_height_percent/100)*0.2)+0.6;
     // impl_->locomotion_client_->SetStandHeight(absolute);
     impl_->send_lower_body_control_message("SetStandHeight","DriverUnitreeH1::set_stand_height_percent",{absolute});
-}
-
-void DriverUnitreeH1::update_sim_joint_states(const VectorXd& sim_joint_positions, const VectorXd& sim_joint_velocities, const VectorXd& sim_joint_torques){
-    
-    if(sim_joint_positions.size() != upper_body_joints_.size() || sim_joint_velocities.size() != upper_body_joints_.size() || sim_joint_torques.size() != upper_body_joints_.size()){
-
-        throw std::runtime_error("[DriverUnitreeH1::update_sim_joint_states] Passed joint variable vector of the wrong size!");
-    }
-    
-    impl_->sim_joint_positions_ = sim_joint_positions;
-    impl_->sim_joint_velocities_ = sim_joint_velocities;
-    impl_->sim_joint_torques_ = sim_joint_torques;
-}
-
-VectorXd DriverUnitreeH1::get_sim_torque_command() const {
-    return impl_->get_sim_torque_command();
 }
 
 // --------------------------------------------

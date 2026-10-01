@@ -9,15 +9,17 @@ import rclpy
 from rclpy.node import Node
 
 from sensor_msgs.msg import Imu, JointState
+from std_msgs.msg import Float64MultiArray
 
 # ============================================================
 # USER SETTINGS
 # ============================================================
 
 ROBOT_NAME = "P_Body"
+# ROBOT_NAME = "Dummy"
 
 # Logging frequency [Hz]
-LOG_FREQUENCY = 20.0
+LOG_FREQUENCY = 10.0
 
 # ============================================================
 
@@ -30,13 +32,17 @@ class ExperimentLogger(Node):
 
         imu_topic = f"/sas_h1/{ROBOT_NAME}/get/IMU_state"
         joint_topic = f"/sas_h1/{ROBOT_NAME}/get/joint_states"
+        temps_topic = f"/sas_h1/{ROBOT_NAME}/get/temperatures"
 
         self.create_subscription(Imu, imu_topic, self.imu_callback, 10)
-
         self.create_subscription(JointState, joint_topic, self.joint_callback, 10)
+        self.create_subscription(
+            Float64MultiArray, temps_topic, self.temps_callback, 10
+        )
 
         self.latest_imu = None
         self.latest_joint = None
+        self.latest_temps = None
 
         self.logging_enabled = False
 
@@ -57,6 +63,28 @@ class ExperimentLogger(Node):
             "R_Elb",  # Right Elbow
             "Waist",  # Waist
         ]
+        self.temps_joint_names = [
+            "IMU",
+            "L_Sho_R",
+            "L_Sho_P",
+            "L_Sho_Y",
+            "L_Elb",
+            "R_Sho_R",
+            "R_Sho_P",
+            "R_Sho_Y",
+            "R_Elb",
+            "Waist",
+            "L_Hip_R",
+            "L_Hip_P",
+            "L_Hip_Y",
+            "L_Knee",
+            "L_Ankle",
+            "R_HipR",
+            "R_HipP",
+            "R_HipY",
+            "R_Knee",
+            "R_Ankle",
+        ]
 
         self.lock = threading.Lock()
 
@@ -64,6 +92,7 @@ class ExperimentLogger(Node):
 
         self.get_logger().info(f"Subscribed to {imu_topic}")
         self.get_logger().info(f"Subscribed to {joint_topic}")
+        self.get_logger().info(f"Subscribed to {temps_topic}")
         self.get_logger().info(f"Logging frequency: {LOG_FREQUENCY} Hz")
 
     # =====================================================
@@ -74,8 +103,10 @@ class ExperimentLogger(Node):
         self.latest_imu = msg
 
     def joint_callback(self, msg):
-
         self.latest_joint = msg
+
+    def temps_callback(self, msg):
+        self.latest_temps = msg
 
     # =====================================================
     # Logging Control
@@ -84,7 +115,9 @@ class ExperimentLogger(Node):
     def start_logging(self, filename):
 
         if self.latest_joint is None:
-            print("\nNo JointState received yet.\n" "Cannot determine joint names.")
+            print(
+                "\nNo log data is being published yet. Start the drivers and try again.\n"
+            )
             return False
 
         filename = Path(filename).with_suffix(".csv")
@@ -144,6 +177,9 @@ class ExperimentLogger(Node):
         for joint in self.joint_names:
             header.append(f"{joint}_eff")
 
+        for joint in self.temps_joint_names:
+            header.append(f"{joint}_temp")
+
         self.csv_writer.writerow(header)
 
         self.header_written = True
@@ -165,6 +201,7 @@ class ExperimentLogger(Node):
 
         imu = self.latest_imu
         joint = self.latest_joint
+        temps = self.latest_temps
 
         t = time.perf_counter() - self.log_start_time
 
@@ -185,6 +222,8 @@ class ExperimentLogger(Node):
         row.extend(joint.position)
         row.extend(joint.velocity)
         row.extend(joint.effort)
+
+        row.extend(temps.data)
 
         self.csv_writer.writerow(row)
 

@@ -113,11 +113,11 @@ class DriverUnitreeH1
     DriverUnitreeH1() = delete;
     DriverUnitreeH1(const DriverUnitreeH1&) = delete;
     DriverUnitreeH1& operator= (const DriverUnitreeH1&) = delete;
-    DriverUnitreeH1(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool SIMULATION_MODE);
+    DriverUnitreeH1(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE);
     DriverUnitreeH1(std::string network_interface, std::string control_mode);
     DriverUnitreeH1(std::string network_interface);
 
-    void common_construction_tasks(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool SIMULATION_MODE);
+    void common_construction_tasks(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE);
 
     void connect();
     void initialize();
@@ -138,9 +138,6 @@ class DriverUnitreeH1
     int get_IMU_temperature() const;
 
     float get_stand_height_percent() const;
-
-    void update_sim_joint_states(const VectorXd& sim_joint_positions, const VectorXd& sim_joint_velocities, const VectorXd& sim_joint_torques);
-    VectorXd get_sim_torque_command() const;
 
     VectorXd get_battery_temperatures() const;
     int get_battery_state_of_charge() const;

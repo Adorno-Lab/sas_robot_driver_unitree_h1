@@ -33,6 +33,9 @@
 
 using namespace Eigen;
 
+// This script intentionally drives the robot through an aggressive joint-position transition
+// to exercise limit-handling and safety boundaries in position control during a standalone test.
+
 int main(){
     
     // Create robot driver
@@ -46,8 +49,8 @@ int main(){
     driver.connect();
     std::cout << "    Done." << std::endl;
 
-    // Initialise
-    std::cout << "Press ENTER to initialise ...";
+    // Initialize
+    std::cout << "Press ENTER to initialize ...";
     std::cin.get();
     driver.initialize();
     std::cout << "    Done." << std::endl;
@@ -103,8 +106,8 @@ int main(){
     }
     std::cout << "    Done." << std::endl;
 
-    // Deinitialise
-    std::cout << "Press ENTER to deinitialise ...";
+    // Deinitialize
+    std::cout << "Press ENTER to deinitialize ...";
     std::cin.get();
     driver.deinitialize();
     std::cout << "    Done." << std::endl;

@@ -35,6 +35,12 @@
 namespace sas
 {
 
+/**
+ * @brief Internal implementation class for the ROS 2 Unitree H1 driver wrapper.
+ *
+ * This object stores the underlying hardware driver instance and the runtime
+ * dummy-mode state used by the higher-level ROS 2 interface.
+ */
 class RobotDriverUnitreeH1::Impl
 {
 public:
@@ -92,7 +98,7 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
       std::bind(&RobotDriverUnitreeH1::_callback_set_control_mode, this, std::placeholders::_1)
    );
 
-   // set the callback here
+   // Register the control-loop callback that updates the ROS 2 state and applies any pending commands.
    set_control_loop_callback([this]() {
       try {
          // _read_joint_states_and_publish();
@@ -114,49 +120,79 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
 
 RobotDriverUnitreeH1::~RobotDriverUnitreeH1() = default;
 
+/**
+ * @brief Read the current upper-body joint positions from the backend driver.
+ * @return Joint state vector in radians.
+ */
 VectorXd RobotDriverUnitreeH1::get_joint_positions()
 {
    return impl_->unitree_h1_driver_->get_upper_body_joint_positions();
 }
 
+/**
+ * @brief Forward joint-position targets to the low-level H1 driver.
+ * @param desired_joint_positions_rad Target joint positions in radians.
+ */
 void RobotDriverUnitreeH1::set_target_joint_positions(const VectorXd& desired_joint_positions_rad)
 {
    impl_->unitree_h1_driver_->set_upper_body_joint_positions(desired_joint_positions_rad);
 }
 
+/**
+ * @brief Read the current upper-body joint velocities from the backend driver.
+ * @return Joint velocity vector in radians per second.
+ */
 VectorXd RobotDriverUnitreeH1::get_joint_velocities()
 {
    return impl_->unitree_h1_driver_->get_upper_body_joint_velocities();
 }
 
+/**
+ * @brief Read the latest estimated upper-body joint torques.
+ * @return Joint torque vector in newton-metres.
+ */
 VectorXd RobotDriverUnitreeH1::get_joint_torques()
 {
    return impl_->unitree_h1_driver_->get_upper_body_joint_torques();
 }
 
+/**
+ * @brief Connect the low-level Unitree backend and establish the ROS 2 control interface.
+ */
 void RobotDriverUnitreeH1::connect()
 {
    impl_->unitree_h1_driver_->connect();
 }
 
+/**
+ * @brief Disconnect the driver and release the underlying communication channels.
+ */
 void RobotDriverUnitreeH1::disconnect()
 {
    impl_->unitree_h1_driver_->disconnect();
 }
 
+/**
+ * @brief Initialize the robot after the communication channels have been opened.
+ */
 void RobotDriverUnitreeH1::initialize()
 {
    impl_->unitree_h1_driver_->initialize();
 }
 
+/**
+ * @brief Safely deinitialize the robot and bring motion to a safe shutdown state.
+ */
 void RobotDriverUnitreeH1::deinitialize()
 {
    impl_->unitree_h1_driver_->deinitialize();
 }
 
-// This function is required by the base class, but there isn't a subscriber to set it by default, so
-// this functionality needs to be handled in the control loop anyway. Thus, im not sure why this function
-// needs to be here, since it isn't called anywhere.
+// This function is required by the base class, although the target-twist command is handled in the control loop rather than through a dedicated subscriber. The periodic control-loop implementation remains the authoritative path for torso-velocity updates.
+/**
+ * @brief Convert a target twist into the torso-velocity command expected by the backend.
+ * @param twist Desired twist represented as a dual quaternion twist vector.
+ */
 void RobotDriverUnitreeH1::set_target_twist(const DQ& twist)
 {
    const VectorXd twist_vec = twist.vec6();
@@ -171,17 +207,23 @@ void RobotDriverUnitreeH1::set_target_twist(const DQ& twist)
    impl_->unitree_h1_driver_->set_torso_velocity(desired_velocity);
 }
 
+/**
+ * @brief Set the target base orientation.
+ *        This is currently unimplemented because the underlying Unitree H1 stack does not expose
+ *        a direct equivalent API in the current driver integration.
+ * @param r Target base orientation, currently unused.
+ */
 void RobotDriverUnitreeH1::set_target_base_orientation(const DQ& r)
 {
-   // Not implemented - unsure if the H1 supports this action
    (void)r;
 }
 
+/**
+ * @brief Set the robot stand height as a percentage of its configured operating range.
+ * @param base_height Desired stand height percentage in the range supported by the backend.
+ */
 void RobotDriverUnitreeH1::set_target_base_height(const double& base_height)
 {
-   // Note that this function presumes the input, base_height, is between 0 and 100, denoting a 
-   // percentage of the configured standing height range, rather than an absolute number.
-   // This may need to change to maintain compatibility with other drivers.
    impl_->unitree_h1_driver_->set_stand_height_percent(base_height);
 }
 
@@ -189,6 +231,9 @@ void RobotDriverUnitreeH1::set_target_base_height(const double& base_height)
 // Additional Functions
 // ###########################################
 
+/**
+ * @brief Publish the current IMU state and orientation information to ROS 2 topics.
+ */
 void RobotDriverUnitreeH1::_read_imu_state_and_publish()
 {
    sensor_msgs::msg::Imu ros_msg_imu;
@@ -222,6 +267,9 @@ void RobotDriverUnitreeH1::_read_imu_state_and_publish()
    }
 }
 
+/**
+ * @brief Publish the joint and IMU temperature readings to the configured ROS topic.
+ */
 void RobotDriverUnitreeH1::_read_temperatures_and_publish()
 {
    auto joint_temps = impl_->unitree_h1_driver_->get_joint_temperatures();
@@ -238,6 +286,9 @@ void RobotDriverUnitreeH1::_read_temperatures_and_publish()
    publisher_temperatures_->publish(msg);
 }
 
+/**
+ * @brief Publish the current stand-height percentage to a ROS 2 topic.
+ */
 void RobotDriverUnitreeH1::_read_stand_height_and_publish()
 {
    auto stand_height_percent = impl_->unitree_h1_driver_->get_stand_height_percent();
@@ -249,6 +300,10 @@ void RobotDriverUnitreeH1::_read_stand_height_and_publish()
    publisher_stand_height_percent_->publish(msg);
 }
 
+/**
+ * @brief Store the most recent target twist from the ROS subscription.
+ * @param msg Incoming twist message.
+ */
 void RobotDriverUnitreeH1::_callback_target_twist(const geometry_msgs::msg::TwistStamped& msg)
 {
    target_twist_ <<msg.twist.angular.x,
@@ -261,6 +316,10 @@ void RobotDriverUnitreeH1::_callback_target_twist(const geometry_msgs::msg::Twis
    new_target_twist_available_ = true;
 }
 
+/**
+ * @brief Store the most recent stand-height command from the ROS subscription.
+ * @param msg Incoming stand-height command message.
+ */
 void RobotDriverUnitreeH1::_callback_target_stand_height_percent(const std_msgs::msg::Float64& msg)
 {
    target_stand_height_percent_=msg.data;
@@ -268,11 +327,18 @@ void RobotDriverUnitreeH1::_callback_target_stand_height_percent(const std_msgs:
    new_target_stand_height_percent_available_ = true;
 }
 
+/**
+ * @brief Change the active control mode using a ROS 2 string message.
+ * @param msg Incoming control-mode command.
+ */
 void RobotDriverUnitreeH1::_callback_set_control_mode(const std_msgs::msg::String& msg)
 {
    impl_->unitree_h1_driver_->change_control_mode(msg.data);
 }
 
+/**
+ * @brief Apply a pending torso-velocity command from the subscriber queue.
+ */
 void RobotDriverUnitreeH1::_set_torso_velocities_from_subscriber()
 {
     if (new_target_twist_available_)
@@ -288,6 +354,9 @@ void RobotDriverUnitreeH1::_set_torso_velocities_from_subscriber()
     }
 }
 
+/**
+ * @brief Apply a pending stand-height command from the subscriber queue.
+ */
 void RobotDriverUnitreeH1::_set_stand_height_percent_from_subscriber()
 {
    if (new_target_stand_height_percent_available_)
@@ -297,10 +366,18 @@ void RobotDriverUnitreeH1::_set_stand_height_percent_from_subscriber()
    }
 }
 
+/**
+ * @brief Forward joint-velocity targets to the backend driver.
+ * @param desired_joint_velocities_radps Target joint velocities in radians per second.
+ */
 void RobotDriverUnitreeH1::set_target_joint_velocities(const VectorXd& desired_joint_velocities_radps){
    impl_->unitree_h1_driver_->set_upper_body_joint_velocities(desired_joint_velocities_radps);
 }
 
+/**
+ * @brief Forward joint-torque targets to the backend driver.
+ * @param desired_joint_torques_Nm Target joint torques in newton-metres.
+ */
 void RobotDriverUnitreeH1::set_target_joint_torques(const VectorXd& desired_joint_torques_Nm){
    impl_->unitree_h1_driver_->set_upper_body_joint_torques(desired_joint_torques_Nm);
 }

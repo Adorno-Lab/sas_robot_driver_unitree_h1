@@ -61,7 +61,7 @@ public:
     //  Impl data members
     // #############################################
 
-    std::string network_interface_ = "Not Initialised";
+    std::string network_interface_ = "Not Initialized";
     bool enter_damping_mode_on_deinit_ = false;
     bool is_dummy_ = false;
 
@@ -139,16 +139,15 @@ public:
 
     /**
      * @brief Default implementation constructor.
-     *        Creates an empty Impl object and leaves all handles uninitialised.
+     *        Creates an empty Impl object and leaves all handles uninitialized.
      */
     Impl() = default;
 
     /**
-     * @brief DriverUnitreeB1::Impl::set_joint_position_command helper function for position commands.
-     *        Called in a few places when joint positions are being written to the motors. Centralises
-     *        the logic for this so it can be changed in only one place.
-     * @param joint_id The id of the joint to be written to in Unitree SDK terms.
-     * @param target_position_rad The joint position in radians.
+     * @brief Set a target position for a single joint in the Unitree upper-body command buffer.
+     *        This helper centralizes the position-control logic used when writing motor commands.
+     * @param joint_id The Unitree motor index to address.
+     * @param target_position_rad Desired joint angle in radians.
      */
     void set_joint_position_command(int joint_id, float target_position_rad)
     {
@@ -177,11 +176,10 @@ public:
     }
 
     /**
-     * @brief DriverUnitreeB1::Impl::set_joint_velocity_command helper function for velocity commands. 
-     *        Called in a few places when joint velocities are being written to the motors. Centralises 
-     *        the logic for this so it can be changed in only one place.
-     * @param joint_id The id of the joint to be written to in Unitree SDK terms.
-     * @param target_velocity_rad_per_sec The joint velocity in radians per second
+     * @brief Set a target velocity for a single joint in the Unitree upper-body command buffer.
+     *        This helper centralizes the velocity-control logic used when writing motor commands.
+     * @param joint_id The Unitree motor index to address.
+     * @param target_velocity_rad_per_sec Desired joint velocity in radians per second.
      */
     void set_joint_velocity_command(int joint_id, float target_velocity_rad_per_sec)
     {
@@ -194,8 +192,8 @@ public:
         // Note that velocity control is somewhat inaccurate at low speeds, because
         // kp=0 means the robot has no position-holding stiffness, and the weight of 
         // the joints generates a torque has a significant impact. Larger gains might
-        // help, but experiments show that kd values above 10 result in a nasty grinding
-        // sound from the motors, which probably isn't good.
+        // help, but experiments show that kd values above 10 result in grinding
+        // sounds from the motors.
         cmd.q(0);
         cmd.dq(std::clamp(target_velocity_rad_per_sec, -global_joint_velocity_limit_radps_, global_joint_velocity_limit_radps_));
         cmd.kp(0);
@@ -204,11 +202,10 @@ public:
     }
 
     /**
-     * @brief DriverUnitreeB1::Impl::set_joint_torque_command helper function for torque commands. 
-     *        Called in a few places when joint torques are being written to the motors. Centralises 
-     *        the logic for this so it can be changed in only one place.
-     * @param joint_id The id of the joint to be written to in Unitree SDK terms.
-     * @param target_torque_Nm The joint torque in Newton metres
+     * @brief Set a target torque for a single joint in the Unitree upper-body command buffer.
+     *        This helper centralizes the torque-control logic used when writing motor commands.
+     * @param joint_id The Unitree motor index to address.
+     * @param target_torque_Nm Desired joint torque in newton-metres.
      */
     void set_joint_torque_command(int joint_id, float target_torque_Nm)
     {
@@ -254,14 +251,10 @@ public:
     }
 
     /**
-     * @brief DriverUnitreeB1::Impl::send_upper_body_control_message helper function for the publisher.
-     *        Sends a message to the upper_body_publisher_ and throws a runtime_error if the write operation fails.
-     *        Note that this function succeeding is not evidence that the robot received the message, only that the
-     *        message was written to the publisher. There may be other problems that prevent it from receiving that
-     *        message (e.g., if the robot doesn't subscribe to the topic, or isn't powered on). A failure of this
-     *        function usually indicates that something is wrong with the upper_body_publisher_ itself.
-     * @param calling_function The function calling send_upper_body_control_message, used for informative runtime errors.
-     * @throws runtime_error if the publisher write fails.
+     * @brief Publish the current upper-body command message through the DDS channel.
+     *        This confirms that the control packet was written to the publisher, not that the robot has necessarily processed it.
+     * @param calling_function Name of the caller used to build a clear error message.
+     * @throws std::runtime_error if the publisher cannot write the command packet.
      */
     void send_upper_body_control_message(std::string calling_function)
     {
@@ -273,12 +266,10 @@ public:
     }
 
     /**
-     * @brief DriverUnitreeB1::Impl::check_upper_body_subscriber_setup helper function for the subscriber.
-     *        Checks recent messages from the subscriber and throws a runtime_error if the channel is initialised
-     *        incorrectly, or if messages are not received within the expected window (which suggests that the robot
-     *        is not connected to the channel).
-     * @param calling_function The function calling check_upper_body_subscriber_setup, used for informative runtime errors.
-     * @throws runtime_error if the subscriber is not initialized or if the robot state messages are not received in time.
+     * @brief Validate that the upper-body state subscriber is initialized and receiving packets.
+     *        This check fails if the DDS channel is not connected or if the robot is not producing state updates within the expected window.
+     * @param calling_function Name of the caller used to build a clear error message.
+     * @throws std::runtime_error if the subscriber is missing or a valid state stream cannot be established.
      */
     void check_upper_body_subscriber_setup(std::string calling_function){
 
@@ -287,11 +278,11 @@ public:
             return;
         }
 
-        // Check that the channel has been initialised (time is -1 if not)
+        // Check that the channel has been initialized (time is -1 if not)
         float result = upper_body_subscriber_->GetLastDataAvailableTime();
         if (result<0)
         {
-            throw std::runtime_error("[" + calling_function + "] Upper body state subscriber not initialised!");
+            throw std::runtime_error("[" + calling_function + "] Upper body state subscriber not initialized!");
         }
 
         // Check that we're actually receiving messages (the robot should 
@@ -330,9 +321,9 @@ public:
     }
 
     /**
-     * @brief DriverUnitreeB1::Impl::set_joint_damping_mode_command helper function for damping mode.
-     *        Configures a motor command so the joint is softly damped without enforcing a position target.
-     * @param joint_id The id of the joint to be written to in Unitree SDK terms.
+     * @brief Set a joint into a passive damping mode.
+     *        This leaves the joint softly compliant without forcing a position target.
+     * @param joint_id The Unitree motor index to address.
      */
     void set_joint_damping_mode_command(int joint_id){
         auto &cmd = cmd_msg_.motor_cmd().at(joint_id);
@@ -341,7 +332,7 @@ public:
         // Torque = kp * (q_des - q_curr) + kd * (dq_des - dq_curr) + tau_ff
         // So, here we set dq_des as 0, so there is some damping proportional to the speed, but
         // also kp is zero, so we dont actually care what the position is. The effect is "damping
-        // mode" but only for the upper body.
+        // mode" but only for the joint in question.
         cmd.q(0);
         cmd.dq(0.0);
         cmd.kp(0.0);
@@ -350,13 +341,13 @@ public:
     }
 
     /**
-     * @brief DriverUnitreeB1::Impl::send_lower_body_control_message helper function for the locomotion client.
-     *        Sends commands to the high-level locomotion client and reports any non-zero return codes.
-     * @param message The command name to invoke on the locomotion client.
-     * @param calling_function Name of the caller for informative error messages.
-     * @param args Optional numeric arguments required by the selected command.
-     * @return The float return value produced by some locomotion client commands, or 0.0 if none.
-     * @throws runtime_error if the command name is unrecognized or if the locomotion client returns an error code.
+     * @brief Invoke a command on the high-level Unitree locomotion client.
+     *        The command name is translated to the corresponding API call and any non-zero return code is surfaced as an exception.
+     * @param message Name of the locomotion command to invoke.
+     * @param calling_function Name of the caller used to build a clear error message.
+     * @param args Numeric arguments required by the selected command.
+     * @return The float value returned by the locomotion API when relevant; otherwise 0.0.
+     * @throws std::runtime_error if the command name is unknown or the locomotion API reports an error.
      */
     float send_lower_body_control_message(std::string message, std::string calling_function, std::vector<float> args){
         int32_t loco_client_return_code = 0;
@@ -416,9 +407,9 @@ public:
     }
 
     /**
-     * @brief DriverUnitreeB1::Impl::check_robot_still_connected verifies the state subscriber is still receiving messages.
-     *        Throws a runtime_error when the latest message is older than the configured communication timeout.
-     * @throws runtime_error if the state subscriber has not received a recent message within the configured timeout.
+     * @brief Verify that the state subscriber is still receiving updates within the configured timeout.
+     *        This protects against stale robot state data and communication loss.
+     * @throws std::runtime_error if the state subscriber has not reported a recent message within the timeout window.
      */
     void check_robot_still_connected(){  
 
@@ -567,7 +558,7 @@ void DriverUnitreeH1::connect(){
  * @throws runtime_error if called before connect() or if starting the locomotion client fails.
  */
 void DriverUnitreeH1::initialize(){
-    std::cout << "Initialising..." << std::endl;
+    std::cout << "Initializing..." << std::endl;
     std::this_thread::sleep_for(impl_->comms_timeout_chrono_sec_);
 
     if(current_status_!=STATUS::CONNECTED){
@@ -579,30 +570,29 @@ void DriverUnitreeH1::initialize(){
     std::cout << "        Done." << std::endl;
 
 
-    std::cout << "    Initialising upper body joints..." << std::endl;
+    std::cout << "    Initializing upper body joints..." << std::endl;
     safely_start_upper_body_joints_();
     std::cout << "        Done." << std::endl;
 
-    std::cout << "Initialisation complete." << std::endl;
+    std::cout << "Initialization complete." << std::endl;
     current_status_ = STATUS::INITIALIZED;
 }
 
 /**
  * @brief Deinitializes the robot safely.
- *        Stops locomotion, optionally enters leg damping mode, and stops upper body joints.
- *        This function must not throw exceptions because it may be called from the destructor.
+ *        Stops locomotion, optionally enters damping mode, and places the upper body into a safe state.
+ *        This function must not throw exceptions because it may be invoked during shutdown.
  */
 void DriverUnitreeH1::deinitialize(){
-    // IMPORTANT NOTE: This function is called by the SAS destructor. Therfore, for safety reasons, it must not
-    // generate any exceptions.
+    // This function may be called by the SAS destructor; therefore, it must remain exception-safe.
     std::this_thread::sleep_for(impl_->comms_timeout_chrono_sec_);
 
     if(current_status_!=STATUS::INITIALIZED){
-        std::cout << "[ERROR] [DriverUnitreeH1::initialize] Deinitialize called when robot is not properly initialised!"<<std::endl;
+        std::cout << "[ERROR] [DriverUnitreeH1::initialize] Deinitialize called when robot is not properly initialized!"<<std::endl;
         return;
     }
 
-    std::cout << "Deinitialising..." << std::endl;
+    std::cout << "Deinitializing..." << std::endl;
 
     try{
         // Stop any ongoing motion
@@ -629,16 +619,16 @@ void DriverUnitreeH1::deinitialize(){
     }
     else{
         try{
-            std::cout << "    Deinitialising upper body joints..." << std::endl;
+            std::cout << "    Deinitializing upper body joints..." << std::endl;
             safely_stop_upper_body_joints_();
             std::cout << "        Done." << std::endl;
         }
         catch (const std::exception& e){
-            std::cout << "[ERROR] [DriverUnitreeH1::deinitialize] Exception caught while deinitialising upper body joints: "<<e.what()<<std::endl;
+            std::cout << "[ERROR] [DriverUnitreeH1::deinitialize] Exception caught while deinitializing upper body joints: "<<e.what()<<std::endl;
         }
     }
 
-    std::cout << "Deinitialisation complete." << std::endl;
+    std::cout << "Deinitialization complete." << std::endl;
     current_status_ = STATUS::DEINITIALIZED;
 }
 
@@ -648,12 +638,11 @@ void DriverUnitreeH1::deinitialize(){
  *        This function must not throw exceptions because it may be called from the destructor.
  */
 void DriverUnitreeH1::disconnect(){
-    // IMPORTANT NOTE: This function is called by the SAS destructor. Therfore, for safety reasons, it must not
-    // generate any exceptions.
+    // This function may be called by the SAS destructor; therefore, it must remain exception-safe.
     std::this_thread::sleep_for(impl_->comms_timeout_chrono_sec_);
     
     if(current_status_!=STATUS::DEINITIALIZED){
-        std::cout << "[ERROR] [DriverUnitreeH1::disconnect] Disconnect called when robot is not properly deinitialised!"<<std::endl;
+        std::cout << "[ERROR] [DriverUnitreeH1::disconnect] Disconnect called when robot is not properly deinitialized!"<<std::endl;
         return;
     }
 
@@ -686,9 +675,9 @@ void DriverUnitreeH1::disconnect(){
  */
 VectorXd DriverUnitreeH1::get_upper_body_joint_positions() const {
     
-    // Check the robot is initialised
+    // Check the robot is initialized
     if(current_status_!=STATUS::INITIALIZED){
-        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_positions] Function called when robot is not properly initialised!");
+        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_positions] Function called when robot is not properly initialized!");
     }
 
     // Check that the subscriber is still working
@@ -709,7 +698,7 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_positions() const {
 VectorXd DriverUnitreeH1::get_upper_body_joint_velocities() const {
     
     if(current_status_!=STATUS::INITIALIZED){
-        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_velocities] Function called when robot is not properly initialised!");
+        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_velocities] Function called when robot is not properly initialized!");
     }
 
     // Check that the subscriber is still working
@@ -730,7 +719,7 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_velocities() const {
 VectorXd DriverUnitreeH1::get_upper_body_joint_torques() const {
     
     if(current_status_!=STATUS::INITIALIZED){
-        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_torques] Function called when robot is not properly initialised!");
+        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_torques] Function called when robot is not properly initialized!");
     }
 
     // Check that the subscriber is still working
@@ -751,7 +740,7 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_torques() const {
 VectorXd DriverUnitreeH1::get_joint_temperatures() const {
     
     if(current_status_!=STATUS::INITIALIZED){
-        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_temperatures] Function called when robot is not properly initialised!");
+        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_temperatures] Function called when robot is not properly initialized!");
     }
 
     // Check that the subscriber is still working
@@ -777,13 +766,13 @@ VectorXd DriverUnitreeH1::get_joint_temperatures() const {
 VectorXd DriverUnitreeH1::get_torso_velocity() const {
     
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::get_torso_velocity] Function called when robot is not properly initialised!");
+            throw std::runtime_error("[DriverUnitreeH1::get_torso_velocity] Function called when robot is not properly initialized!");
     }
     
     // Check that the subscriber is still working
     impl_->check_robot_still_connected();
 
-    std::cout<<"DriverUnitreeH1::get_torso_velocity is not yet implemented"<<std::endl;
+    std::cout << "DriverUnitreeH1::get_torso_velocity is not yet implemented." << std::endl;
     return VectorXd::Zero(3);
 }
 
@@ -795,7 +784,7 @@ VectorXd DriverUnitreeH1::get_torso_velocity() const {
 DQ DriverUnitreeH1::get_IMU_orientation() const {
     
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::get_IMU_orientation] Function called when robot is not properly initialised!");
+            throw std::runtime_error("[DriverUnitreeH1::get_IMU_orientation] Function called when robot is not properly initialized!");
     }
 
     // Check that the subscriber is still working
@@ -826,7 +815,7 @@ DQ DriverUnitreeH1::get_IMU_orientation() const {
 VectorXd DriverUnitreeH1::get_gyroscope_data() const {
     
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::get_gyroscope_data] Function called when robot is not properly initialised!");
+            throw std::runtime_error("[DriverUnitreeH1::get_gyroscope_data] Function called when robot is not properly initialized!");
     }
 
     // Check that the subscriber is still working
@@ -855,7 +844,7 @@ VectorXd DriverUnitreeH1::get_gyroscope_data() const {
 VectorXd DriverUnitreeH1::get_accelerometer_data() const {
     
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::get_accelerometer_data] Function called when robot is not properly initialised!");
+            throw std::runtime_error("[DriverUnitreeH1::get_accelerometer_data] Function called when robot is not properly initialized!");
     }
 
     // Check that the subscriber is still working
@@ -884,7 +873,7 @@ VectorXd DriverUnitreeH1::get_accelerometer_data() const {
 VectorXd DriverUnitreeH1::get_Euler_angles() const {
     
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::get_Euler_angles] Function called when robot is not properly initialised!");
+            throw std::runtime_error("[DriverUnitreeH1::get_Euler_angles] Function called when robot is not properly initialized!");
     }
 
     // Check that the subscriber is still working
@@ -907,7 +896,7 @@ VectorXd DriverUnitreeH1::get_Euler_angles() const {
 int DriverUnitreeH1::get_IMU_temperature() const {
     
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::get_IMU_temperature] Function called when robot is not properly initialised!");
+            throw std::runtime_error("[DriverUnitreeH1::get_IMU_temperature] Function called when robot is not properly initialized!");
     }
 
     // Check that the subscriber is still working
@@ -923,49 +912,27 @@ int DriverUnitreeH1::get_IMU_temperature() const {
 // --------------------------------------------
 
 /**
- * @brief Returns the battery state of charge.
- * @return The battery state of charge in percent.
- * @throws runtime_error because this function is not ready to use.
+ * @brief Read the battery state of charge.
+ * @return Battery charge percentage.
+ * @throws std::runtime_error if the current firmware does not provide a usable battery-state payload.
  */
 int DriverUnitreeH1::get_battery_state_of_charge() const {
     
-    // This function always returns 0 for the state of charge. The reason is not clear, but it is possible that the
-    // H1's firmware is just not publishing that information. Resolving this will likely mean a discussion with
-    // autodiscovery.
-    throw std::runtime_error("[DriverUnitreeH1::get_battery_state_of_charge] This function is not ready to use!");
-    
-
-    if(current_status_!=STATUS::INITIALIZED){
-        throw std::runtime_error("[DriverUnitreeH1::get_battery_state_of_charge] Function called when robot is not properly initialised!");
-    }
-    
-    
-    int battery_soc_percent = static_cast<int>(impl_->state_msg_.bms_state().soc());
-    return battery_soc_percent;
+    // This function currently raises an exception because the H1 firmware does not appear to publish
+    // a reliable state-of-charge value through the available telemetry path.
+    throw std::runtime_error("[DriverUnitreeH1::get_battery_state_of_charge] This capability is not currently supported by the available firmware telemetry.");
 }
 
 /**
- * @brief Returns the battery temperatures.
- * @return A VectorXd of size 2 containing battery temperature readings in degrees Celsius.
- * @throws runtime_error because this function is not ready to use.
+ * @brief Read the battery temperature measurements.
+ * @return A 2-element VectorXd containing the battery temperatures in degrees Celsius.
+ * @throws std::runtime_error if the current firmware does not provide a valid battery-temperature payload.
  */
 VectorXd DriverUnitreeH1::get_battery_temperatures() const {
     
-    // This function always returns [0, 0] for the temperatures. The reason is not clear, but it is possible that the
-    // H1's firmware is just not publishing that information. Resolving this will likely mean a discussion with
-    // autodiscovery.
-    throw std::runtime_error("[DriverUnitreeH1::get_battery_temperatures] This function is not ready to use!");
-
-    if(current_status_!=STATUS::INITIALIZED){
-        throw std::runtime_error("[DriverUnitreeH1::get_battery_temperatures] Function called when robot is not properly initialised!");
-    }
-
-    VectorXd current_battery_temp_C = VectorXd::Zero(2);
-    
-    for (int i = 0; i < 2; ++i) {
-        current_battery_temp_C(i) = impl_->state_msg_.bms_state().bq_ntc()[i];
-    }
-    return current_battery_temp_C;
+    // This function currently raises an exception because the H1 firmware does not appear to publish
+    // a reliable battery-temperature payload through the available telemetry path.
+    throw std::runtime_error("[DriverUnitreeH1::get_battery_temperatures] This capability is not currently supported by the available firmware telemetry.");
 }
 
 // --------------------------------------------
@@ -1006,7 +973,7 @@ void DriverUnitreeH1::set_stand_height_percent(const float desired_height_percen
 void DriverUnitreeH1::change_control_mode(const std::string& new_mode) {
     
     if(current_status_!=STATUS::INITIALIZED){
-        throw std::runtime_error("[DriverUnitreeH1::change_control_mode] Function called when robot is not properly initialised!");
+        throw std::runtime_error("[DriverUnitreeH1::change_control_mode] Function called when robot is not properly initialized!");
     }
     std::string old_mode = current_mode_string_;
     if(new_mode=="position_controlled"){
@@ -1030,7 +997,7 @@ void DriverUnitreeH1::change_control_mode(const std::string& new_mode) {
 std::string DriverUnitreeH1::get_control_mode() {
     
     if(current_status_!=STATUS::INITIALIZED){
-        throw std::runtime_error("[DriverUnitreeH1::get_control_mode] Function called when robot is not properly initialised!");
+        throw std::runtime_error("[DriverUnitreeH1::get_control_mode] Function called when robot is not properly initialized!");
     }
 
     return current_mode_string_;
@@ -1044,7 +1011,7 @@ std::string DriverUnitreeH1::get_control_mode() {
 void DriverUnitreeH1::set_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad) {
     
     if(current_status_!=STATUS::INITIALIZED){
-        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_positions] Function called when robot is not properly initialised!");
+        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_positions] Function called when robot is not properly initialized!");
     }
 
     if(current_mode_!=MODE::POSITION_CONTROLLED){
@@ -1072,7 +1039,7 @@ void DriverUnitreeH1::set_upper_body_joint_positions(const VectorXd& desired_joi
 void DriverUnitreeH1::set_upper_body_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec) {
     
     if(current_status_!=STATUS::INITIALIZED){
-        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_velocities] Function called when robot is not properly initialised!");
+        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_velocities] Function called when robot is not properly initialized!");
     }
 
     if(current_mode_!=MODE::VELOCITY_CONTROLLED){
@@ -1100,7 +1067,7 @@ void DriverUnitreeH1::set_upper_body_joint_velocities(const VectorXd& desired_jo
 void DriverUnitreeH1::set_upper_body_joint_torques(const VectorXd& desired_joint_torques_Nm) {
     
     if(current_status_!=STATUS::INITIALIZED){
-        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_torques] Function called when robot is not properly initialised!");
+        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_torques] Function called when robot is not properly initialized!");
     }
 
     if(current_mode_!=MODE::TORQUE_CONTROLLED){
@@ -1128,7 +1095,7 @@ void DriverUnitreeH1::set_upper_body_joint_torques(const VectorXd& desired_joint
 void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_mps_radps) {
 
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::set_torso_velocity] Function called when robot is not properly initialised!");
+            throw std::runtime_error("[DriverUnitreeH1::set_torso_velocity] Function called when robot is not properly initialized!");
     }
 
     if(desired_torso_velocity_mps_radps.size()!=3){

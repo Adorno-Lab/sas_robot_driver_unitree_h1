@@ -36,6 +36,9 @@
 using namespace Eigen;
 using namespace DQ_robotics;
 
+// This script repeatedly prints the robot telemetry stream, including joint positions,
+// velocities, torques, temperatures, and IMU readings, to validate the low-level driver state outputs.
+
 bool simulation_mode = false; // Set to true to use the simulator rather than the real robot
 
 int main()
@@ -51,8 +54,8 @@ int main()
     driver.connect();
     std::cout << "    Done." << std::endl;
 
-    // Initialise
-    std::cout << "Press ENTER to initialise ...";
+    // Initialize
+    std::cout << "Press ENTER to initialize ...";
     std::cin.get();
     driver.initialize();
     std::cout << "    Done." << std::endl;
@@ -100,8 +103,8 @@ int main()
     running = false;
     t.join();
 
-    // Deinitialise
-    std::cout << "Press ENTER to deinitialise ...";
+    // Deinitialize
+    std::cout << "Press ENTER to deinitialize ...";
     std::cin.get();
     driver.deinitialize();
     std::cout << "    Done." << std::endl;

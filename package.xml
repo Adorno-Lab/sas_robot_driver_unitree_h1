@@ -3,8 +3,8 @@
 <package format="3">
   <name>sas_robot_driver_unitree_h1</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="juanjose.quirozomana@manchester.ac.uk">Juan Jose Quiroz Omana</maintainer>
+  <description>SAS based driver package for the Unitree H1 humanoid robot</description>
+  <maintainer email="daniel.derwent@manchester.ac.uk">Daniel Derwent</maintainer>
   <license>LGPL</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

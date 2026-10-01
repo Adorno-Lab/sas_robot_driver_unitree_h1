@@ -33,7 +33,7 @@
 #include <sas_robot_driver/sas_robot_driver_ros.hpp>
 
 /*********************************************
- * SIGNAL HANDLER
+ * Signal handler
  * *******************************************/
 #include<signal.h>
 static std::shared_ptr<sas::ShutdownSignaler> shutdown_signaler = std::make_shared<sas::ShutdownSignaler>();

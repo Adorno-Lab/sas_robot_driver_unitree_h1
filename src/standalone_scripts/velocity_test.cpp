@@ -33,6 +33,9 @@
 
 using namespace Eigen;
 
+// This script commands a sustained upper-body joint-velocity profile to demonstrate the
+// standalone velocity-control path and confirm that the H1 driver can track commanded motion.
+
 int main(){
     
     // Create robot driver
@@ -46,8 +49,8 @@ int main(){
     driver.connect();
     std::cout << "    Done." << std::endl;
 
-    // Initialise
-    std::cout << "Press ENTER to initialise ...";
+    // Initialize
+    std::cout << "Press ENTER to initialize ...";
     std::cin.get();
     driver.initialize();
     std::cout << "    Done." << std::endl;
@@ -72,8 +75,8 @@ int main(){
     driver.set_upper_body_joint_velocities(VectorXd::Zero(19));
     std::cout << "    Done." << std::endl;
 
-    // Deinitialise
-    std::cout << "Press ENTER to deinitialise ...";
+    // Deinitialize
+    std::cout << "Press ENTER to deinitialize ...";
     std::cin.get();
     driver.deinitialize();
     std::cout << "    Done." << std::endl;

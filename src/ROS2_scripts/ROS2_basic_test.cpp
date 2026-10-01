@@ -1,3 +1,32 @@
+/*
+# Copyright (c) 2026-2026 Adorno-Lab software developments
+#
+#    This file is part of sas_robot_driver_unitree_h1.
+#
+#    This is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Lesser General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This software is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public License
+#    along with this software.  If not, see <https://www.gnu.org/licenses/>.
+#
+# ################################################################
+#
+#   Author: Daniel S. J. Derwent, email: daniel.derwent@manchester.ac.uk
+#
+# ################################################################
+*/
+
+// This ROS 2 example publishes target joint positions and torso twists to the H1 driver,
+// waits for valid joint-state feedback, and demonstrates the position-control interface
+// used by the SAS driver layer.
+
 #include <chrono>
 #include <cstddef>
 #include <iostream>
@@ -262,7 +291,7 @@ int main(int argc, char * argv[])
         /*
          * Give the middleware an opportunity to send the final command before
          * destroying the publisher. The driver's own command timeout and safe
-         * deinitialisation remain the authoritative safety mechanisms.
+         * deinitialization remain the authoritative safety mechanisms.
          */
         const auto stop_publish_end =
             std::chrono::steady_clock::now() + 100ms;

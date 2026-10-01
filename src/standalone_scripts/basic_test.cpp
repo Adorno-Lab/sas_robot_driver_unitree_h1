@@ -33,6 +33,10 @@
 
 using namespace Eigen;
 
+// This script establishes a basic connection to the H1 driver, initializes the robot,
+// and performs a simple upper-body position trajectory to confirm the core startup
+// and motion-control sequence works as expected.
+
 int main(){
     
     // Create robot driver
@@ -46,8 +50,8 @@ int main(){
     driver.connect();
     std::cout << "    Done." << std::endl;
 
-    // Initialise
-    std::cout << "Press ENTER to initialise ...";
+    // Initialize
+    std::cout << "Press ENTER to initialize ...";
     std::cin.get();
     driver.initialize();
     std::cout << "    Done." << std::endl;
@@ -77,8 +81,8 @@ int main(){
     driver.set_torso_velocity(VectorXd::Zero(3));
     std::cout << "    Done." << std::endl;
 
-    // Deinitialise
-    std::cout << "Press ENTER to deinitialise ...";
+    // Deinitialize
+    std::cout << "Press ENTER to deinitialize ...";
     std::cin.get();
     driver.deinitialize();
     std::cout << "    Done." << std::endl;

@@ -33,6 +33,9 @@
 
 using namespace Eigen;
 
+// This script demonstrates how the driver switches between position-controlled and
+// velocity-controlled operation, verifying that the control-mode API behaves correctly.
+
 int main(){
     
     // Create robot driver
@@ -46,8 +49,8 @@ int main(){
     driver.connect();
     std::cout << "    Done." << std::endl;
 
-    // Initialise
-    std::cout << "Press ENTER to initialise ...";
+    // Initialize
+    std::cout << "Press ENTER to initialize ...";
     std::cin.get();
     driver.initialize();
     std::cout << "    Done." << std::endl;
@@ -100,8 +103,8 @@ int main(){
     std::cout << "    Done." << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-    // Deinitialise
-    std::cout << "Press ENTER to deinitialise ...";
+    // Deinitialize
+    std::cout << "Press ENTER to deinitialize ...";
     std::cin.get();
     driver.deinitialize();
     std::cout << "    Done." << std::endl;

@@ -56,6 +56,7 @@ private:
     std::shared_ptr<Impl> impl_;
 
     DriverUnitreeArmSDK arm_sdk_; 
+    DriverUnitreeLocoClient loco_client_; 
 
 protected:
     enum class MODE
@@ -110,6 +111,12 @@ protected:
         kLeftShoulderRoll = 17,
         kLeftShoulderYaw = 18,
         kLeftElbow = 19,
+    };
+
+    enum FSM_ID
+    {
+        START = 204,
+        DAMP = 1,
     };
 
     std::array<JOINT_INDEX, 9> upper_body_joints_ = {
@@ -171,7 +178,7 @@ public:
      * @param DUMMY_MODE If true, the driver runs without robot communication.
      * @throws std::runtime_error if the supplied control mode is invalid.
      */
-    void common_construction_tasks(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE, const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler);
+    void common_construction_tasks(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE);
 
     /**
      * @brief Connect to the robot communication channels and locomotion server.
@@ -202,7 +209,7 @@ public:
      * @return A VectorXd with one entry per upper-body joint, in radians.
      * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
      */
-    VectorXd get_upper_body_joint_positions() const;
+    VectorXd get_upper_body_joint_positions();
 
     /**
      * @brief Read the current velocities of the upper-body joints.

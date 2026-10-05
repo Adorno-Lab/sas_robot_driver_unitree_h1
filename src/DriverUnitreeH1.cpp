@@ -65,8 +65,6 @@ public:
     bool enter_damping_mode_on_deinit_ = false;
     bool is_dummy_ = false;
 
-    std::shared_ptr<unitree::robot::h1::LocoClient> locomotion_client_;
-
     unitree::robot::ChannelSubscriberPtr<unitree_go::msg::dds_::LowState_> upper_body_subscriber_;
     unitree_go::msg::dds_::LowState_ state_msg_;
 
@@ -139,72 +137,6 @@ public:
     }
 
     /**
-     * @brief Invoke a command on the high-level Unitree locomotion client.
-     *        The command name is translated to the corresponding API call and any non-zero return code is surfaced as an exception.
-     * @param message Name of the locomotion command to invoke.
-     * @param calling_function Name of the caller used to build a clear error message.
-     * @param args Numeric arguments required by the selected command.
-     * @return The float value returned by the locomotion API when relevant; otherwise 0.0.
-     * @throws std::runtime_error if the command name is unknown or the locomotion API reports an error.
-     */
-    float send_lower_body_control_message(std::string message, std::string calling_function, std::vector<float> args){
-        int32_t loco_client_return_code = 0;
-        float this_function_return_value = 0.0f;
-
-        // Skip this check if the driver is in dummy mode.
-        if(is_dummy_){
-            return this_function_return_value;
-        }
-
-        if (message == "Init") {
-            locomotion_client_->Init(); // initialize the connection
-        }
-        else if (message == "SetTimeout") {
-            locomotion_client_->SetTimeout(args[0]); // initialize the connection
-        }
-        else if (message == "Start") {
-            loco_client_return_code = locomotion_client_->Start(); // Start the client running
-        }
-        else if (message == "StopMove") {
-            loco_client_return_code = locomotion_client_->StopMove(); // Stop the robot if its currently moving
-        }
-        else if (message == "Damp") {
-            loco_client_return_code = locomotion_client_->Damp(); // Enter damping mode
-        }
-        else if (message == "GetStandHeight") {
-            loco_client_return_code = locomotion_client_->GetStandHeight(this_function_return_value); // Return the standing height
-        }
-        else if (message == "SetStandHeight") {
-            loco_client_return_code = locomotion_client_->SetStandHeight(args[0]); // Set the standing height
-        }
-        else if (message == "SetVelocity") {
-            loco_client_return_code = locomotion_client_->SetVelocity(args[0], args[1], args[2], args[3]); // Set the torso velocity
-        }
-        else if (message == "StandUp") {
-            loco_client_return_code = locomotion_client_->StandUp(); // Come out of damping mode
-        }
-        else {
-            throw std::runtime_error(
-                        "[" + calling_function +
-                        "] Message passed to high level locomotion client for which no case was defined: " + message);
-        }
-
-        // return code should always be 0. If it isn't 0, it means there was an error signal returned.
-        if(loco_client_return_code!=0){
-            const auto error_it = get_readable_error.find(loco_client_return_code);
-            const std::string error_message = (error_it != get_readable_error.end())
-                ? error_it->second
-                : "unknown error";
-
-            throw std::runtime_error(
-                    "[" + calling_function +
-                    "] Error message returned by high level locomotion client: '" + error_message + "' in response to command: '" + message + "'");
-        }
-
-        return this_function_return_value;
-    }
-
-    /**
      * @brief Verify that the state subscriber is still receiving updates within the configured timeout.
      *        This protects against stale robot state data and communication loss.
      * @throws std::runtime_error if the state subscriber has not reported a recent message within the timeout window.
@@ -247,9 +179,10 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface,
                                  bool ENTER_DAMPING_MODE_ON_DEINIT, 
                                  bool DUMMY_MODE, 
                                  const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler)
-                                 : arm_sdk_(shutdown_signaler, DriverUnitreeArmSDK::ROBOT::H1, 0.02){
+                                 : arm_sdk_(shutdown_signaler, DriverUnitreeArmSDK::ROBOT::H1, 0.02),
+                                   loco_client_(shutdown_signaler, DriverUnitreeLocoClient::ROBOT::H1, 0.01){
 
-    common_construction_tasks(network_interface, control_mode, ENTER_DAMPING_MODE_ON_DEINIT, DUMMY_MODE, shutdown_signaler);
+    common_construction_tasks(network_interface, control_mode, ENTER_DAMPING_MODE_ON_DEINIT, DUMMY_MODE);
     
 }
 
@@ -262,9 +195,10 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface,
 DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, 
                                  std::string control_mode, 
                                  const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler)
-                                 : arm_sdk_(shutdown_signaler, DriverUnitreeArmSDK::ROBOT::H1, 0.02){
+                                 : arm_sdk_(shutdown_signaler, DriverUnitreeArmSDK::ROBOT::H1, 0.02),
+                                   loco_client_(shutdown_signaler, DriverUnitreeLocoClient::ROBOT::H1, 0.01){
 
-    common_construction_tasks(network_interface, control_mode, false, false, shutdown_signaler);
+    common_construction_tasks(network_interface, control_mode, false, false);
 }
 
 /**
@@ -273,9 +207,10 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface,
  */
 DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, 
                                  const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler)
-                                 : arm_sdk_(shutdown_signaler, DriverUnitreeArmSDK::ROBOT::H1, 0.02){
+                                 : arm_sdk_(shutdown_signaler, DriverUnitreeArmSDK::ROBOT::H1, 0.02),
+                                   loco_client_(shutdown_signaler, DriverUnitreeLocoClient::ROBOT::H1, 0.01){
 
-    common_construction_tasks(network_interface, "position_controlled", false, false, shutdown_signaler);
+    common_construction_tasks(network_interface, "position_controlled", false, false);
     
 }
 
@@ -290,8 +225,7 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface,
 void DriverUnitreeH1::common_construction_tasks(std::string network_interface, 
                                                 std::string control_mode, 
                                                 bool ENTER_DAMPING_MODE_ON_DEINIT, 
-                                                bool DUMMY_MODE, 
-                                                const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler){
+                                                bool DUMMY_MODE){
 
     // Create implementation object
     impl_ = std::make_shared<DriverUnitreeH1::Impl>();
@@ -351,12 +285,9 @@ void DriverUnitreeH1::connect(){
     std::cout << "        Done." << std::endl;
 
     // Start high level locomotion client.
-    std::cout << "    Connecting to locomotion server..." << std::endl;
-    impl_->locomotion_client_ = std::make_shared<unitree::robot::h1::LocoClient>();
-    // impl_->locomotion_client_->Init(); // initialize the connection
-    //     impl_->locomotion_client_->SetTimeout(impl_->comms_timeout_sec_); // set a 10 second timeout
-    impl_->send_lower_body_control_message("Init", "DriverUnitreeH1::connect", {}); // initialize the connection
-    impl_->send_lower_body_control_message("SetTimeout", "DriverUnitreeH1::connect", {impl_->comms_timeout_sec_});// set a 10 second timeout
+    std::cout << "    Connecting to Loco Client..." << std::endl;
+    loco_client_.connect();
+    // The old driver set a comms timeout here, not sure how to do that in the new driver.
     std::cout << "        Done." << std::endl;
     
     std::cout << "Connection complete." << std::endl;
@@ -376,16 +307,13 @@ void DriverUnitreeH1::initialize(){
         throw std::runtime_error("[DriverUnitreeH1::initialize] Initialize called when robot is not properly connected!");
     }
 
-    std::cout << "    Starting locomotion client..." << std::endl;
-    impl_->send_lower_body_control_message("Start", "DriverUnitreeH1::initialize", {});
+    std::cout << "    Initializing Loco Client..." << std::endl;
+    loco_client_.initialize();
+    loco_client_.set_fsm_id(FSM_ID::START);
     std::cout << "        Done." << std::endl;
-
 
     std::cout << "    Initializing Arm SDK..." << std::endl;
     arm_sdk_.initialize();
-    std::cout << "        Done." << std::endl;
-
-    std::cout << "    Enabling arm control..." << std::endl;
     arm_sdk_.enable_arm_control();
     // Block driver thread until arm control has been established.
     // This ensures that by the time commands are being issued the arms are ready to go.
@@ -416,36 +344,37 @@ void DriverUnitreeH1::deinitialize(){
 
     try{
         // Stop any ongoing motion
-        std::cout << "    Stopping locomotion server..." << std::endl;
-        // impl_->locomotion_client_->StopMove();
-        impl_->send_lower_body_control_message("StopMove", "DriverUnitreeH1::deinitialize", {});
+        std::cout << "    Stopping ongoing motion..." << std::endl;
+        loco_client_.set_target_high_level_velocities({0, 0, 0});
         std::cout << "        Done."<<std::endl;
     }
     catch (const std::exception& e){
-        std::cout << "[ERROR] [DriverUnitreeH1::deinitialize] Exception caught while stopping locomotion server: "<<e.what()<<std::endl;
+        std::cout << "[ERROR] [DriverUnitreeH1::deinitialize] Exception caught while stopping ongoing motion: "<<e.what()<<std::endl;
     }
 
     // Put the robot into damping mode if requested
     if(impl_->enter_damping_mode_on_deinit_){
         try{
             std::cout << "    Entering damping mode..." << std::endl;
-            // impl_->locomotion_client_->Damp();
-            impl_->send_lower_body_control_message("Damp", "DriverUnitreeH1::deinitialize", {});
+            loco_client_.set_fsm_id(FSM_ID::DAMP);
             std::cout << "        Done." << std::endl;
         }
         catch (const std::exception& e){
             std::cout << "[ERROR] [DriverUnitreeH1::deinitialize] Exception caught while entering damping mode: "<<e.what()<<std::endl;
         }
     }
-    else{
-        try{
-            std::cout << "    Deinitializing Arm SDK..." << std::endl;
-            arm_sdk_.deinitialize(); // Note that deinitialize is a blocking call that winds down the arm control weight 
-            std::cout << "        Done." << std::endl;
-        }
-        catch (const std::exception& e){
-            std::cout << "[ERROR] [DriverUnitreeH1::deinitialize] Exception caught while deinitializing Arm SDK: "<<e.what()<<std::endl;
-        }
+
+    try{
+        std::cout << "    Deinitializing Arm SDK..." << std::endl;
+        arm_sdk_.deinitialize(); // Note that deinitialize is a blocking call that winds down the arm control weight 
+        std::cout << "        Done." << std::endl;
+
+        std::cout << "    Deinitializing Loco Client..." << std::endl;
+        loco_client_.deinitialize(); // This call does not change the FSM ID, so the robot should remain standing
+        std::cout << "        Done." << std::endl;
+    }
+    catch (const std::exception& e){
+        std::cout << "[ERROR] [DriverUnitreeH1::deinitialize] Exception caught while deinitializing Arm SDK: "<<e.what()<<std::endl;
     }
 
     std::cout << "Deinitialization complete." << std::endl;
@@ -475,11 +404,12 @@ void DriverUnitreeH1::disconnect(){
         unitree::robot::ChannelFactory::Instance()->Release();
 
         arm_sdk_.disconnect();
+        loco_client_.disconnect();
 
         std::cout << "        Done." << std::endl;
     }
     catch (const std::exception& e){
-        std::cout << "[ERROR] [DriverUnitreeH1::disconnect] Exception caught while closing upper body coms channels: "<<e.what()<<std::endl;
+        std::cout << "[ERROR] [DriverUnitreeH1::disconnect] Exception caught during disconnection: "<<e.what()<<std::endl;
     }
 
     std::cout << "Disconnection complete." << std::endl;
@@ -495,21 +425,41 @@ void DriverUnitreeH1::disconnect(){
  * @return A VectorXd of upper body joint positions in radians.
  * @throws runtime_error if the robot is not initialized or if the state subscriber has timed out.
  */
-VectorXd DriverUnitreeH1::get_upper_body_joint_positions() const {
-    
+VectorXd DriverUnitreeH1::get_upper_body_joint_positions() {
+
     // Check the robot is initialized
-    if(current_status_!=STATUS::INITIALIZED){
-        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_positions] Function called when robot is not properly initialized!");
+    if (current_status_ != STATUS::INITIALIZED) {
+        throw std::runtime_error(
+            "[DriverUnitreeH1::get_upper_body_joint_positions] "
+            "Function called when robot is not properly initialized!");
     }
 
     // Check that the subscriber is still working
     impl_->check_robot_still_connected();
 
-    VectorXd current_jpos_rad = VectorXd::Zero(upper_body_joints_.size());
-    for (int i = 0; i < upper_body_joints_.size(); ++i) {
-        current_jpos_rad(i) = impl_->state_msg_.motor_state().at(upper_body_joints_.at(i)).q();
+    std::vector<double> left_arm_positions_rad = arm_sdk_.get_positions(DriverUnitreeArmSDK::LIMB::LEFT_ARM);
+    std::vector<double> right_arm_positions_rad = arm_sdk_.get_positions(DriverUnitreeArmSDK::LIMB::RIGHT_ARM);
+    std::vector<double> waist_positions_rad = arm_sdk_.get_positions(DriverUnitreeArmSDK::LIMB::WAIST);
+
+    // Sanity-check dimensions
+    if (left_arm_positions_rad.size() != 4) {
+        throw std::runtime_error("[get_upper_body_joint_positions] Expected 4 left arm joints, got " +std::to_string(left_arm_positions_rad.size()));
     }
-    return current_jpos_rad;
+
+    if (right_arm_positions_rad.size() != 4) {
+        throw std::runtime_error("[get_upper_body_joint_positions] Expected 4 right arm joints, got " +std::to_string(right_arm_positions_rad.size()));
+    }
+
+    if (waist_positions_rad.size() != 1) {
+        throw std::runtime_error("[get_upper_body_joint_positions] Expected 1 waist joint, got " +std::to_string(waist_positions_rad.size()));
+    }
+
+    VectorXd current_overall_jpos_rad(9);
+    current_overall_jpos_rad.segment<4>(0) = Eigen::Map<const Vector4d>(left_arm_positions_rad.data());
+    current_overall_jpos_rad.segment<4>(4) = Eigen::Map<const Vector4d>(right_arm_positions_rad.data());
+    current_overall_jpos_rad(8) = waist_positions_rad[0];
+
+    return current_overall_jpos_rad;
 }
 
 /**
@@ -767,8 +717,7 @@ VectorXd DriverUnitreeH1::get_battery_temperatures() const {
  */
 float DriverUnitreeH1::get_stand_height_percent() const {
     float stand_height;
-    // impl_->locomotion_client_->GetStandHeight(stand_height);
-    stand_height = impl_->send_lower_body_control_message("GetStandHeight","DriverUnitreeH1::get_stand_height_percent",{});
+    stand_height = loco_client_.get_stand_height();
     float percent = (stand_height-0.6)/(0.2)*100;
     return(percent);
 }
@@ -779,8 +728,7 @@ float DriverUnitreeH1::get_stand_height_percent() const {
  */
 void DriverUnitreeH1::set_stand_height_percent(const float desired_height_percent){
     float absolute = ((desired_height_percent/100)*0.2)+0.6;
-    // impl_->locomotion_client_->SetStandHeight(absolute);
-    impl_->send_lower_body_control_message("SetStandHeight","DriverUnitreeH1::set_stand_height_percent",{absolute});
+    loco_client_.set_stand_height(absolute);
 }
 
 // --------------------------------------------
@@ -919,12 +867,8 @@ void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_
     vx = desired_torso_velocity_mps_radps(0);
     vy = desired_torso_velocity_mps_radps(1);
     v_yaw = desired_torso_velocity_mps_radps(2);
-    // impl_->locomotion_client_->SetVelocity(vx, vy, v_yaw, impl_->comms_timeout_sec_);
-    impl_->send_lower_body_control_message("SetVelocity","DriverUnitreeH1::set_torso_velocity",{vx, vy, v_yaw, impl_->comms_timeout_sec_});
+    loco_client_.set_target_high_level_velocities({vx, vy, v_yaw});
 }
 
-// #############################################
-//  DriverUnitreeH1 private member functions
-// #############################################
 
 

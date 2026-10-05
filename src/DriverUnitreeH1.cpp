@@ -67,72 +67,12 @@ public:
 
     std::shared_ptr<unitree::robot::h1::LocoClient> locomotion_client_;
 
-    unitree::robot::ChannelPublisherPtr<unitree_go::msg::dds_::LowCmd_> upper_body_publisher_;
-    unitree_go::msg::dds_::LowCmd_ cmd_msg_;
-
     unitree::robot::ChannelSubscriberPtr<unitree_go::msg::dds_::LowState_> upper_body_subscriber_;
     unitree_go::msg::dds_::LowState_ state_msg_;
 
     static constexpr float comms_timeout_sec_ = 1.0f;
     static constexpr std::chrono::duration<double> comms_timeout_chrono_sec_ {comms_timeout_sec_};
-    static constexpr float kp_ = 60.f;
-    static constexpr float pos_cmd_kd_ = 1.5f;
-    static constexpr float vel_cmd_kd_ = 9.f;
-    static constexpr std::chrono::duration<double> weight_ramp_overall_duration_sec_{4.0};
-    static constexpr float expected_firmware_update_period_sec_ = 0.02;
-    static constexpr std::chrono::duration<double> expected_firmware_update_period_chrono_sec_ {expected_firmware_update_period_sec_};
-    static constexpr float expected_movement_period_sec_ = expected_firmware_update_period_sec_*10;
-
-    static constexpr float joint_limit_intervention_margin_rad_ = 0.2;
-
-    static constexpr float global_joint_velocity_limit_radps_ = 1.0;
     
-    static constexpr float global_joint_caution_factor_ = 0.15;
-
-    std::unordered_map<int, float> lower_position_limits_rad_ = {
-    {8,	 -0.43+global_joint_caution_factor_},
-    {0,	 -0.43+global_joint_caution_factor_},
-    {1,	 -3.14+global_joint_caution_factor_},
-    {2,  -0.26+global_joint_caution_factor_},
-    {11, -0.87+global_joint_caution_factor_},
-    {7,	 -0.43+global_joint_caution_factor_},
-    {3,	 -0.43+global_joint_caution_factor_},
-    {4,	 -3.14+global_joint_caution_factor_},
-    {5,	 -0.26+global_joint_caution_factor_},
-    {10, -0.87+global_joint_caution_factor_},
-    {6,	 -2.35+global_joint_caution_factor_},
-    {12, -2.87+global_joint_caution_factor_},
-    {13, -3.11+global_joint_caution_factor_},
-    {14, -4.45+global_joint_caution_factor_},
-    {15, -1.25+global_joint_caution_factor_},
-    {16, -2.87+global_joint_caution_factor_},
-    {17, -0.34+global_joint_caution_factor_},
-    {18, -1.30+global_joint_caution_factor_},
-    {19, -1.25+global_joint_caution_factor_},
-    };
-
-    std::unordered_map<int, float> upper_position_limits_rad_ = {
-    {8,	 0.43-global_joint_caution_factor_},
-    {0,	 0.43-global_joint_caution_factor_},
-    {1,	 2.53-global_joint_caution_factor_},
-    {2,	 2.05-global_joint_caution_factor_},
-    {11, 0.52-global_joint_caution_factor_},
-    {7,	 0.43-global_joint_caution_factor_},
-    {3,	 0.43-global_joint_caution_factor_},
-    {4,	 2.53-global_joint_caution_factor_},
-    {5,	 2.05-global_joint_caution_factor_},
-    {10, 0.52-global_joint_caution_factor_},
-    {6,	 2.35-global_joint_caution_factor_},
-    {12, 2.87-global_joint_caution_factor_},
-    {13, 0.34-global_joint_caution_factor_},
-    {14, 1.30-global_joint_caution_factor_},
-    {15, 2.61-global_joint_caution_factor_},
-    {16, 2.87-global_joint_caution_factor_},
-    {17, 3.11-global_joint_caution_factor_},
-    {18, 4.45-global_joint_caution_factor_},
-    {19, 2.61-global_joint_caution_factor_},
-    };
-
     // #############################################
     //  Impl member functions
     // #############################################
@@ -142,128 +82,6 @@ public:
      *        Creates an empty Impl object and leaves all handles uninitialized.
      */
     Impl() = default;
-
-    /**
-     * @brief Set a target position for a single joint in the Unitree upper-body command buffer.
-     *        This helper centralizes the position-control logic used when writing motor commands.
-     * @param joint_id The Unitree motor index to address.
-     * @param target_position_rad Desired joint angle in radians.
-     */
-    void set_joint_position_command(int joint_id, float target_position_rad)
-    {
-
-        // If the position target is changing too quickly, then set a new target that will respect the
-        // velocity limit.
-        auto current_position = state_msg_.motor_state().at(joint_id).q();
-        auto estimated_speed = (target_position_rad - current_position)/expected_movement_period_sec_;
-        if(estimated_speed>global_joint_velocity_limit_radps_){
-            target_position_rad = current_position + global_joint_velocity_limit_radps_ * expected_movement_period_sec_;
-        }
-        else if(estimated_speed<-global_joint_velocity_limit_radps_){
-            target_position_rad = current_position - global_joint_velocity_limit_radps_ * expected_movement_period_sec_;
-        }
-
-        auto &cmd = cmd_msg_.motor_cmd().at(joint_id);
-        
-        // Motors are torque controlled using the eqn:
-        // Torque = kp * (q_des - q_curr) + kd * (dq_des - dq_curr) + tau_ff
-        // So, here we set dq_des as 0, so there is some damping proportional to the speed.
-        cmd.q(std::clamp(target_position_rad, lower_position_limits_rad_.at(joint_id), upper_position_limits_rad_.at(joint_id)));
-        cmd.dq(0.0);
-        cmd.kp(kp_);
-        cmd.kd(pos_cmd_kd_);
-        cmd.tau(0);
-    }
-
-    /**
-     * @brief Set a target velocity for a single joint in the Unitree upper-body command buffer.
-     *        This helper centralizes the velocity-control logic used when writing motor commands.
-     * @param joint_id The Unitree motor index to address.
-     * @param target_velocity_rad_per_sec Desired joint velocity in radians per second.
-     */
-    void set_joint_velocity_command(int joint_id, float target_velocity_rad_per_sec)
-    {
-        target_velocity_rad_per_sec = scale_command_based_on_joint_position(target_velocity_rad_per_sec, joint_id);     
-        
-        auto &cmd = cmd_msg_.motor_cmd().at(joint_id);
-        // Motors are torque controlled using the eqn:
-        // Torque = kp * (q_des - q_curr) + kd * (dq_des - dq_curr) + tau_ff
-        // So here we set kp=0, to eliminate the position term.
-        // Note that velocity control is somewhat inaccurate at low speeds, because
-        // kp=0 means the robot has no position-holding stiffness, and the weight of 
-        // the joints generates a torque has a significant impact. Larger gains might
-        // help, but experiments show that kd values above 10 result in grinding
-        // sounds from the motors.
-        cmd.q(0);
-        cmd.dq(std::clamp(target_velocity_rad_per_sec, -global_joint_velocity_limit_radps_, global_joint_velocity_limit_radps_));
-        cmd.kp(0);
-        cmd.kd(vel_cmd_kd_); 
-        cmd.tau(0);
-    }
-
-    /**
-     * @brief Set a target torque for a single joint in the Unitree upper-body command buffer.
-     *        This helper centralizes the torque-control logic used when writing motor commands.
-     * @param joint_id The Unitree motor index to address.
-     * @param target_torque_Nm Desired joint torque in newton-metres.
-     */
-    void set_joint_torque_command(int joint_id, float target_torque_Nm)
-    {
-        target_torque_Nm = scale_command_based_on_joint_position(target_torque_Nm, joint_id);
-
-        auto &cmd = cmd_msg_.motor_cmd().at(joint_id);
-        // Motors are torque controlled using the eqn:
-        // Torque = kp * (q_des - q_curr) + kd * (dq_des - dq_curr) + tau_ff
-        // So here we set kp==kd=0, to eliminate the position and velocity terms.
-        // and control things via the feed-forward torques directly
-        cmd.q(0);
-        cmd.dq(0);
-        cmd.kp(0);
-        cmd.kd(0); 
-        cmd.tau(target_torque_Nm);
-    }
-
-    /**
-     * @brief Scales a joint command based on the joint's proximity to its position limits.
-     *        As the joint approaches its upper or lower limit, the command magnitude is reduced
-     *        to avoid hitting the hard limit too quickly.
-     * @param original_command The original command value, either velocity or torque.
-     * @param joint_id The Unitree joint index to evaluate.
-     * @return The scaled command that respects joint limit proximity.
-     */
-    float scale_command_based_on_joint_position(float original_command, int joint_id){
-        auto current_position = state_msg_.motor_state().at(joint_id).q();
-        if (original_command > 0.0)
-        {
-            double dist = upper_position_limits_rad_.at(joint_id) - current_position;
-            if (dist < joint_limit_intervention_margin_rad_){
-                original_command *= std::max(0.0, dist / joint_limit_intervention_margin_rad_);
-            }
-        }
-        else
-        {
-            double dist = current_position - lower_position_limits_rad_.at(joint_id);
-            if (dist < joint_limit_intervention_margin_rad_){
-                original_command *= std::max(0.0, dist / joint_limit_intervention_margin_rad_);
-            }
-        }
-        return (original_command);
-    }
-
-    /**
-     * @brief Publish the current upper-body command message through the DDS channel.
-     *        This confirms that the control packet was written to the publisher, not that the robot has necessarily processed it.
-     * @param calling_function Name of the caller used to build a clear error message.
-     * @throws std::runtime_error if the publisher cannot write the command packet.
-     */
-    void send_upper_body_control_message(std::string calling_function)
-    {
-        // Send the message to the hardware and throw an error if it fails to send
-        if (!upper_body_publisher_->Write(cmd_msg_))
-        {
-            throw std::runtime_error("[" + calling_function + "] Upper body control message failed to send!");
-        }
-    }
 
     /**
      * @brief Validate that the upper-body state subscriber is initialized and receiving packets.
@@ -318,26 +136,6 @@ public:
                     " messages over " + timeout_str.str() + " seconds)");
             }
         }
-    }
-
-    /**
-     * @brief Set a joint into a passive damping mode.
-     *        This leaves the joint softly compliant without forcing a position target.
-     * @param joint_id The Unitree motor index to address.
-     */
-    void set_joint_damping_mode_command(int joint_id){
-        auto &cmd = cmd_msg_.motor_cmd().at(joint_id);
-
-        // Motors are torque controlled using the eqn:
-        // Torque = kp * (q_des - q_curr) + kd * (dq_des - dq_curr) + tau_ff
-        // So, here we set dq_des as 0, so there is some damping proportional to the speed, but
-        // also kp is zero, so we dont actually care what the position is. The effect is "damping
-        // mode" but only for the joint in question.
-        cmd.q(0);
-        cmd.dq(0.0);
-        cmd.kp(0.0);
-        cmd.kd(pos_cmd_kd_);
-        cmd.tau(0);
     }
 
     /**
@@ -444,9 +242,14 @@ public:
  * @param DUMMY_MODE True if driver started in dummy mode, false otherwise
  * @throws runtime_error if the provided control_mode string is invalid.
  */
-DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE){
+DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, 
+                                 std::string control_mode, 
+                                 bool ENTER_DAMPING_MODE_ON_DEINIT, 
+                                 bool DUMMY_MODE, 
+                                 const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler)
+                                 : arm_sdk_(shutdown_signaler, DriverUnitreeArmSDK::ROBOT::H1, 0.02){
 
-    common_construction_tasks(network_interface, control_mode, ENTER_DAMPING_MODE_ON_DEINIT, DUMMY_MODE);
+    common_construction_tasks(network_interface, control_mode, ENTER_DAMPING_MODE_ON_DEINIT, DUMMY_MODE, shutdown_signaler);
     
 }
 
@@ -456,18 +259,23 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, std::string cont
  * @param control_mode The requested control mode string: "position_controlled", "velocity_controlled", or "torque_controlled".
  * @throws runtime_error if the provided control_mode string is invalid.
  */
-DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, std::string control_mode){
+DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, 
+                                 std::string control_mode, 
+                                 const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler)
+                                 : arm_sdk_(shutdown_signaler, DriverUnitreeArmSDK::ROBOT::H1, 0.02){
 
-    common_construction_tasks(network_interface, control_mode, false, false);
+    common_construction_tasks(network_interface, control_mode, false, false, shutdown_signaler);
 }
 
 /**
  * @brief Construct a DriverUnitreeH1 object with a default position control mode.
  * @param network_interface The network interface to use for Unitree communication.
  */
-DriverUnitreeH1::DriverUnitreeH1(std::string network_interface){
+DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, 
+                                 const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler)
+                                 : arm_sdk_(shutdown_signaler, DriverUnitreeArmSDK::ROBOT::H1, 0.02){
 
-    common_construction_tasks(network_interface, "position_controlled", false, false);
+    common_construction_tasks(network_interface, "position_controlled", false, false, shutdown_signaler);
     
 }
 
@@ -479,7 +287,11 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface){
  * @param DUMMY_MODE True if driver started in dummy mode, false otherwise
  * @throws runtime_error if the provided control_mode string is invalid.
  */
-void DriverUnitreeH1::common_construction_tasks(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE){
+void DriverUnitreeH1::common_construction_tasks(std::string network_interface, 
+                                                std::string control_mode, 
+                                                bool ENTER_DAMPING_MODE_ON_DEINIT, 
+                                                bool DUMMY_MODE, 
+                                                const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler){
 
     // Create implementation object
     impl_ = std::make_shared<DriverUnitreeH1::Impl>();
@@ -521,10 +333,9 @@ void DriverUnitreeH1::connect(){
     unitree::robot::ChannelFactory::Instance()->Init(0, impl_->network_interface_);
     std::cout << "        Done." << std::endl;
 
-    // Start low level publisher
-    std::cout << "    Starting robot command publisher..." << std::endl;
-    impl_->upper_body_publisher_.reset(new unitree::robot::ChannelPublisher<unitree_go::msg::dds_::LowCmd_>("rt/arm_sdk"));
-    impl_->upper_body_publisher_->InitChannel();
+    // Connect Arm SDK
+    std::cout << "    Connecting to Arm SDK..." << std::endl;
+    arm_sdk_.connect();
     std::cout << "        Done." << std::endl;
 
     // Start low level subscriber
@@ -570,8 +381,17 @@ void DriverUnitreeH1::initialize(){
     std::cout << "        Done." << std::endl;
 
 
-    std::cout << "    Initializing upper body joints..." << std::endl;
-    safely_start_upper_body_joints_();
+    std::cout << "    Initializing Arm SDK..." << std::endl;
+    arm_sdk_.initialize();
+    std::cout << "        Done." << std::endl;
+
+    std::cout << "    Enabling arm control..." << std::endl;
+    arm_sdk_.enable_arm_control();
+    // Block driver thread until arm control has been established.
+    // This ensures that by the time commands are being issued the arms are ready to go.
+    while(!arm_sdk_.is_arm_control_enabled()){
+        std::this_thread::sleep_for(impl_->comms_timeout_chrono_sec_);
+    }
     std::cout << "        Done." << std::endl;
 
     std::cout << "Initialization complete." << std::endl;
@@ -619,12 +439,12 @@ void DriverUnitreeH1::deinitialize(){
     }
     else{
         try{
-            std::cout << "    Deinitializing upper body joints..." << std::endl;
-            safely_stop_upper_body_joints_();
+            std::cout << "    Deinitializing Arm SDK..." << std::endl;
+            arm_sdk_.deinitialize(); // Note that deinitialize is a blocking call that winds down the arm control weight 
             std::cout << "        Done." << std::endl;
         }
         catch (const std::exception& e){
-            std::cout << "[ERROR] [DriverUnitreeH1::deinitialize] Exception caught while deinitializing upper body joints: "<<e.what()<<std::endl;
+            std::cout << "[ERROR] [DriverUnitreeH1::deinitialize] Exception caught while deinitializing Arm SDK: "<<e.what()<<std::endl;
         }
     }
 
@@ -651,9 +471,11 @@ void DriverUnitreeH1::disconnect(){
     // Close the channels
     try{
         std::cout << "    Closing all comms channels..." << std::endl;
-        impl_->upper_body_publisher_->CloseChannel();
         impl_->upper_body_subscriber_->CloseChannel();
         unitree::robot::ChannelFactory::Instance()->Release();
+
+        arm_sdk_.disconnect();
+
         std::cout << "        Done." << std::endl;
     }
     catch (const std::exception& e){
@@ -1022,13 +844,13 @@ void DriverUnitreeH1::set_upper_body_joint_positions(const VectorXd& desired_joi
         throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_positions] Input has incorrect size! (got "+std::to_string(desired_joint_positions_rad.size())+", expected "+std::to_string(upper_body_joints_.size())+")");
     }
 
-    set_all_upper_body_joint_position_commands_(desired_joint_positions_rad);
+    std::vector<double> left_arm_values(desired_joint_positions_rad.data(),desired_joint_positions_rad.data() + 4);
+    std::vector<double> right_arm_values(desired_joint_positions_rad.data() + 4,desired_joint_positions_rad.data() + 8);
+    std::vector<double> waist_values{desired_joint_positions_rad(8)};
 
-    // Set weight to 1.0, to ensure that control instruction is followed
-    impl_->cmd_msg_.motor_cmd().at(JOINT_INDEX::kNotUsedJoint).q(1.0);
-
-    // Send message
-    impl_->send_upper_body_control_message("DriverUnitreeH1::set_upper_body_joint_positions");
+    arm_sdk_.set_target_positions(DriverUnitreeArmSDK::LIMB::LEFT_ARM, left_arm_values);
+    arm_sdk_.set_target_positions(DriverUnitreeArmSDK::LIMB::RIGHT_ARM, right_arm_values);
+    arm_sdk_.set_target_positions(DriverUnitreeArmSDK::LIMB::WAIST, waist_values);
 }
 
 /**
@@ -1050,13 +872,9 @@ void DriverUnitreeH1::set_upper_body_joint_velocities(const VectorXd& desired_jo
         throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_velocities] Input has incorrect size! (got "+std::to_string(desired_joint_velocities_rad_per_sec.size())+", expected "+std::to_string(upper_body_joints_.size())+")");
     }
 
-    set_all_upper_body_joint_velocity_commands_(desired_joint_velocities_rad_per_sec);
-
-    // Set weight to 1.0, to ensure that control instruction is followed
-    impl_->cmd_msg_.motor_cmd().at(JOINT_INDEX::kNotUsedJoint).q(1.0);
-
-    // Send message
-    impl_->send_upper_body_control_message("set_upper_body_joint_velocities");
+    // As of 05/10/26, the unitree drivers submodule does not support velocity control of the arms.
+    throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_velocities] This function has not been implemented yet on this branch!");
+    
 }
 
 /**
@@ -1078,13 +896,8 @@ void DriverUnitreeH1::set_upper_body_joint_torques(const VectorXd& desired_joint
         throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_torques] Input has incorrect size! (got "+std::to_string(desired_joint_torques_Nm.size())+", expected "+std::to_string(upper_body_joints_.size())+")");
     }
 
-    set_all_upper_body_joint_torque_commands_(desired_joint_torques_Nm);
-
-    // Set weight to 1.0, to ensure that control instruction is followed
-    impl_->cmd_msg_.motor_cmd().at(JOINT_INDEX::kNotUsedJoint).q(1.0);
-
-    // Send message
-    impl_->send_upper_body_control_message("DriverUnitreeH1::set_upper_body_joint_torques");
+    // As of 05/10/26, the unitree drivers submodule does not support velocity control of the arms.
+    throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_velocities] This function has not been implemented yet on this branch!");
 }
 
 /**
@@ -1114,82 +927,4 @@ void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_
 //  DriverUnitreeH1 private member functions
 // #############################################
 
-/**
- * @brief Writes position commands to all upper body joints without sending the message.
- * @param target_positions_rad A VectorXd of target joint positions in radians.
- */
-void DriverUnitreeH1::set_all_upper_body_joint_position_commands_(const VectorXd& target_positions_rad){
-    for(int i=0; i<upper_body_joints_.size(); i++){
-        impl_->set_joint_position_command(upper_body_joints_.at(i), target_positions_rad(i));
-    }
-}
 
-/**
- * @brief Writes velocity commands to all upper body joints without sending the message.
- * @param target_velocities_rad_per_sec A VectorXd of target joint velocities in radians per second.
- */
-void DriverUnitreeH1::set_all_upper_body_joint_velocity_commands_(const VectorXd& target_velocities_rad_per_sec){
-    for(int i=0; i<upper_body_joints_.size(); i++){
-        impl_->set_joint_velocity_command(upper_body_joints_.at(i),target_velocities_rad_per_sec(i));
-    }
-}
-
-/**
- * @brief Writes torque commands to all upper body joints without sending the message.
- * @param target_torques_Nm A VectorXd of target joint torques in Newton-meters.
- */
-void DriverUnitreeH1::set_all_upper_body_joint_torque_commands_(const VectorXd& target_torques_Nm){
-    for(int i=0; i<upper_body_joints_.size(); i++){
-        impl_->set_joint_torque_command(upper_body_joints_.at(i),target_torques_Nm(i));
-    }
-}
-
-/**
- * @brief Configures all upper body joints to damping mode without sending the command.
- */
-void DriverUnitreeH1::damp_all_upper_body_joints_(){
-    for(int i=0; i<upper_body_joints_.size(); i++){
-        impl_->set_joint_damping_mode_command(upper_body_joints_.at(i));
-    }
-}
-
-/**
- * @brief Safely starts upper body joints by entering damping mode and then ramping the position gain.
- *        This prepares the upper body joints for normal commanded motion.
- */
-void DriverUnitreeH1::safely_start_upper_body_joints_(){
-    float num_time_steps = static_cast<float>(impl_->weight_ramp_overall_duration_sec_/impl_->expected_firmware_update_period_chrono_sec_);
-
-    // Start by putting the robot into "upper body damping mode"
-    damp_all_upper_body_joints_();
-    impl_->cmd_msg_.motor_cmd().at(JOINT_INDEX::kNotUsedJoint).q(1.0);
-    impl_->send_upper_body_control_message("DriverUnitreeH1::safely_start_upper_body_joints_");
-    std::this_thread::sleep_for(impl_->weight_ramp_overall_duration_sec_);
-
-    // Then gradually ramp up the position gain to get the motors into the right place.
-    for(int i=0; i<num_time_steps; i++){
-        for(int j=0; j<upper_body_joints_.size(); j++){
-            auto &cmd = impl_->cmd_msg_.motor_cmd().at(upper_body_joints_.at(j));
-            cmd.q(0);
-            cmd.dq(0.0);
-            cmd.kp(0.0 + (static_cast<float>(i) / num_time_steps)*(impl_->kp_-0));
-            cmd.kd(impl_->pos_cmd_kd_);
-            cmd.tau(0);
-        }
-        impl_->send_upper_body_control_message("DriverUnitreeH1::safely_start_upper_body_joints_");
-        std::this_thread::sleep_for(impl_->expected_firmware_update_period_chrono_sec_);
-    }
-}
-
-/**
- * @brief Safely stops upper body joints by switching them to damping mode.
- */
-void DriverUnitreeH1::safely_stop_upper_body_joints_(){
-    float num_time_steps = static_cast<float>(impl_->weight_ramp_overall_duration_sec_/impl_->expected_firmware_update_period_chrono_sec_);
-
-    // Start by putting the robot back into "upper body damping mode"
-    damp_all_upper_body_joints_();
-    impl_->cmd_msg_.motor_cmd().at(JOINT_INDEX::kNotUsedJoint).q(1.0);
-    impl_->send_upper_body_control_message("DriverUnitreeH1::safely_stop_upper_body_joints_");
-    std::this_thread::sleep_for(impl_->weight_ramp_overall_duration_sec_);
-}

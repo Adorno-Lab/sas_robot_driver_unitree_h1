@@ -29,6 +29,8 @@
 
 #include <Eigen/Core>
 
+#include <marinholab/sas/core/sas_shutdown_signaler.hpp>
+
 #include "DriverUnitreeH1.hpp"
 
 using namespace Eigen;
@@ -40,7 +42,8 @@ int main(){
     
     // Create robot driver
     std::cout << "Creating robot driver..." << std::endl;
-    DriverUnitreeH1 driver("eth0", "position_controlled");
+    static std::shared_ptr<marinholab::sas::core::ShutdownSignaler> shutdown_signaler = std::make_shared<marinholab::sas::core::ShutdownSignaler>();
+    DriverUnitreeH1 driver("eth0", "position_controlled", shutdown_signaler);
     std::cout << "    Done." << std::endl;
 
     // Connect

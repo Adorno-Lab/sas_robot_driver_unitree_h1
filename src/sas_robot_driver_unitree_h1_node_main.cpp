@@ -36,7 +36,7 @@
  * Signal handler
  * *******************************************/
 #include<signal.h>
-static std::shared_ptr<sas::ShutdownSignaler> shutdown_signaler = std::make_shared<sas::ShutdownSignaler>();
+static std::shared_ptr<marinholab::sas::core::ShutdownSignaler> shutdown_signaler = std::make_shared<marinholab::sas::core::ShutdownSignaler>();
 void sig_int_handler(int)
 {
     shutdown_signaler->shutdown();

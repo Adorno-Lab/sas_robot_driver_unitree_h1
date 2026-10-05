@@ -31,6 +31,8 @@
 #include <Eigen/Core>
 #include <dqrobotics/DQ.h>
 
+#include <marinholab/sas/core/sas_shutdown_signaler.hpp>
+
 #include "DriverUnitreeH1.hpp"
 
 using namespace Eigen;
@@ -39,13 +41,14 @@ using namespace DQ_robotics;
 // This script repeatedly prints the robot telemetry stream, including joint positions,
 // velocities, torques, temperatures, and IMU readings, to validate the low-level driver state outputs.
 
-bool simulation_mode = false; // Set to true to use the simulator rather than the real robot
+bool dummy_mode = false; // Set to true to use the dummy driver rather than the real driver
 
 int main()
 {
     // Create robot driver
     std::cout << "Creating robot driver..." << std::endl;
-    DriverUnitreeH1 driver("eth0", "position_controlled", false, simulation_mode);
+    static std::shared_ptr<marinholab::sas::core::ShutdownSignaler> shutdown_signaler = std::make_shared<marinholab::sas::core::ShutdownSignaler>();
+    DriverUnitreeH1 driver("eth0", "position_controlled", false, dummy_mode, shutdown_signaler);
     std::cout << "    Done." << std::endl;
 
     // Connect

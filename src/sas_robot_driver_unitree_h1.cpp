@@ -70,7 +70,8 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
     impl_->unitree_h1_driver_ = std::make_shared<DriverUnitreeH1>(configuration_.network_interface, 
                                                                   configuration_.mode, 
                                                                   configuration_.ENTER_DAMPING_MODE_ON_DEINIT,
-                                                                  configuration_.DUMMY_MODE);
+                                                                  configuration_.DUMMY_MODE,
+                                                                  shutdown_signaler);
 
    impl_->is_dummy_ = configuration_.DUMMY_MODE;
 

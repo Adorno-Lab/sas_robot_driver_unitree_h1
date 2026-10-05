@@ -31,6 +31,12 @@
 
 #include <dqrobotics/DQ.h>
 
+#include <unitree_drivers/DriverUnitreeLocoClient.h>
+#include <unitree_drivers/DriverUnitreeArmSDK.h>
+#include <unitree_drivers/DriverUnitreeLowState.h>
+
+#include <marinholab/sas/core/sas_shutdown_signaler.hpp>
+
 using namespace DQ_robotics;
 using namespace Eigen;
 
@@ -48,6 +54,8 @@ class DriverUnitreeH1
 private:
     class Impl;
     std::shared_ptr<Impl> impl_;
+
+    DriverUnitreeArmSDK arm_sdk_; 
 
 protected:
     enum class MODE
@@ -105,16 +113,17 @@ protected:
     };
 
     std::array<JOINT_INDEX, 9> upper_body_joints_ = {
-        JOINT_INDEX::kLeftShoulderRoll,  JOINT_INDEX::kLeftShoulderPitch,
+        JOINT_INDEX::kLeftShoulderPitch, JOINT_INDEX::kLeftShoulderRoll,
         JOINT_INDEX::kLeftShoulderYaw,    JOINT_INDEX::kLeftElbow,
-        JOINT_INDEX::kRightShoulderRoll, JOINT_INDEX::kRightShoulderPitch,
-        JOINT_INDEX::kRightShoulderYaw,   JOINT_INDEX::kRightElbow, JOINT_INDEX::kWaistYaw
+        JOINT_INDEX::kRightShoulderPitch, JOINT_INDEX::kRightShoulderRoll,
+        JOINT_INDEX::kRightShoulderYaw,   JOINT_INDEX::kRightElbow, 
+        JOINT_INDEX::kWaistYaw
     };
 
     std::array<JOINT_INDEX, 19> robot_joints_ = {
-        JOINT_INDEX::kLeftShoulderRoll,  JOINT_INDEX::kLeftShoulderPitch,
+        JOINT_INDEX::kLeftShoulderPitch, JOINT_INDEX::kLeftShoulderRoll,
         JOINT_INDEX::kLeftShoulderYaw,    JOINT_INDEX::kLeftElbow,
-        JOINT_INDEX::kRightShoulderRoll, JOINT_INDEX::kRightShoulderPitch,
+        JOINT_INDEX::kRightShoulderPitch, JOINT_INDEX::kRightShoulderRoll,
         JOINT_INDEX::kRightShoulderYaw,   JOINT_INDEX::kRightElbow,
         JOINT_INDEX::kWaistYaw,
         JOINT_INDEX::kRightHipRoll, JOINT_INDEX::kRightHipPitch,
@@ -137,7 +146,7 @@ public:
      * @param DUMMY_MODE If true, the driver behaves in a passive dummy mode without hardware access.
      * @throws std::runtime_error if the requested control mode is not recognised.
      */
-    DriverUnitreeH1(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE);
+    DriverUnitreeH1(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE, const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler);
 
     /**
      * @brief Construct a driver instance with a specific network interface and control mode.
@@ -146,13 +155,13 @@ public:
      *        "velocity_controlled", or "torque_controlled".
      * @throws std::runtime_error if the requested control mode is not recognised.
      */
-    DriverUnitreeH1(std::string network_interface, std::string control_mode);
+    DriverUnitreeH1(std::string network_interface, std::string control_mode, const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler);
 
     /**
      * @brief Construct a driver instance using the default position-control mode.
      * @param network_interface Network interface used for Unitree DDS communication.
      */
-    DriverUnitreeH1(std::string network_interface);
+    DriverUnitreeH1(std::string network_interface, const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler);
 
     /**
      * @brief Perform the common initialization tasks shared by all constructors.
@@ -162,7 +171,7 @@ public:
      * @param DUMMY_MODE If true, the driver runs without robot communication.
      * @throws std::runtime_error if the supplied control mode is invalid.
      */
-    void common_construction_tasks(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE);
+    void common_construction_tasks(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE, const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler);
 
     /**
      * @brief Connect to the robot communication channels and locomotion server.
@@ -327,36 +336,4 @@ public:
     void set_stand_height_percent(const float desired_height_percent);
 
 private:
-    /**
-     * @brief Populate the motor command buffer for all upper-body joint position targets.
-     * @param target_positions_rad Desired positions in radians.
-     */
-    void set_all_upper_body_joint_position_commands_(const VectorXd& target_positions_rad);
-
-    /**
-     * @brief Populate the motor command buffer for all upper-body joint velocity targets.
-     * @param target_velocities_rad_per_sec Desired velocities in radians per second.
-     */
-    void set_all_upper_body_joint_velocity_commands_(const VectorXd& target_velocities_rad_per_sec);
-
-    /**
-     * @brief Populate the motor command buffer for all upper-body joint torque targets.
-     * @param target_torques_Nm Desired torques in newton-metres.
-     */
-    void set_all_upper_body_joint_torque_commands_(const VectorXd& target_torques_Nm);
-
-    /**
-     * @brief Command all upper-body joints to a passive damping state.
-     */
-    void damp_all_upper_body_joints_();
-
-    /**
-     * @brief Safely initialize the upper-body joints and ramp their gains into the active control state.
-     */
-    void safely_start_upper_body_joints_();
-
-    /**
-     * @brief Safely return the upper-body joints to a passive damping state.
-     */
-    void safely_stop_upper_body_joints_();
 };

@@ -20,6 +20,8 @@ find_package(sas_core REQUIRED)
 find_package(sas_common REQUIRED)
 find_package(sas_robot_driver REQUIRED)
 
+find_package(unitree_sdk2 REQUIRED)
+find_package(unitree_drivers REQUIRED)
 
 ####################################
 # DQ Robotics
@@ -35,14 +37,13 @@ find_library(DQROBOTICS_LIBRARY
 )
 
 
-####################################
-# Unitree SDK2
-####################################
+# ####################################
+# # Unitree SDK2
+# ####################################
 
-add_subdirectory(
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/unitree_sdk2
-)
-
+# add_subdirectory(
+#   ${CMAKE_CURRENT_SOURCE_DIR}/src/unitree_sdk2
+# )
 
 ####################################
 # Driver shared library
@@ -72,15 +73,19 @@ target_include_directories(${PROJECT_NAME}
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/sas_tools/include>
     $<INSTALL_INTERFACE:include>
 
-  PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/unitree_sdk2/include
+  # PRIVATE
+  #   ${CMAKE_CURRENT_SOURCE_DIR}/src/unitree_sdk2/include
 )
 
 
 target_link_libraries(${PROJECT_NAME}
   unitree_sdk2
   ${DQROBOTICS_LIBRARY}
+  unitree_drivers::loco_client
+  unitree_drivers::arm_sdk
+  unitree_drivers::low_state
 )
+
 
 
 ####################################

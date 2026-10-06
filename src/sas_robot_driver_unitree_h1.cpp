@@ -104,19 +104,33 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
    // Register the control-loop callback that updates the ROS 2 state and applies any pending commands.
    set_control_loop_callback([this]() {
       try {
-         // _read_joint_states_and_publish();
          _read_imu_state_and_publish();
-         _read_temperatures_and_publish();
-         _read_stand_height_and_publish();
-         // _read_battery_state();
-         // _read_twist_state_and_publish();
-         _set_torso_velocities_from_subscriber();
-         _set_stand_height_percent_from_subscriber();
-         
-         // _set_target_velocities_from_subscriber();
-         //_read_rpy_angles_state_and_publish();
       } catch (const std::exception& e) {
-         std::cout << "[ERROR] [DriverUnitreeH1 Callback Function] Exception caught: "<<e.what()<<std::endl;
+         std::cout << "[ERROR] [RobotDriverUnitreeH1::_read_imu_state_and_publish] Exception caught: "<<e.what()<<std::endl;
+      }
+
+      try {
+         _read_temperatures_and_publish();
+      } catch (const std::exception& e) {
+         std::cout << "[ERROR] [RobotDriverUnitreeH1::_read_temperatures_and_publish] Exception caught: "<<e.what()<<std::endl;
+      }
+
+      try {
+         _read_stand_height_and_publish();
+      } catch (const std::exception& e) {
+         std::cout << "[ERROR] [RobotDriverUnitreeH1::_read_stand_height_and_publish] Exception caught: "<<e.what()<<std::endl;
+      }
+
+      try {
+         _set_torso_velocities_from_subscriber();
+      } catch (const std::exception& e) {
+         std::cout << "[ERROR] [RobotDriverUnitreeH1::_set_torso_velocities_from_subscriber] Exception caught: "<<e.what()<<std::endl;
+      }
+
+      try {
+         _set_stand_height_percent_from_subscriber();
+      } catch (const std::exception& e) {
+         std::cout << "[ERROR] [RobotDriverUnitreeH1::_set_stand_height_percent_from_subscriber] Exception caught: "<<e.what()<<std::endl;
       }
     });
 }
@@ -239,6 +253,7 @@ void RobotDriverUnitreeH1::set_target_base_height(const double& base_height)
  */
 void RobotDriverUnitreeH1::_read_imu_state_and_publish()
 {
+
    sensor_msgs::msg::Imu ros_msg_imu;
    ros_msg_imu.header.stamp = node_->get_clock()->now();
 
@@ -246,6 +261,12 @@ void RobotDriverUnitreeH1::_read_imu_state_and_publish()
    ros_msg_pose.header.stamp = node_->get_clock()->now();
 
    DriverUnitreeLowState::IMUData imu_data = impl_->unitree_h1_driver_->get_IMU_data();
+
+   // If the data is invalid (i.e., it did not come from a real measurement) then stop the process
+   // right here, don't publish anything.
+   if(!imu_data.valid){
+      return;
+   }
 
    DQ orientation = DQ(
       imu_data.quaternion.at(0), //w

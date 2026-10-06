@@ -416,6 +416,11 @@ VectorXd DriverUnitreeH1::get_joint_temperatures() const
         throw std::runtime_error("[DriverUnitreeH1::get_joint_temperatures] Function called when robot is not properly initialized!");
     }
 
+    // If this is the dummy driver, then return all zeros.
+    if(is_dummy_){
+        return VectorXd::Zero(robot_joints_.size());
+    }
+
     const std::vector<double> current_j_casing_temp_C = low_state_.get_joint_temperatures();
 
     if (current_j_casing_temp_C.size() != robot_joints_.size()) {
@@ -461,7 +466,20 @@ DriverUnitreeLowState::IMUData DriverUnitreeH1::get_IMU_data() const {
             throw std::runtime_error("[DriverUnitreeH1::get_IMU_data] Function called when robot is not properly initialized!");
     }
 
-    return low_state_.get_imu_data();
+    if(!is_dummy_){
+        return low_state_.get_imu_data();
+    }
+    else{
+        DriverUnitreeLowState::IMUData spoof_IMU_data;
+        
+        spoof_IMU_data.accelerometer={0, 0, 0};
+        spoof_IMU_data.gyroscope={0, 0, 0};
+        spoof_IMU_data.quaternion={1, 0, 0, 0};
+        spoof_IMU_data.rpy={0, 0, 0};
+        spoof_IMU_data.valid=true;
+
+        return spoof_IMU_data;
+    }
 }
 
 // --------------------------------------------
@@ -501,6 +519,12 @@ VectorXd DriverUnitreeH1::get_battery_temperatures() const {
  * @return The standing height percentage in the range of the robot's stand height limits.
  */
 float DriverUnitreeH1::get_stand_height_percent() const {
+    
+    // If this is the dummy driver then spoof the data
+    if(is_dummy_){
+        return 50;
+    }
+    
     float stand_height;
     stand_height = loco_client_.get_stand_height();
     float percent = (stand_height-0.6)/(0.2)*100;

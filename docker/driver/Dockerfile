@@ -45,6 +45,8 @@ RUN cmake -S src/unitree_drivers \
     cmake --build /tmp/unitree_build -j$(nproc) && \
     cmake --install /tmp/unitree_build
 
+RUN ldconfig
+
 # ####################################################
 #                   Set up Aliases                   #
 # ####################################################

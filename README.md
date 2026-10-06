@@ -2,9 +2,6 @@
 
 ![GitHub License](https://img.shields.io/github/license/Adorno-Lab/sas_robot_driver_unitree_z1)![Static Badge](https://img.shields.io/badge/ROS2-Jazzy-blue)![Static Badge](https://img.shields.io/badge/powered_by-DQ_Robotics-red)![Static Badge](https://img.shields.io/badge/SmartArmStack-green)![Static Badge](https://img.shields.io/badge/Ubuntu-24.04_LTS-orange)
 
-> [!CAUTION]
-> This is a work is progress branch focussed on implementing the humanoid "lego classes" available in [this repo](https://github.com/Adorno-Lab/unitree_drivers). The code in this branch is not ready for use on the H1 at this time.
-
 This repository contains a SAS driver and simulation capabilities for the Unitree H1, developed based on the Unitree B1 implementation by Juan José Quiroz Omaña. The H1 drivers are maintained by Daniel S. J. Derwent. For questions or issues, please contact [daniel.derwent@manchester.ac.uk](mailto:daniel.derwent@manchester.ac.uk).
 
 > [!WARNING]

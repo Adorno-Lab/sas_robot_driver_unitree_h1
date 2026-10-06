@@ -32,14 +32,16 @@
 #include <sas_core/eigen3_std_conversions.hpp>
 #include <sas_conversions/DQ_geometry_msgs_conversions.hpp>
 
+#include <unitree_drivers/DriverUnitreeLowState.h>
+
 namespace sas
 {
 
 /**
- * @brief Internal implementation class for the ROS 2 Unitree H1 driver wrapper.
+ * @brief Internal implementation details for the ROS 2 Unitree H1 driver wrapper.
  *
- * This object stores the underlying hardware driver instance and the runtime
- * dummy-mode state used by the higher-level ROS 2 interface.
+ * This private helper stores the underlying backend driver instance and the
+ * runtime dummy-mode state used by the higher-level ROS 2 interface.
  */
 class RobotDriverUnitreeH1::Impl
 {
@@ -70,7 +72,8 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
     impl_->unitree_h1_driver_ = std::make_shared<DriverUnitreeH1>(configuration_.network_interface, 
                                                                   configuration_.mode, 
                                                                   configuration_.ENTER_DAMPING_MODE_ON_DEINIT,
-                                                                  configuration_.DUMMY_MODE);
+                                                                  configuration_.DUMMY_MODE,
+                                                                  shutdown_signaler);
 
    impl_->is_dummy_ = configuration_.DUMMY_MODE;
 
@@ -101,19 +104,33 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
    // Register the control-loop callback that updates the ROS 2 state and applies any pending commands.
    set_control_loop_callback([this]() {
       try {
-         // _read_joint_states_and_publish();
          _read_imu_state_and_publish();
-         _read_temperatures_and_publish();
-         _read_stand_height_and_publish();
-         // _read_battery_state();
-         // _read_twist_state_and_publish();
-         _set_torso_velocities_from_subscriber();
-         _set_stand_height_percent_from_subscriber();
-         
-         // _set_target_velocities_from_subscriber();
-         //_read_rpy_angles_state_and_publish();
       } catch (const std::exception& e) {
-         std::cout << "[ERROR] [DriverUnitreeH1 Callback Function] Exception caught: "<<e.what()<<std::endl;
+         std::cout << "[ERROR] [RobotDriverUnitreeH1::_read_imu_state_and_publish] Exception caught: "<<e.what()<<std::endl;
+      }
+
+      try {
+         _read_temperatures_and_publish();
+      } catch (const std::exception& e) {
+         std::cout << "[ERROR] [RobotDriverUnitreeH1::_read_temperatures_and_publish] Exception caught: "<<e.what()<<std::endl;
+      }
+
+      try {
+         _read_stand_height_and_publish();
+      } catch (const std::exception& e) {
+         std::cout << "[ERROR] [RobotDriverUnitreeH1::_read_stand_height_and_publish] Exception caught: "<<e.what()<<std::endl;
+      }
+
+      try {
+         _set_torso_velocities_from_subscriber();
+      } catch (const std::exception& e) {
+         std::cout << "[ERROR] [RobotDriverUnitreeH1::_set_torso_velocities_from_subscriber] Exception caught: "<<e.what()<<std::endl;
+      }
+
+      try {
+         _set_stand_height_percent_from_subscriber();
+      } catch (const std::exception& e) {
+         std::cout << "[ERROR] [RobotDriverUnitreeH1::_set_stand_height_percent_from_subscriber] Exception caught: "<<e.what()<<std::endl;
       }
     });
 }
@@ -122,7 +139,7 @@ RobotDriverUnitreeH1::~RobotDriverUnitreeH1() = default;
 
 /**
  * @brief Read the current upper-body joint positions from the backend driver.
- * @return Joint state vector in radians.
+ * @return A VectorXd containing the joint positions in radians.
  */
 VectorXd RobotDriverUnitreeH1::get_joint_positions()
 {
@@ -130,8 +147,8 @@ VectorXd RobotDriverUnitreeH1::get_joint_positions()
 }
 
 /**
- * @brief Forward joint-position targets to the low-level H1 driver.
- * @param desired_joint_positions_rad Target joint positions in radians.
+ * @brief Forward upper-body joint position targets to the low-level H1 driver.
+ * @param desired_joint_positions_rad Desired joint positions in radians.
  */
 void RobotDriverUnitreeH1::set_target_joint_positions(const VectorXd& desired_joint_positions_rad)
 {
@@ -140,7 +157,7 @@ void RobotDriverUnitreeH1::set_target_joint_positions(const VectorXd& desired_jo
 
 /**
  * @brief Read the current upper-body joint velocities from the backend driver.
- * @return Joint velocity vector in radians per second.
+ * @return A VectorXd containing the joint velocities in radians per second.
  */
 VectorXd RobotDriverUnitreeH1::get_joint_velocities()
 {
@@ -149,7 +166,7 @@ VectorXd RobotDriverUnitreeH1::get_joint_velocities()
 
 /**
  * @brief Read the latest estimated upper-body joint torques.
- * @return Joint torque vector in newton-metres.
+ * @return A VectorXd containing the joint torques in newton-metres.
  */
 VectorXd RobotDriverUnitreeH1::get_joint_torques()
 {
@@ -236,50 +253,57 @@ void RobotDriverUnitreeH1::set_target_base_height(const double& base_height)
  */
 void RobotDriverUnitreeH1::_read_imu_state_and_publish()
 {
+
    sensor_msgs::msg::Imu ros_msg_imu;
    ros_msg_imu.header.stamp = node_->get_clock()->now();
 
    geometry_msgs::msg::PoseStamped ros_msg_pose;
    ros_msg_pose.header.stamp = node_->get_clock()->now();
 
-   DQ orientation = impl_->unitree_h1_driver_->get_IMU_orientation();
+   DriverUnitreeLowState::IMUData imu_data = impl_->unitree_h1_driver_->get_IMU_data();
 
-   if (is_unit(orientation)){
-      VectorXd vec_orientation = orientation.vec4();
-      ros_msg_imu.orientation.w = vec_orientation(0);
-      ros_msg_imu.orientation.x = vec_orientation(1);
-      ros_msg_imu.orientation.y = vec_orientation(2);
-      ros_msg_imu.orientation.z = vec_orientation(3);
-
-      publisher_IMU_orientation_->publish(sas::dq_to_geometry_msgs_pose_stamped(orientation));
-
-      VectorXd vec_angular_velocity = impl_->unitree_h1_driver_->get_gyroscope_data();
-      ros_msg_imu.angular_velocity.x = vec_angular_velocity(0);
-      ros_msg_imu.angular_velocity.y = vec_angular_velocity(1);
-      ros_msg_imu.angular_velocity.z = vec_angular_velocity(2);
-
-      VectorXd vec_acceleration = impl_->unitree_h1_driver_->get_accelerometer_data();
-      ros_msg_imu.linear_acceleration.x = vec_acceleration(0);
-      ros_msg_imu.linear_acceleration.y = vec_acceleration(1);
-      ros_msg_imu.linear_acceleration.z = vec_acceleration(2);
-
-      publisher_IMU_state_->publish(ros_msg_imu);
+   // If the data is invalid (i.e., it did not come from a real measurement) then stop the process
+   // right here, don't publish anything.
+   if(!imu_data.valid){
+      return;
    }
+
+   DQ orientation = DQ(
+      imu_data.quaternion.at(0), //w
+      imu_data.quaternion.at(1), //x
+      imu_data.quaternion.at(2), //y
+      imu_data.quaternion.at(3)).normalize(); //z
+
+   publisher_IMU_orientation_->publish(sas::dq_to_geometry_msgs_pose_stamped(orientation));
+
+   VectorXd vec_orientation = orientation.vec4();
+   ros_msg_imu.orientation.w = vec_orientation(0);
+   ros_msg_imu.orientation.x = vec_orientation(1);
+   ros_msg_imu.orientation.y = vec_orientation(2);
+   ros_msg_imu.orientation.z = vec_orientation(3);
+
+   ros_msg_imu.angular_velocity.x = imu_data.gyroscope.at(0);
+   ros_msg_imu.angular_velocity.y = imu_data.gyroscope.at(1);
+   ros_msg_imu.angular_velocity.z = imu_data.gyroscope.at(2);
+
+   ros_msg_imu.linear_acceleration.x = imu_data.accelerometer.at(0);
+   ros_msg_imu.linear_acceleration.y = imu_data.accelerometer.at(1);
+   ros_msg_imu.linear_acceleration.z = imu_data.accelerometer.at(2);
+
+   publisher_IMU_state_->publish(ros_msg_imu);
 }
 
 /**
- * @brief Publish the joint and IMU temperature readings to the configured ROS topic.
+ * @brief Publish the joint temperature readings to the configured ROS topic.
  */
 void RobotDriverUnitreeH1::_read_temperatures_and_publish()
 {
    auto joint_temps = impl_->unitree_h1_driver_->get_joint_temperatures();
-   auto IMU_temp = impl_->unitree_h1_driver_->get_IMU_temperature();
    
    std_msgs::msg::Float64MultiArray msg;
 
-   msg.data.reserve(joint_temps.size() + 1);
+   msg.data.reserve(joint_temps.size());
 
-   msg.data.push_back(IMU_temp);
    msg.data.insert(msg.data.end(),
                   joint_temps.data(),
                   joint_temps.data() + joint_temps.size());

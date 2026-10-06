@@ -187,8 +187,8 @@ int main(int argc, char * argv[])
 
     VectorXd target_pos(9);
     target_pos <<
-         1.571, 0.0, 1.571, 0.0,
-        -1.571, 0.0, -1.571, 0.0,
+         0.0,  1.571,  1.571, 0.0,
+         0.0, -1.571, -1.571, 0.0,
          0.0;
 
     // Capture the latest valid state immediately before beginning the motion.

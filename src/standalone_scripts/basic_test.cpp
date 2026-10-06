@@ -29,7 +29,10 @@
 
 #include <Eigen/Core>
 
+#include <marinholab/sas/core/sas_shutdown_signaler.hpp>
+
 #include "DriverUnitreeH1.hpp"
+
 
 using namespace Eigen;
 
@@ -41,7 +44,8 @@ int main(){
     
     // Create robot driver
     std::cout << "Creating robot driver..." << std::endl;
-    DriverUnitreeH1 driver("eth0");
+    static std::shared_ptr<marinholab::sas::core::ShutdownSignaler> shutdown_signaler = std::make_shared<marinholab::sas::core::ShutdownSignaler>();
+    DriverUnitreeH1 driver("eth0", shutdown_signaler);
     std::cout << "    Done." << std::endl;
 
     // Connect
@@ -64,8 +68,8 @@ int main(){
     float sleep_time_sec = 0.02;
     float num_cycles = 4.0 / sleep_time_sec;
     VectorXd target_pos(9);
-    target_pos << 1.571, 0.f,  1.571, 0.f,
-                 -1.571, 0.f, -1.571, 0.f, 
+    target_pos << 0.f,  1.571,  1.571, 0.f,
+                  0.f, -1.571, -1.571, 0.f, 
                   0.f;
     std::cout << "    Get current joint positions..."<<std::endl;
     VectorXd starting_pos = driver.get_upper_body_joint_positions();

@@ -31,6 +31,12 @@
 
 #include <dqrobotics/DQ.h>
 
+#include <unitree_drivers/DriverUnitreeLocoClient.h>
+#include <unitree_drivers/DriverUnitreeArmSDK.h>
+#include <unitree_drivers/DriverUnitreeLowState.h>
+
+#include <marinholab/sas/core/sas_shutdown_signaler.hpp>
+
 using namespace DQ_robotics;
 using namespace Eigen;
 
@@ -46,8 +52,17 @@ using namespace Eigen;
 class DriverUnitreeH1
 {
 private:
-    class Impl;
-    std::shared_ptr<Impl> impl_;
+    
+    DriverUnitreeArmSDK arm_sdk_; 
+    DriverUnitreeLocoClient loco_client_;
+    DriverUnitreeLowState low_state_;
+
+    std::string network_interface_ = "Not Initialized";
+    bool enter_damping_mode_on_deinit_ = false;
+    bool is_dummy_ = false;
+
+    static constexpr float comms_timeout_sec_ = 1.0f;
+    static constexpr std::chrono::duration<double> comms_timeout_chrono_sec_ {comms_timeout_sec_};
 
 protected:
     enum class MODE
@@ -104,17 +119,24 @@ protected:
         kLeftElbow = 19,
     };
 
+    enum FSM_ID
+    {
+        START = 204,
+        DAMP = 1,
+    };
+
     std::array<JOINT_INDEX, 9> upper_body_joints_ = {
-        JOINT_INDEX::kLeftShoulderRoll,  JOINT_INDEX::kLeftShoulderPitch,
+        JOINT_INDEX::kLeftShoulderPitch, JOINT_INDEX::kLeftShoulderRoll,
         JOINT_INDEX::kLeftShoulderYaw,    JOINT_INDEX::kLeftElbow,
-        JOINT_INDEX::kRightShoulderRoll, JOINT_INDEX::kRightShoulderPitch,
-        JOINT_INDEX::kRightShoulderYaw,   JOINT_INDEX::kRightElbow, JOINT_INDEX::kWaistYaw
+        JOINT_INDEX::kRightShoulderPitch, JOINT_INDEX::kRightShoulderRoll,
+        JOINT_INDEX::kRightShoulderYaw,   JOINT_INDEX::kRightElbow, 
+        JOINT_INDEX::kWaistYaw
     };
 
     std::array<JOINT_INDEX, 19> robot_joints_ = {
-        JOINT_INDEX::kLeftShoulderRoll,  JOINT_INDEX::kLeftShoulderPitch,
+        JOINT_INDEX::kLeftShoulderPitch, JOINT_INDEX::kLeftShoulderRoll,
         JOINT_INDEX::kLeftShoulderYaw,    JOINT_INDEX::kLeftElbow,
-        JOINT_INDEX::kRightShoulderRoll, JOINT_INDEX::kRightShoulderPitch,
+        JOINT_INDEX::kRightShoulderPitch, JOINT_INDEX::kRightShoulderRoll,
         JOINT_INDEX::kRightShoulderYaw,   JOINT_INDEX::kRightElbow,
         JOINT_INDEX::kWaistYaw,
         JOINT_INDEX::kRightHipRoll, JOINT_INDEX::kRightHipPitch,
@@ -137,7 +159,7 @@ public:
      * @param DUMMY_MODE If true, the driver behaves in a passive dummy mode without hardware access.
      * @throws std::runtime_error if the requested control mode is not recognised.
      */
-    DriverUnitreeH1(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE);
+    DriverUnitreeH1(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE, const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler);
 
     /**
      * @brief Construct a driver instance with a specific network interface and control mode.
@@ -146,13 +168,13 @@ public:
      *        "velocity_controlled", or "torque_controlled".
      * @throws std::runtime_error if the requested control mode is not recognised.
      */
-    DriverUnitreeH1(std::string network_interface, std::string control_mode);
+    DriverUnitreeH1(std::string network_interface, std::string control_mode, const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler);
 
     /**
      * @brief Construct a driver instance using the default position-control mode.
      * @param network_interface Network interface used for Unitree DDS communication.
      */
-    DriverUnitreeH1(std::string network_interface);
+    DriverUnitreeH1(std::string network_interface, const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler);
 
     /**
      * @brief Perform the common initialization tasks shared by all constructors.
@@ -193,7 +215,7 @@ public:
      * @return A VectorXd with one entry per upper-body joint, in radians.
      * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
      */
-    VectorXd get_upper_body_joint_positions() const;
+    VectorXd get_upper_body_joint_positions();
 
     /**
      * @brief Read the current velocities of the upper-body joints.
@@ -224,39 +246,12 @@ public:
     VectorXd get_torso_velocity() const;
 
     /**
-     * @brief Read the current IMU orientation as a dual quaternion.
-     * @return A DQ quaternion representing the latest IMU orientation.
-     * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
+     * @brief Returns the most recent IMU sample reported by the low-state observer.
+     * @return The latest IMU data packet, including quaternion orientation,
+     *         angular velocity, linear acceleration, and validity information.
+     * @throws std::runtime_error if the driver is not initialized.
      */
-    DQ get_IMU_orientation() const;
-
-    /**
-     * @brief Read the current IMU gyroscope readings.
-     * @return A 3-vector of angular rates in radians per second.
-     * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
-     */
-    VectorXd get_gyroscope_data() const;
-
-    /**
-     * @brief Read the current IMU accelerometer readings.
-     * @return A 3-vector of linear acceleration in metres per second squared.
-     * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
-     */
-    VectorXd get_accelerometer_data() const;
-
-    /**
-     * @brief Read the current IMU Euler angles.
-     * @return A 3-vector in roll-pitch-yaw order, in radians.
-     * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
-     */
-    VectorXd get_Euler_angles() const;
-
-    /**
-     * @brief Read the IMU temperature.
-     * @return Current IMU temperature in degrees Celsius.
-     * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
-     */
-    int get_IMU_temperature() const;
+    DriverUnitreeLowState::IMUData get_IMU_data() const;
 
     /**
      * @brief Query the current stand height as a percentage of the configured operating range.
@@ -326,37 +321,4 @@ public:
      */
     void set_stand_height_percent(const float desired_height_percent);
 
-private:
-    /**
-     * @brief Populate the motor command buffer for all upper-body joint position targets.
-     * @param target_positions_rad Desired positions in radians.
-     */
-    void set_all_upper_body_joint_position_commands_(const VectorXd& target_positions_rad);
-
-    /**
-     * @brief Populate the motor command buffer for all upper-body joint velocity targets.
-     * @param target_velocities_rad_per_sec Desired velocities in radians per second.
-     */
-    void set_all_upper_body_joint_velocity_commands_(const VectorXd& target_velocities_rad_per_sec);
-
-    /**
-     * @brief Populate the motor command buffer for all upper-body joint torque targets.
-     * @param target_torques_Nm Desired torques in newton-metres.
-     */
-    void set_all_upper_body_joint_torque_commands_(const VectorXd& target_torques_Nm);
-
-    /**
-     * @brief Command all upper-body joints to a passive damping state.
-     */
-    void damp_all_upper_body_joints_();
-
-    /**
-     * @brief Safely initialize the upper-body joints and ramp their gains into the active control state.
-     */
-    void safely_start_upper_body_joints_();
-
-    /**
-     * @brief Safely return the upper-body joints to a passive damping state.
-     */
-    void safely_stop_upper_body_joints_();
 };

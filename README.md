@@ -7,6 +7,9 @@
 
 This repository contains a SAS driver and simulation capabilities for the Unitree H1, developed based on the Unitree B1 implementation by Juan José Quiroz Omaña. The H1 drivers are maintained by Daniel S. J. Derwent. For questions or issues, please contact [daniel.derwent@manchester.ac.uk](mailto:daniel.derwent@manchester.ac.uk).
 
+> [!WARNING]
+> FSM IDs, balance-mode values, and other integer codes accepted by Unitree SDK2 functions are not portable across robots or firmware versions. The same integer can mean different things between firmware revisions of the same robot (for example, the Unitree G1's "Start" state has been observed at FSM ID 200, 500, 501, and 801 depending on firmware version and waist DoF configuration). This driver uses FSM codes (defined in `src/DriverUnitreeH1.hpp`) determined empirically through tests conducted on the H1 robots in our lab's possession. These values may not be appropriate for your H1.
+> Before using the driver, users should confirm the correct FSM/balance-mode values against the SDK `h1_loco_client.hpp` header and firmware installed on the specific robot you're commanding.
 
 ## How to use the simulator
 To use the simulator, first ensure that Docker is installed on the host machine, and then clone this repository together with its submodules:

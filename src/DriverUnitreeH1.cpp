@@ -50,119 +50,6 @@ using namespace DQ_robotics;
 using namespace Eigen;
 
 // #############################################
-//  Define Implementation Class (Impl)
-// #############################################
-
-class DriverUnitreeH1::Impl
-{
-public:
-
-    // #############################################
-    //  Impl data members
-    // #############################################
-
-    std::string network_interface_ = "Not Initialized";
-    bool enter_damping_mode_on_deinit_ = false;
-    bool is_dummy_ = false;
-
-    unitree::robot::ChannelSubscriberPtr<unitree_go::msg::dds_::LowState_> upper_body_subscriber_;
-    unitree_go::msg::dds_::LowState_ state_msg_;
-
-    static constexpr float comms_timeout_sec_ = 1.0f;
-    static constexpr std::chrono::duration<double> comms_timeout_chrono_sec_ {comms_timeout_sec_};
-    
-    // #############################################
-    //  Impl member functions
-    // #############################################
-
-    /**
-     * @brief Default implementation constructor.
-     *        Creates an empty Impl object and leaves all handles uninitialized.
-     */
-    Impl() = default;
-
-    /**
-     * @brief Validate that the upper-body state subscriber is initialized and receiving packets.
-     *        This check fails if the DDS channel is not connected or if the robot is not producing state updates within the expected window.
-     * @param calling_function Name of the caller used to build a clear error message.
-     * @throws std::runtime_error if the subscriber is missing or a valid state stream cannot be established.
-     */
-    void check_upper_body_subscriber_setup(std::string calling_function){
-
-        // Skip this check if the driver is in dummy mode.
-        if(is_dummy_){
-            return;
-        }
-
-        // Check that the channel has been initialized (time is -1 if not)
-        float result = upper_body_subscriber_->GetLastDataAvailableTime();
-        if (result<0)
-        {
-            throw std::runtime_error("[" + calling_function + "] Upper body state subscriber not initialized!");
-        }
-
-        // Check that we're actually receiving messages (the robot should 
-        // publish at a minimum frequency of 50 Hz if properly connected)
-        int new_messages_received = 0;
-        float previous_message_time = 0;
-        float current_message_time = 0;
-        const auto start_time = std::chrono::steady_clock::now();
-        int target_number_of_messages = 5;
-        // Loop until desired number of messages have been received (or timeout)
-        while(new_messages_received<target_number_of_messages){
-
-            // Get message time
-            current_message_time = upper_body_subscriber_->GetLastDataAvailableTime();
-
-            // Check if this is a new message, or the previous one again
-            if(current_message_time>previous_message_time){
-                previous_message_time = current_message_time;
-                new_messages_received++;
-            }
-
-            // Check for timeout
-            if (std::chrono::steady_clock::now() - start_time > comms_timeout_chrono_sec_*target_number_of_messages)
-            {
-                std::ostringstream timeout_str;
-                timeout_str << std::fixed << std::setprecision(1)
-                            << comms_timeout_sec_ * target_number_of_messages;
-
-                throw std::runtime_error(
-                    "[" + calling_function +
-                    "] Failed to establish connection to robot state subscriber "
-                    "(received " + std::to_string(new_messages_received) +
-                    " messages over " + timeout_str.str() + " seconds)");
-            }
-        }
-    }
-
-    /**
-     * @brief Verify that the state subscriber is still receiving updates within the configured timeout.
-     *        This protects against stale robot state data and communication loss.
-     * @throws std::runtime_error if the state subscriber has not reported a recent message within the timeout window.
-     */
-    void check_robot_still_connected(){  
-
-        // Skip this check if the driver is in dummy mode.
-        if(is_dummy_){
-            return;
-        }
-
-        int64_t most_recent_message_time = upper_body_subscriber_->GetLastDataAvailableTime();  
-        int64_t now = unitree::common::GetCurrentMonotonicTimeNanosecond();  
-        double elapsed_sec = static_cast<double>(now - most_recent_message_time) / 1e9;  
-    
-        if (elapsed_sec > comms_timeout_sec_) {  // comms_timeout_sec_ as a plain double, in seconds  
-            std::ostringstream oss;  
-            oss << "[DriverUnitreeH1::Impl::check_robot_still_connected] Robot state subscriber timed out, is it still connected? ("  
-                << std::fixed << std::setprecision(1) << elapsed_sec << " seconds since last message)";  
-            throw std::runtime_error(oss.str());  
-        }  
-    }   
-
-};
-
-// #############################################
 //  DriverUnitreeH1 public member functions
 // #############################################
 
@@ -180,7 +67,8 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface,
                                  bool DUMMY_MODE, 
                                  const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler)
                                  : arm_sdk_(shutdown_signaler, DriverUnitreeArmSDK::ROBOT::H1, 0.02),
-                                   loco_client_(shutdown_signaler, DriverUnitreeLocoClient::ROBOT::H1, 0.01){
+                                   loco_client_(shutdown_signaler, DriverUnitreeLocoClient::ROBOT::H1, 0.01),
+                                   low_state_(shutdown_signaler, DriverUnitreeLowState::ROBOT::H1){
 
     common_construction_tasks(network_interface, control_mode, ENTER_DAMPING_MODE_ON_DEINIT, DUMMY_MODE);
     
@@ -196,7 +84,8 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface,
                                  std::string control_mode, 
                                  const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler)
                                  : arm_sdk_(shutdown_signaler, DriverUnitreeArmSDK::ROBOT::H1, 0.02),
-                                   loco_client_(shutdown_signaler, DriverUnitreeLocoClient::ROBOT::H1, 0.01){
+                                   loco_client_(shutdown_signaler, DriverUnitreeLocoClient::ROBOT::H1, 0.01),
+                                   low_state_(shutdown_signaler, DriverUnitreeLowState::ROBOT::H1){
 
     common_construction_tasks(network_interface, control_mode, false, false);
 }
@@ -208,7 +97,8 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface,
 DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, 
                                  const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler)
                                  : arm_sdk_(shutdown_signaler, DriverUnitreeArmSDK::ROBOT::H1, 0.02),
-                                   loco_client_(shutdown_signaler, DriverUnitreeLocoClient::ROBOT::H1, 0.01){
+                                   loco_client_(shutdown_signaler, DriverUnitreeLocoClient::ROBOT::H1, 0.01),
+                                   low_state_(shutdown_signaler, DriverUnitreeLowState::ROBOT::H1){
 
     common_construction_tasks(network_interface, "position_controlled", false, false);
     
@@ -227,13 +117,11 @@ void DriverUnitreeH1::common_construction_tasks(std::string network_interface,
                                                 bool ENTER_DAMPING_MODE_ON_DEINIT, 
                                                 bool DUMMY_MODE){
 
-    // Create implementation object
-    impl_ = std::make_shared<DriverUnitreeH1::Impl>();
 
     // Process arguments
-    impl_->network_interface_ = network_interface;
-    impl_->enter_damping_mode_on_deinit_ = ENTER_DAMPING_MODE_ON_DEINIT;
-    impl_->is_dummy_ = DUMMY_MODE;
+    network_interface_ = network_interface;
+    enter_damping_mode_on_deinit_ = ENTER_DAMPING_MODE_ON_DEINIT;
+    is_dummy_ = DUMMY_MODE;
 
     if(control_mode=="position_controlled"){
         current_mode_ = MODE::POSITION_CONTROLLED;
@@ -260,28 +148,21 @@ void DriverUnitreeH1::common_construction_tasks(std::string network_interface,
 void DriverUnitreeH1::connect(){
 
     std::cout << "Connecting..." << std::endl;
-    std::this_thread::sleep_for(impl_->comms_timeout_chrono_sec_);
+    std::this_thread::sleep_for(comms_timeout_chrono_sec_);
 
     std::cout << "    Opening communications channel..." << std::endl;
     // Initialize the robot communication system with the given network interface.
-    unitree::robot::ChannelFactory::Instance()->Init(0, impl_->network_interface_);
+    unitree::robot::ChannelFactory::Instance()->Init(0, network_interface_);
+    std::cout << "        Done." << std::endl;
+
+    // Start high level locomotion client.
+    std::cout << "    Connecting to Low State Observer..." << std::endl;
+    low_state_.connect();
     std::cout << "        Done." << std::endl;
 
     // Connect Arm SDK
     std::cout << "    Connecting to Arm SDK..." << std::endl;
     arm_sdk_.connect();
-    std::cout << "        Done." << std::endl;
-
-    // Start low level subscriber
-    std::cout << "    Starting robot state subscriber..." << std::endl;
-    impl_->upper_body_subscriber_.reset(new unitree::robot::ChannelSubscriber<unitree_go::msg::dds_::LowState_>("rt/lf/lowstate"));
-    impl_->upper_body_subscriber_->InitChannel([&](const void *msg) {
-        auto s = ( const unitree_go::msg::dds_::LowState_* )msg;
-        memcpy( &impl_->state_msg_, s, sizeof( unitree_go::msg::dds_::LowState_ ) );
-        }, 1);
-
-    // // Check the subscriber is working by reading the time that the last message was received
-    impl_->check_upper_body_subscriber_setup("DriverUnitreeH1::connect");
     std::cout << "        Done." << std::endl;
 
     // Start high level locomotion client.
@@ -301,11 +182,15 @@ void DriverUnitreeH1::connect(){
  */
 void DriverUnitreeH1::initialize(){
     std::cout << "Initializing..." << std::endl;
-    std::this_thread::sleep_for(impl_->comms_timeout_chrono_sec_);
+    std::this_thread::sleep_for(comms_timeout_chrono_sec_);
 
     if(current_status_!=STATUS::CONNECTED){
         throw std::runtime_error("[DriverUnitreeH1::initialize] Initialize called when robot is not properly connected!");
     }
+
+    std::cout << "    Initializing Low State Observer..." << std::endl;
+    low_state_.initialize();
+    std::cout << "        Done." << std::endl;
 
     std::cout << "    Initializing Loco Client..." << std::endl;
     loco_client_.initialize();
@@ -318,7 +203,7 @@ void DriverUnitreeH1::initialize(){
     // Block driver thread until arm control has been established.
     // This ensures that by the time commands are being issued the arms are ready to go.
     while(!arm_sdk_.is_arm_control_enabled()){
-        std::this_thread::sleep_for(impl_->comms_timeout_chrono_sec_);
+        std::this_thread::sleep_for(comms_timeout_chrono_sec_);
     }
     std::cout << "        Done." << std::endl;
 
@@ -333,7 +218,7 @@ void DriverUnitreeH1::initialize(){
  */
 void DriverUnitreeH1::deinitialize(){
     // This function may be called by the SAS destructor; therefore, it must remain exception-safe.
-    std::this_thread::sleep_for(impl_->comms_timeout_chrono_sec_);
+    std::this_thread::sleep_for(comms_timeout_chrono_sec_);
 
     if(current_status_!=STATUS::INITIALIZED){
         std::cout << "[ERROR] [DriverUnitreeH1::initialize] Deinitialize called when robot is not properly initialized!"<<std::endl;
@@ -353,7 +238,7 @@ void DriverUnitreeH1::deinitialize(){
     }
 
     // Put the robot into damping mode if requested
-    if(impl_->enter_damping_mode_on_deinit_){
+    if(enter_damping_mode_on_deinit_){
         try{
             std::cout << "    Entering damping mode..." << std::endl;
             loco_client_.set_fsm_id(FSM_ID::DAMP);
@@ -372,9 +257,13 @@ void DriverUnitreeH1::deinitialize(){
         std::cout << "    Deinitializing Loco Client..." << std::endl;
         loco_client_.deinitialize(); // This call does not change the FSM ID, so the robot should remain standing
         std::cout << "        Done." << std::endl;
+
+        std::cout << "    Deinitializing Low State Observer..." << std::endl;
+        low_state_.deinitialize();
+        std::cout << "        Done." << std::endl;
     }
     catch (const std::exception& e){
-        std::cout << "[ERROR] [DriverUnitreeH1::deinitialize] Exception caught while deinitializing Arm SDK: "<<e.what()<<std::endl;
+        std::cout << "[ERROR] [DriverUnitreeH1::deinitialize] Exception caught while deinitializing: "<<e.what()<<std::endl;
     }
 
     std::cout << "Deinitialization complete." << std::endl;
@@ -388,7 +277,7 @@ void DriverUnitreeH1::deinitialize(){
  */
 void DriverUnitreeH1::disconnect(){
     // This function may be called by the SAS destructor; therefore, it must remain exception-safe.
-    std::this_thread::sleep_for(impl_->comms_timeout_chrono_sec_);
+    std::this_thread::sleep_for(comms_timeout_chrono_sec_);
     
     if(current_status_!=STATUS::DEINITIALIZED){
         std::cout << "[ERROR] [DriverUnitreeH1::disconnect] Disconnect called when robot is not properly deinitialized!"<<std::endl;
@@ -400,11 +289,12 @@ void DriverUnitreeH1::disconnect(){
     // Close the channels
     try{
         std::cout << "    Closing all comms channels..." << std::endl;
-        impl_->upper_body_subscriber_->CloseChannel();
-        unitree::robot::ChannelFactory::Instance()->Release();
 
         arm_sdk_.disconnect();
         loco_client_.disconnect();
+        low_state_.disconnect();
+
+        unitree::robot::ChannelFactory::Instance()->Release();
 
         std::cout << "        Done." << std::endl;
     }
@@ -434,24 +324,21 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_positions() {
             "Function called when robot is not properly initialized!");
     }
 
-    // Check that the subscriber is still working
-    impl_->check_robot_still_connected();
-
     std::vector<double> left_arm_positions_rad = arm_sdk_.get_positions(DriverUnitreeArmSDK::LIMB::LEFT_ARM);
     std::vector<double> right_arm_positions_rad = arm_sdk_.get_positions(DriverUnitreeArmSDK::LIMB::RIGHT_ARM);
     std::vector<double> waist_positions_rad = arm_sdk_.get_positions(DriverUnitreeArmSDK::LIMB::WAIST);
 
     // Sanity-check dimensions
     if (left_arm_positions_rad.size() != 4) {
-        throw std::runtime_error("[get_upper_body_joint_positions] Expected 4 left arm joints, got " +std::to_string(left_arm_positions_rad.size()));
+        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_positions] Expected 4 left arm joints, got " +std::to_string(left_arm_positions_rad.size()));
     }
 
     if (right_arm_positions_rad.size() != 4) {
-        throw std::runtime_error("[get_upper_body_joint_positions] Expected 4 right arm joints, got " +std::to_string(right_arm_positions_rad.size()));
+        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_positions] Expected 4 right arm joints, got " +std::to_string(right_arm_positions_rad.size()));
     }
 
     if (waist_positions_rad.size() != 1) {
-        throw std::runtime_error("[get_upper_body_joint_positions] Expected 1 waist joint, got " +std::to_string(waist_positions_rad.size()));
+        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_positions] Expected 1 waist joint, got " +std::to_string(waist_positions_rad.size()));
     }
 
     VectorXd current_overall_jpos_rad(9);
@@ -473,14 +360,21 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_velocities() const {
         throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_velocities] Function called when robot is not properly initialized!");
     }
 
-    // Check that the subscriber is still working
-    impl_->check_robot_still_connected();
+    const VectorXd left_arm_velocities_rps = low_state_.get_joint_velocities(DriverUnitreeLowState::LIMB::LEFT_ARM);
+    const VectorXd right_arm_velocities_rps = low_state_.get_joint_velocities(DriverUnitreeLowState::LIMB::RIGHT_ARM);
+    const VectorXd waist_velocities_rps = low_state_.get_joint_velocities(DriverUnitreeLowState::LIMB::TORSO);
 
-    VectorXd current_jvel_rad_per_sec = VectorXd::Zero(upper_body_joints_.size());
-    for (int i = 0; i < upper_body_joints_.size(); ++i) {
-        current_jvel_rad_per_sec(i) = impl_->state_msg_.motor_state().at(upper_body_joints_.at(i)).dq();
+    // Sanity-check dimensions
+    if (left_arm_velocities_rps.size() != 4 || right_arm_velocities_rps.size() != 4 || waist_velocities_rps.size() != 1){
+        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_velocities] Unexpected limb dimensions.");
     }
-    return current_jvel_rad_per_sec;
+
+    VectorXd joint_velocities_rps(9);
+    joint_velocities_rps << left_arm_velocities_rps,
+                         right_arm_velocities_rps,
+                         waist_velocities_rps;
+
+    return joint_velocities_rps;
 }
 
 /**
@@ -488,42 +382,53 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_velocities() const {
  * @return A VectorXd of estimated joint torques in Newton-meters.
  * @throws runtime_error if the robot is not initialized or if the state subscriber has timed out.
  */
-VectorXd DriverUnitreeH1::get_upper_body_joint_torques() const {
-    
-    if(current_status_!=STATUS::INITIALIZED){
+VectorXd DriverUnitreeH1::get_upper_body_joint_torques() const
+{
+    if (current_status_ != STATUS::INITIALIZED) {
         throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_torques] Function called when robot is not properly initialized!");
     }
 
-    // Check that the subscriber is still working
-    impl_->check_robot_still_connected();
+    const VectorXd left_arm_torques_Nm = low_state_.get_joint_torques(DriverUnitreeLowState::LIMB::LEFT_ARM);
+    const VectorXd right_arm_torques_Nm = low_state_.get_joint_torques(DriverUnitreeLowState::LIMB::RIGHT_ARM);
+    const VectorXd waist_torques_Nm = low_state_.get_joint_torques(DriverUnitreeLowState::LIMB::TORSO);
 
-    VectorXd current_jtorque_Nm = VectorXd::Zero(upper_body_joints_.size());
-    for (int i = 0; i < upper_body_joints_.size(); ++i) {
-        current_jtorque_Nm(i) = impl_->state_msg_.motor_state().at(upper_body_joints_.at(i)).tau_est();
+    // Sanity-check dimensions
+    if (left_arm_torques_Nm.size() != 4 || right_arm_torques_Nm.size() != 4 || waist_torques_Nm.size() != 1){
+        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_torques] Unexpected limb dimensions.");
     }
-    return current_jtorque_Nm;
+
+    VectorXd joint_torques_Nm(9);
+    joint_torques_Nm << left_arm_torques_Nm,
+                         right_arm_torques_Nm,
+                         waist_torques_Nm;
+
+    return joint_torques_Nm;
 }
 
 /**
- * @brief Returns the current casing temperatures for all upper body joints.
+ * @brief Returns the current casing temperatures for all joints.
  * @return A VectorXd of joint temperatures in degrees Celsius.
  * @throws runtime_error if the robot is not initialized or if the state subscriber has timed out.
  */
-VectorXd DriverUnitreeH1::get_joint_temperatures() const {
-    
-    if(current_status_!=STATUS::INITIALIZED){
-        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_temperatures] Function called when robot is not properly initialized!");
+VectorXd DriverUnitreeH1::get_joint_temperatures() const
+{
+    if (current_status_ != STATUS::INITIALIZED) {
+        throw std::runtime_error("[DriverUnitreeH1::get_joint_temperatures] Function called when robot is not properly initialized!");
     }
 
-    // Check that the subscriber is still working
-    impl_->check_robot_still_connected();
+    const std::vector<double> current_j_casing_temp_C = low_state_.get_joint_temperatures();
 
-    VectorXd current_j_casing_temp_C = VectorXd::Zero(robot_joints_.size());
-    
-    for (int i = 0; i < robot_joints_.size(); ++i) {
-        current_j_casing_temp_C(i) = static_cast<double>(impl_->state_msg_.motor_state().at(robot_joints_.at(i)).temperature());
+    if (current_j_casing_temp_C.size() != robot_joints_.size()) {
+        throw std::runtime_error(
+            "[DriverUnitreeH1::get_joint_temperatures] Expected " +
+            std::to_string(robot_joints_.size()) +
+            " joints, got " +
+            std::to_string(current_j_casing_temp_C.size()));
     }
-    return current_j_casing_temp_C;
+
+    return Eigen::Map<const VectorXd>(
+        current_j_casing_temp_C.data(),
+        current_j_casing_temp_C.size());
 }
 
 // --------------------------------------------
@@ -541,142 +446,22 @@ VectorXd DriverUnitreeH1::get_torso_velocity() const {
             throw std::runtime_error("[DriverUnitreeH1::get_torso_velocity] Function called when robot is not properly initialized!");
     }
     
-    // Check that the subscriber is still working
-    impl_->check_robot_still_connected();
-
     std::cout << "DriverUnitreeH1::get_torso_velocity is not yet implemented." << std::endl;
     return VectorXd::Zero(3);
 }
 
 /**
- * @brief Returns the current IMU orientation as a quaternion.
- * @return A DQ object representing the IMU quaternion orientation.
- * @throws runtime_error if the robot is not initialized or if the state subscriber has timed out.
+ * @brief Returns the most recent IMU reading (quat, gyro, accel, rpy).
+ * @return An DriverUnitreeLowState::IMUData object containing the most recent IMU reading
+ * @throws runtime_error if the robot is not initialized.
  */
-DQ DriverUnitreeH1::get_IMU_orientation() const {
+DriverUnitreeLowState::IMUData DriverUnitreeH1::get_IMU_data() const {
     
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::get_IMU_orientation] Function called when robot is not properly initialized!");
+            throw std::runtime_error("[DriverUnitreeH1::get_IMU_data] Function called when robot is not properly initialized!");
     }
 
-    // Check that the subscriber is still working
-    impl_->check_robot_still_connected();
-
-    // If this is the dummy driver, then return 1.
-    if (impl_->is_dummy_){
-        DQ imu_quat(1, 0, 0, 0, 0, 0, 0, 0);
-        return imu_quat.normalize();
-    }
-
-    // Otherwise, return the real IMU data
-    VectorXd current_imu_orientation = VectorXd::Zero(4);
-
-    for (int i = 0; i < current_imu_orientation.size(); ++i) {
-        current_imu_orientation(i) = impl_->state_msg_.imu_state().quaternion()[i];
-    }
-
-    DQ imu_quat(current_imu_orientation);
-    return imu_quat.normalize();
-}
-
-/**
- * @brief Returns the current IMU gyroscope measurements.
- * @return A VectorXd of size 3 containing gyroscope readings in radians per second.
- * @throws runtime_error if the robot is not initialized or if the state subscriber has timed out.
- */
-VectorXd DriverUnitreeH1::get_gyroscope_data() const {
-    
-    if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::get_gyroscope_data] Function called when robot is not properly initialized!");
-    }
-
-    // Check that the subscriber is still working
-    impl_->check_robot_still_connected();
-
-    VectorXd gyroscope_data = VectorXd::Zero(3);
-
-    // If this is the dummy driver, then return 0.
-    if (impl_->is_dummy_){
-        return gyroscope_data;
-    }
-    
-    // Otherwise read the real gyro
-    for (int i = 0; i < gyroscope_data.size(); ++i) {
-        gyroscope_data(i) = impl_->state_msg_.imu_state().gyroscope()[i];
-    }
-
-    return gyroscope_data;
-}
-
-/**
- * @brief Returns the current IMU accelerometer measurements.
- * @return A VectorXd of size 3 containing accelerometer readings in meters per second squared.
- * @throws runtime_error if the robot is not initialized or if the state subscriber has timed out.
- */
-VectorXd DriverUnitreeH1::get_accelerometer_data() const {
-    
-    if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::get_accelerometer_data] Function called when robot is not properly initialized!");
-    }
-
-    // Check that the subscriber is still working
-    impl_->check_robot_still_connected();
-
-    VectorXd accelerometer_data = VectorXd::Zero(3);
-
-    // If this is the dummy driver, then return 0.
-    if (impl_->is_dummy_){
-        return accelerometer_data;
-    }
-    
-    // Otherwise read the real accelerometer
-    for (int i = 0; i < accelerometer_data.size(); ++i) {
-        accelerometer_data(i) = impl_->state_msg_.imu_state().accelerometer()[i];
-    }
-
-    return accelerometer_data;
-}
-
-/**
- * @brief Returns the current IMU Euler angles.
- * @return A VectorXd of size 3 containing roll, pitch, and yaw in radians.
- * @throws runtime_error if the robot is not initialized or if the state subscriber has timed out.
- */
-VectorXd DriverUnitreeH1::get_Euler_angles() const {
-    
-    if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::get_Euler_angles] Function called when robot is not properly initialized!");
-    }
-
-    // Check that the subscriber is still working
-    impl_->check_robot_still_connected();
-
-    VectorXd Euler_angles = VectorXd::Zero(3);
-    
-    for (int i = 0; i < Euler_angles.size(); ++i) {
-        Euler_angles(i) = impl_->state_msg_.imu_state().rpy()[i];
-    }
-
-    return Euler_angles;
-}
-
-/**
- * @brief Returns the current IMU temperature.
- * @return The IMU temperature in degrees Celsius.
- * @throws runtime_error if the robot is not initialized or if the state subscriber has timed out.
- */
-int DriverUnitreeH1::get_IMU_temperature() const {
-    
-    if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::get_IMU_temperature] Function called when robot is not properly initialized!");
-    }
-
-    // Check that the subscriber is still working
-    impl_->check_robot_still_connected();
-    
-    int IMU_temp = impl_->state_msg_.imu_state().temperature();
-
-    return IMU_temp;
+    return low_state_.get_imu_data();
 }
 
 // --------------------------------------------

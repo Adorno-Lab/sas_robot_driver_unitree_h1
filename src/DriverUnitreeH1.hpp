@@ -52,11 +52,17 @@ using namespace Eigen;
 class DriverUnitreeH1
 {
 private:
-    class Impl;
-    std::shared_ptr<Impl> impl_;
-
+    
     DriverUnitreeArmSDK arm_sdk_; 
-    DriverUnitreeLocoClient loco_client_; 
+    DriverUnitreeLocoClient loco_client_;
+    DriverUnitreeLowState low_state_;
+
+    std::string network_interface_ = "Not Initialized";
+    bool enter_damping_mode_on_deinit_ = false;
+    bool is_dummy_ = false;
+
+    static constexpr float comms_timeout_sec_ = 1.0f;
+    static constexpr std::chrono::duration<double> comms_timeout_chrono_sec_ {comms_timeout_sec_};
 
 protected:
     enum class MODE
@@ -240,39 +246,11 @@ public:
     VectorXd get_torso_velocity() const;
 
     /**
-     * @brief Read the current IMU orientation as a dual quaternion.
-     * @return A DQ quaternion representing the latest IMU orientation.
-     * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
+     * @brief Returns the most recent IMU reading (quat, gyro, accel, rpy).
+     * @return An DriverUnitreeLowState::IMUData object containing the most recent IMU reading
+     * @throws runtime_error if the robot is not initialized.
      */
-    DQ get_IMU_orientation() const;
-
-    /**
-     * @brief Read the current IMU gyroscope readings.
-     * @return A 3-vector of angular rates in radians per second.
-     * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
-     */
-    VectorXd get_gyroscope_data() const;
-
-    /**
-     * @brief Read the current IMU accelerometer readings.
-     * @return A 3-vector of linear acceleration in metres per second squared.
-     * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
-     */
-    VectorXd get_accelerometer_data() const;
-
-    /**
-     * @brief Read the current IMU Euler angles.
-     * @return A 3-vector in roll-pitch-yaw order, in radians.
-     * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
-     */
-    VectorXd get_Euler_angles() const;
-
-    /**
-     * @brief Read the IMU temperature.
-     * @return Current IMU temperature in degrees Celsius.
-     * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
-     */
-    int get_IMU_temperature() const;
+    DriverUnitreeLowState::IMUData get_IMU_data() const;
 
     /**
      * @brief Query the current stand height as a percentage of the configured operating range.

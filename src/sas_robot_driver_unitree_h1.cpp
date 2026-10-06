@@ -32,6 +32,8 @@
 #include <sas_core/eigen3_std_conversions.hpp>
 #include <sas_conversions/DQ_geometry_msgs_conversions.hpp>
 
+#include <unitree_drivers/DriverUnitreeLowState.h>
+
 namespace sas
 {
 
@@ -243,44 +245,44 @@ void RobotDriverUnitreeH1::_read_imu_state_and_publish()
    geometry_msgs::msg::PoseStamped ros_msg_pose;
    ros_msg_pose.header.stamp = node_->get_clock()->now();
 
-   DQ orientation = impl_->unitree_h1_driver_->get_IMU_orientation();
+   DriverUnitreeLowState::IMUData imu_data = impl_->unitree_h1_driver_->get_IMU_data();
 
-   if (is_unit(orientation)){
-      VectorXd vec_orientation = orientation.vec4();
-      ros_msg_imu.orientation.w = vec_orientation(0);
-      ros_msg_imu.orientation.x = vec_orientation(1);
-      ros_msg_imu.orientation.y = vec_orientation(2);
-      ros_msg_imu.orientation.z = vec_orientation(3);
+   DQ orientation = DQ(
+      imu_data.quaternion.at(0), //w
+      imu_data.quaternion.at(1), //x
+      imu_data.quaternion.at(2), //y
+      imu_data.quaternion.at(3)).normalize(); //z
 
-      publisher_IMU_orientation_->publish(sas::dq_to_geometry_msgs_pose_stamped(orientation));
+   publisher_IMU_orientation_->publish(sas::dq_to_geometry_msgs_pose_stamped(orientation));
 
-      VectorXd vec_angular_velocity = impl_->unitree_h1_driver_->get_gyroscope_data();
-      ros_msg_imu.angular_velocity.x = vec_angular_velocity(0);
-      ros_msg_imu.angular_velocity.y = vec_angular_velocity(1);
-      ros_msg_imu.angular_velocity.z = vec_angular_velocity(2);
+   VectorXd vec_orientation = orientation.vec4();
+   ros_msg_imu.orientation.w = vec_orientation(0);
+   ros_msg_imu.orientation.x = vec_orientation(1);
+   ros_msg_imu.orientation.y = vec_orientation(2);
+   ros_msg_imu.orientation.z = vec_orientation(3);
 
-      VectorXd vec_acceleration = impl_->unitree_h1_driver_->get_accelerometer_data();
-      ros_msg_imu.linear_acceleration.x = vec_acceleration(0);
-      ros_msg_imu.linear_acceleration.y = vec_acceleration(1);
-      ros_msg_imu.linear_acceleration.z = vec_acceleration(2);
+   ros_msg_imu.angular_velocity.x = imu_data.gyroscope.at(0);
+   ros_msg_imu.angular_velocity.y = imu_data.gyroscope.at(1);
+   ros_msg_imu.angular_velocity.z = imu_data.gyroscope.at(2);
 
-      publisher_IMU_state_->publish(ros_msg_imu);
-   }
+   ros_msg_imu.linear_acceleration.x = imu_data.accelerometer.at(0);
+   ros_msg_imu.linear_acceleration.y = imu_data.accelerometer.at(1);
+   ros_msg_imu.linear_acceleration.z = imu_data.accelerometer.at(2);
+
+   publisher_IMU_state_->publish(ros_msg_imu);
 }
 
 /**
- * @brief Publish the joint and IMU temperature readings to the configured ROS topic.
+ * @brief Publish the joint temperature readings to the configured ROS topic.
  */
 void RobotDriverUnitreeH1::_read_temperatures_and_publish()
 {
    auto joint_temps = impl_->unitree_h1_driver_->get_joint_temperatures();
-   auto IMU_temp = impl_->unitree_h1_driver_->get_IMU_temperature();
    
    std_msgs::msg::Float64MultiArray msg;
 
-   msg.data.reserve(joint_temps.size() + 1);
+   msg.data.reserve(joint_temps.size());
 
-   msg.data.push_back(IMU_temp);
    msg.data.insert(msg.data.end(),
                   joint_temps.data(),
                   joint_temps.data() + joint_temps.size());

@@ -27,11 +27,15 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <array>
+#include <string>
 
 #include <Eigen/Core>
 #include <dqrobotics/DQ.h>
 
 #include <marinholab/sas/core/sas_shutdown_signaler.hpp>
+
+#include <unitree_drivers/DriverUnitreeLowState.h>
 
 #include "DriverUnitreeH1.hpp"
 
@@ -42,6 +46,20 @@ using namespace DQ_robotics;
 // velocities, torques, temperatures, and IMU readings, to validate the low-level driver state outputs.
 
 bool dummy_mode = false; // Set to true to use the dummy driver rather than the real driver
+
+template <std::size_t N>
+void print_array(const std::string& array_name,
+                 const std::array<double, N>& array_to_print)
+{
+    std::cout << array_name << ": [ ";
+
+    for (double value : array_to_print)
+    {
+        std::cout << value << " ";
+    }
+
+    std::cout << "]" << std::endl;
+}
 
 int main()
 {
@@ -79,11 +97,7 @@ int main()
             auto joint_temps = driver.get_joint_temperatures();
             // auto battery_soc = driver.get_battery_state_of_charge();
             // auto battery_temps = driver.get_battery_temperatures();
-            auto IMU_quat = driver.get_IMU_orientation();
-            auto gyro = driver.get_gyroscope_data();
-            auto accelerometer = driver.get_accelerometer_data();
-            auto rpy = driver.get_Euler_angles();
-            auto IMU_temp = driver.get_IMU_temperature();
+            auto IMU_data = driver.get_IMU_data();
 
             std::cout<<"positions: "<<positions.transpose()<<std::endl;
             std::cout<<"velocities: "<<velocities.transpose()<<std::endl;
@@ -91,11 +105,11 @@ int main()
             std::cout<<"joint temperatures: "<<joint_temps.transpose()<<std::endl;
             // std::cout<<"battery charge: "<<battery_soc<<std::endl;
             // std::cout<<"casing temperatures: "<<battery_temps.transpose()<<std::endl;
-            std::cout<<"IMU_quat: "<<IMU_quat<<std::endl;
-            std::cout<<"gyro: "<<gyro.transpose()<<std::endl;
-            std::cout<<"accelerometer: "<<accelerometer.transpose()<<std::endl;
-            std::cout<<"Euler angles: "<<rpy.transpose()<<std::endl;
-            std::cout<<"IMU temperature: "<<IMU_temp<<std::endl;
+
+            print_array("IMU quat", IMU_data.quaternion);
+            print_array("gyro", IMU_data.gyroscope);
+            print_array("accelerometer", IMU_data.accelerometer);
+            print_array("Euler angles", IMU_data.rpy);
             std::cout<<"---------------------------------------------------------"<<std::endl;
         }
     });

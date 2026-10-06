@@ -86,8 +86,8 @@ int main(){
     float sleep_time_sec = 0.02;
     float num_cycles = 4.0 / sleep_time_sec;
     VectorXd target_pos(9);
-    target_pos << 1.571, 0.f, 0.0f, 0.0f,
-                  0.0f, 0.f, 0.0f, 0.f, 
+    target_pos << 0.0f, 1.571, 0.0f, 0.0f,
+                  0.0f, 0.f,   0.0f, 0.f, 
                   0.f;
     VectorXd starting_pos = driver.get_upper_body_joint_positions();
     for(int i=0; i<num_cycles; i++){

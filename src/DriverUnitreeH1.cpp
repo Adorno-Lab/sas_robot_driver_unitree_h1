@@ -54,12 +54,13 @@ using namespace Eigen;
 // #############################################
 
 /**
- * @brief Construct a DriverUnitreeH1 object with explicit network interface and control mode.
- * @param network_interface The network interface to use for Unitree communication.
- * @param control_mode The requested control mode string: "position_controlled", "velocity_controlled", or "torque_controlled".
- * @param ENTER_DAMPING_MODE_ON_DEINIT True to enter damping mode automatically on deinit, false otherwise
- * @param DUMMY_MODE True if driver started in dummy mode, false otherwise
- * @throws runtime_error if the provided control_mode string is invalid.
+ * @brief Construct a driver instance using the specified network interface and control mode.
+ * @param network_interface Network interface used for Unitree DDS communication.
+ * @param control_mode Active control mode. Supported values are
+ *        "position_controlled", "velocity_controlled", and "torque_controlled".
+ * @param ENTER_DAMPING_MODE_ON_DEINIT If true, damping mode is entered during deinitialization.
+ * @param DUMMY_MODE If true, the driver starts in dummy mode.
+ * @throws std::runtime_error if the supplied control mode string is invalid.
  */
 DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, 
                                  std::string control_mode, 
@@ -75,10 +76,11 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface,
 }
 
 /**
- * @brief Construct a DriverUnitreeH1 object with explicit network interface and control mode.
- * @param network_interface The network interface to use for Unitree communication.
- * @param control_mode The requested control mode string: "position_controlled", "velocity_controlled", or "torque_controlled".
- * @throws runtime_error if the provided control_mode string is invalid.
+ * @brief Construct a driver instance using the specified network interface and control mode.
+ * @param network_interface Network interface used for Unitree DDS communication.
+ * @param control_mode Active control mode. Supported values are
+ *        "position_controlled", "velocity_controlled", and "torque_controlled".
+ * @throws std::runtime_error if the supplied control mode string is invalid.
  */
 DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, 
                                  std::string control_mode, 
@@ -91,8 +93,8 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface,
 }
 
 /**
- * @brief Construct a DriverUnitreeH1 object with a default position control mode.
- * @param network_interface The network interface to use for Unitree communication.
+ * @brief Construct a driver instance using the default position-control mode.
+ * @param network_interface Network interface used for Unitree DDS communication.
  */
 DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, 
                                  const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler)
@@ -105,12 +107,13 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface,
 }
 
 /**
- * @brief Perform the tasks that are common to all constructor variants
- * @param network_interface The network interface to use for Unitree communication.
- * @param control_mode The requested control mode string: "position_controlled", "velocity_controlled", or "torque_controlled".
- * @param ENTER_DAMPING_MODE_ON_DEINIT True to enter damping mode automatically on deinit, false otherwise
- * @param DUMMY_MODE True if driver started in dummy mode, false otherwise
- * @throws runtime_error if the provided control_mode string is invalid.
+ * @brief Perform the initialization steps shared by all constructor variants.
+ * @param network_interface Network interface used for Unitree DDS communication.
+ * @param control_mode Active control mode. Supported values are
+ *        "position_controlled", "velocity_controlled", and "torque_controlled".
+ * @param ENTER_DAMPING_MODE_ON_DEINIT If true, damping mode is entered during deinitialization.
+ * @param DUMMY_MODE If true, the driver is initialized in passive dummy mode.
+ * @throws std::runtime_error if the supplied control mode string is invalid.
  */
 void DriverUnitreeH1::common_construction_tasks(std::string network_interface, 
                                                 std::string control_mode, 
@@ -140,10 +143,13 @@ void DriverUnitreeH1::common_construction_tasks(std::string network_interface,
 }
 
 /**
- * @brief Establishes communication with the Unitree H1 robot.
- *        Initializes the channel factory, starts the upper body publisher and subscriber,
- *        and starts the locomotion client.
- * @throws runtime_error if subscriber setup or locomotion client initialization fails.
+ * @brief Connect to the Unitree H1 communication channels and locomotion client.
+ *
+ * This initializes the DDS channel factory, brings up the low-state observer,
+ * connects the arm SDK, and starts the loco client used for torso and stand-height
+ * commands.
+ *
+ * @throws std::runtime_error if the underlying subscriber or client initialization fails.
  */
 void DriverUnitreeH1::connect(){
 
@@ -176,9 +182,13 @@ void DriverUnitreeH1::connect(){
 }
 
 /**
- * @brief Initializes the robot after connection has been established.
- *        Starts the locomotion client and brings upper body joints into a controlled state.
- * @throws runtime_error if called before connect() or if starting the locomotion client fails.
+ * @brief Initialize the robot after communication has been established.
+ *
+ * This prepares the locomotion stack and arm-control interfaces for active motion
+ * commands, and transitions the driver into the initialized state.
+ *
+ * @throws std::runtime_error if the driver has not connected before initialization,
+ *         or if the low-level startup sequence fails.
  */
 void DriverUnitreeH1::initialize(){
     std::cout << "Initializing..." << std::endl;
@@ -213,7 +223,7 @@ void DriverUnitreeH1::initialize(){
 
 /**
  * @brief Deinitializes the robot safely.
- *        Stops locomotion, optionally enters damping mode, and places the upper body into a safe state.
+ *        Stops locomotion, optionally enters damping mode (if set), and places the upper body into a safe state.
  *        This function must not throw exceptions because it may be invoked during shutdown.
  */
 void DriverUnitreeH1::deinitialize(){
@@ -271,9 +281,11 @@ void DriverUnitreeH1::deinitialize(){
 }
 
 /**
- * @brief Disconnects from the Unitree robot and closes communication channels.
- *        Releases the publisher, subscriber, and channel factory resources.
- *        This function must not throw exceptions because it may be called from the destructor.
+ * @brief Disconnect from the Unitree robot and release communication resources.
+ *
+ * This method closes the robot communication channels and releases the shared
+ * channel factory resources. It is designed to remain exception-safe because it
+ * will be called during teardown.
  */
 void DriverUnitreeH1::disconnect(){
     // This function may be called by the SAS destructor; therefore, it must remain exception-safe.
@@ -311,9 +323,9 @@ void DriverUnitreeH1::disconnect(){
 // --------------------------------------------
 
 /**
- * @brief Returns the current upper body joint positions from the robot state.
- * @return A VectorXd of upper body joint positions in radians.
- * @throws runtime_error if the robot is not initialized or if the state subscriber has timed out.
+ * @brief Return the current upper-body joint positions from the robot state.
+ * @return A VectorXd containing the upper-body joint positions in radians.
+ * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
  */
 VectorXd DriverUnitreeH1::get_upper_body_joint_positions() {
 
@@ -350,9 +362,9 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_positions() {
 }
 
 /**
- * @brief Returns the current upper body joint velocities from the robot state.
- * @return A VectorXd of upper body joint velocities in radians per second.
- * @throws runtime_error if the robot is not initialized or if the state subscriber has timed out.
+ * @brief Return the current upper-body joint velocities from the robot state.
+ * @return A VectorXd containing the upper-body joint velocities in radians per second.
+ * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
  */
 VectorXd DriverUnitreeH1::get_upper_body_joint_velocities() const {
     
@@ -378,9 +390,9 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_velocities() const {
 }
 
 /**
- * @brief Returns the estimated torques for all upper body joints.
- * @return A VectorXd of estimated joint torques in Newton-meters.
- * @throws runtime_error if the robot is not initialized or if the state subscriber has timed out.
+ * @brief Return the estimated torques for the upper-body joints.
+ * @return A VectorXd containing the upper-body joint torques in newton-metres.
+ * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
  */
 VectorXd DriverUnitreeH1::get_upper_body_joint_torques() const
 {
@@ -406,9 +418,9 @@ VectorXd DriverUnitreeH1::get_upper_body_joint_torques() const
 }
 
 /**
- * @brief Returns the current casing temperatures for all joints.
- * @return A VectorXd of joint temperatures in degrees Celsius.
- * @throws runtime_error if the robot is not initialized or if the state subscriber has timed out.
+ * @brief Return the current casing temperatures for all joints.
+ * @return A VectorXd containing the joint temperatures in degrees Celsius.
+ * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
  */
 VectorXd DriverUnitreeH1::get_joint_temperatures() const
 {
@@ -421,19 +433,22 @@ VectorXd DriverUnitreeH1::get_joint_temperatures() const
         return VectorXd::Zero(robot_joints_.size());
     }
 
-    const std::vector<double> current_j_casing_temp_C = low_state_.get_joint_temperatures();
+    const VectorXd left_arm_temps_C = low_state_.get_joint_temperatures(DriverUnitreeLowState::LIMB::LEFT_ARM);
+    const VectorXd right_arm_temps_C = low_state_.get_joint_temperatures(DriverUnitreeLowState::LIMB::RIGHT_ARM);
+    const VectorXd waist_temps_C = low_state_.get_joint_temperatures(DriverUnitreeLowState::LIMB::TORSO);
 
-    if (current_j_casing_temp_C.size() != robot_joints_.size()) {
-        throw std::runtime_error(
-            "[DriverUnitreeH1::get_joint_temperatures] Expected " +
-            std::to_string(robot_joints_.size()) +
-            " joints, got " +
-            std::to_string(current_j_casing_temp_C.size()));
+    // Sanity-check dimensions
+    if (left_arm_temps_C.size() != 4 || right_arm_temps_C.size() != 4 || waist_temps_C.size() != 1){
+        throw std::runtime_error("[DriverUnitreeH1::get_joint_temperatures] Unexpected limb dimensions.");
     }
 
-    return Eigen::Map<const VectorXd>(
-        current_j_casing_temp_C.data(),
-        current_j_casing_temp_C.size());
+    VectorXd joint_temps_C(9);
+    joint_temps_C << left_arm_temps_C,
+                     right_arm_temps_C,
+                     waist_temps_C;
+
+    return joint_temps_C;
+
 }
 
 // --------------------------------------------
@@ -441,9 +456,9 @@ VectorXd DriverUnitreeH1::get_joint_temperatures() const
 // --------------------------------------------
 
 /**
- * @brief Returns the torso velocity from IMU or locomotion sensors.
- * @return A VectorXd of size 3 representing {vx, vy, omega}.
- * @throws runtime_error if the robot is not initialized or if the state subscriber has timed out.
+ * @brief Return the current torso velocity estimate.
+ * @return A 3-vector containing {vx, vy, omega} in the robot frame.
+ * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
  */
 VectorXd DriverUnitreeH1::get_torso_velocity() const {
     
@@ -456,9 +471,10 @@ VectorXd DriverUnitreeH1::get_torso_velocity() const {
 }
 
 /**
- * @brief Returns the most recent IMU reading (quat, gyro, accel, rpy).
- * @return An DriverUnitreeLowState::IMUData object containing the most recent IMU reading
- * @throws runtime_error if the robot is not initialized.
+ * @brief Return the most recent IMU sample from the low-state observer.
+ * @return The latest IMU data packet, including quaternion orientation,
+ *         angular velocity, linear acceleration, and Euler angles when available.
+ * @throws std::runtime_error if the driver is not initialized.
  */
 DriverUnitreeLowState::IMUData DriverUnitreeH1::get_IMU_data() const {
     
@@ -515,8 +531,8 @@ VectorXd DriverUnitreeH1::get_battery_temperatures() const {
 // --------------------------------------------
 
 /**
- * @brief Returns the robot standing height as a percentage of the configured height range.
- * @return The standing height percentage in the range of the robot's stand height limits.
+ * @brief Return the current stand height as a percentage of the configured operating range.
+ * @return The current stand-height percentage within the robot's operating range.
  */
 float DriverUnitreeH1::get_stand_height_percent() const {
     
@@ -532,8 +548,8 @@ float DriverUnitreeH1::get_stand_height_percent() const {
 }
 
 /**
- * @brief Sets the robot standing height as a percentage of its configured range.
- * @param desired_height_percent The desired height percentage to set, mapped into the robot's absolute stand height range.
+ * @brief Set the robot stand height as a percentage of the configured operating range.
+ * @param desired_height_percent Desired stand-height percentage in the operating range.
  */
 void DriverUnitreeH1::set_stand_height_percent(const float desired_height_percent){
     float absolute = ((desired_height_percent/100)*0.2)+0.6;
@@ -545,9 +561,10 @@ void DriverUnitreeH1::set_stand_height_percent(const float desired_height_percen
 // --------------------------------------------
 
 /**
- * @brief Changes the current upper body control mode at runtime.
- * @param new_mode One of "position_controlled", "velocity_controlled", or "torque_controlled".
- * @throws runtime_error if called when the robot is not initialized or if the mode string is invalid.
+ * @brief Change the active upper-body control mode at runtime.
+ * @param new_mode Supported mode string: "position_controlled",
+ *        "velocity_controlled", or "torque_controlled".
+ * @throws std::runtime_error if the driver is not initialized or the mode string is invalid.
  */
 void DriverUnitreeH1::change_control_mode(const std::string& new_mode) {
     
@@ -583,9 +600,10 @@ std::string DriverUnitreeH1::get_control_mode() {
 }
 
 /**
- * @brief Sends position commands to all upper body joints.
- * @param desired_joint_positions_rad A VectorXd of desired joint positions in radians.
- * @throws runtime_error if the robot is not initialized, if the robot is not in position control mode, or if the input size is incorrect.
+ * @brief Send position commands to all upper-body joints.
+ * @param desired_joint_positions_rad Desired joint positions in radians.
+ * @throws std::runtime_error if the driver is not initialized, the active mode is not
+ *         position control, or the input size is incorrect.
  */
 void DriverUnitreeH1::set_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad) {
     
@@ -611,9 +629,10 @@ void DriverUnitreeH1::set_upper_body_joint_positions(const VectorXd& desired_joi
 }
 
 /**
- * @brief Sends velocity commands to all upper body joints.
- * @param desired_joint_velocities_rad_per_sec A VectorXd of desired joint velocities in radians per second.
- * @throws runtime_error if the robot is not initialized, if the robot is not in velocity control mode, or if the input size is incorrect.
+ * @brief Send velocity commands to all upper-body joints.
+ * @param desired_joint_velocities_rad_per_sec Desired joint velocities in radians per second.
+ * @throws std::runtime_error if the driver is not initialized, the active mode is not
+ *         velocity control, or the input size is incorrect.
  */
 void DriverUnitreeH1::set_upper_body_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec) {
     
@@ -635,9 +654,10 @@ void DriverUnitreeH1::set_upper_body_joint_velocities(const VectorXd& desired_jo
 }
 
 /**
- * @brief Sends torque commands to all upper body joints.
- * @param desired_joint_torques_Nm A VectorXd of desired joint torques in Newton-meters.
- * @throws runtime_error if the robot is not initialized, if the robot is not in torque control mode, or if the input size is incorrect.
+ * @brief Send torque commands to all upper-body joints.
+ * @param desired_joint_torques_Nm Desired joint torques in newton-metres.
+ * @throws std::runtime_error if the driver is not initialized, the active mode is not
+ *         torque control, or the input size is incorrect.
  */
 void DriverUnitreeH1::set_upper_body_joint_torques(const VectorXd& desired_joint_torques_Nm) {
     
@@ -654,13 +674,14 @@ void DriverUnitreeH1::set_upper_body_joint_torques(const VectorXd& desired_joint
     }
 
     // As of 05/10/26, the unitree drivers submodule does not support velocity control of the arms.
-    throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_velocities] This function has not been implemented yet on this branch!");
+    throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_torques] This function has not been implemented yet on this branch!");
 }
 
 /**
- * @brief Sends torso velocity commands to the locomotion client.
- * @param desired_torso_velocity_mps_radps A VectorXd of size 3 containing desired {vx, vy, omega}.
- * @throws runtime_error if the robot is not initialized or if the input size is not 3.
+ * @brief Send a torso-velocity command to the locomotion client.
+ * @param desired_torso_velocity_mps_radps 3-vector containing the desired torso motion
+ *        in the robot frame as {vx, vy, omega}.
+ * @throws std::runtime_error if the driver is not initialized or the input size is not 3.
  */
 void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_mps_radps) {
 
@@ -678,6 +699,3 @@ void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_
     v_yaw = desired_torso_velocity_mps_radps(2);
     loco_client_.set_target_high_level_velocities({vx, vy, v_yaw});
 }
-
-
-

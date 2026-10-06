@@ -246,9 +246,10 @@ public:
     VectorXd get_torso_velocity() const;
 
     /**
-     * @brief Returns the most recent IMU reading (quat, gyro, accel, rpy).
-     * @return An DriverUnitreeLowState::IMUData object containing the most recent IMU reading
-     * @throws runtime_error if the robot is not initialized.
+     * @brief Returns the most recent IMU sample reported by the low-state observer.
+     * @return The latest IMU data packet, including quaternion orientation,
+     *         angular velocity, linear acceleration, and validity information.
+     * @throws std::runtime_error if the driver is not initialized.
      */
     DriverUnitreeLowState::IMUData get_IMU_data() const;
 
@@ -320,5 +321,4 @@ public:
      */
     void set_stand_height_percent(const float desired_height_percent);
 
-private:
 };

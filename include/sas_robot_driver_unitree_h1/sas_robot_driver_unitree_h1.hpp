@@ -126,30 +126,30 @@ public:
 
     /**
      * @brief Read the current joint positions reported by the robot backend.
-     * @return A VectorXd of joint positions in radians.
+     * @return A VectorXd containing the joint positions in radians.
      */
     VectorXd get_joint_positions() override;
 
     /**
-     * @brief Send target positions to the active joint controller.
-     * @param desired_joint_positions_rad Target joint angles in radians.
+     * @brief Send target joint positions to the active controller.
+     * @param desired_joint_positions_rad Desired joint angles in radians.
      */
     void set_target_joint_positions(const VectorXd& desired_joint_positions_rad) override;
 
     /**
      * @brief Read the current joint velocities reported by the robot backend.
-     * @return A VectorXd of joint velocities in radians per second.
+     * @return A VectorXd containing the joint velocities in radians per second.
      */
     VectorXd get_joint_velocities() override;
 
     /**
      * @brief Read the latest estimated joint torques.
-     * @return A VectorXd of joint torques in newton-metres.
+     * @return A VectorXd containing the joint torques in newton-metres.
      */
     VectorXd get_joint_torques() override;
 
     /**
-     * @brief Connect the driver to the robot backend.
+     * @brief Connect the driver to the Unitree robot backend and establish the ROS 2 interfaces.
      */
     void connect() override;
 
@@ -159,7 +159,7 @@ public:
     void disconnect() override;
 
     /**
-     * @brief Initialize the robot after a successful connection.
+     * @brief Initialize the robot after a successful connection is established.
      */
     void initialize() override;
 
@@ -170,7 +170,7 @@ public:
 
     /**
      * @brief Set a target body twist for the robot.
-     * @param twist A DQ representation of the target twist to apply.
+     * @param twist A dual-quaternion representation of the target twist to apply.
      */
     void set_target_twist(const DQ& twist) override;
 
@@ -181,20 +181,20 @@ public:
     void set_target_base_orientation(const DQ& r) override;
 
     /**
-     * @brief Set the target base height as a percentage of the robot's standing range.
-     * @param base_height Desired stand height percentage.
+     * @brief Set the target stand height as a percentage of the robot's configured operating range.
+     * @param base_height Desired stand-height percentage.
      */
     void set_target_base_height(const double& base_height) override;
 
     /**
      * @brief Send target joint velocities to the robot backend.
-     * @param desired_joint_velocities_radps Target joint velocities in radians per second.
+     * @param desired_joint_velocities_radps Desired joint velocities in radians per second.
      */
     void set_target_joint_velocities(const VectorXd& desired_joint_velocities_radps) override;
 
     /**
      * @brief Send target joint torques to the robot backend.
-     * @param desired_joint_torques_Nm Target joint torques in newton-metres.
+     * @param desired_joint_torques_Nm Desired joint torques in newton-metres.
      */
     void set_target_joint_torques(const VectorXd& desired_joint_torques_Nm) override;
 };

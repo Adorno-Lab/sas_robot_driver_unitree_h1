@@ -38,10 +38,10 @@ namespace sas
 {
 
 /**
- * @brief Internal implementation class for the ROS 2 Unitree H1 driver wrapper.
+ * @brief Internal implementation details for the ROS 2 Unitree H1 driver wrapper.
  *
- * This object stores the underlying hardware driver instance and the runtime
- * dummy-mode state used by the higher-level ROS 2 interface.
+ * This private helper stores the underlying backend driver instance and the
+ * runtime dummy-mode state used by the higher-level ROS 2 interface.
  */
 class RobotDriverUnitreeH1::Impl
 {
@@ -139,7 +139,7 @@ RobotDriverUnitreeH1::~RobotDriverUnitreeH1() = default;
 
 /**
  * @brief Read the current upper-body joint positions from the backend driver.
- * @return Joint state vector in radians.
+ * @return A VectorXd containing the joint positions in radians.
  */
 VectorXd RobotDriverUnitreeH1::get_joint_positions()
 {
@@ -147,8 +147,8 @@ VectorXd RobotDriverUnitreeH1::get_joint_positions()
 }
 
 /**
- * @brief Forward joint-position targets to the low-level H1 driver.
- * @param desired_joint_positions_rad Target joint positions in radians.
+ * @brief Forward upper-body joint position targets to the low-level H1 driver.
+ * @param desired_joint_positions_rad Desired joint positions in radians.
  */
 void RobotDriverUnitreeH1::set_target_joint_positions(const VectorXd& desired_joint_positions_rad)
 {
@@ -157,7 +157,7 @@ void RobotDriverUnitreeH1::set_target_joint_positions(const VectorXd& desired_jo
 
 /**
  * @brief Read the current upper-body joint velocities from the backend driver.
- * @return Joint velocity vector in radians per second.
+ * @return A VectorXd containing the joint velocities in radians per second.
  */
 VectorXd RobotDriverUnitreeH1::get_joint_velocities()
 {
@@ -166,7 +166,7 @@ VectorXd RobotDriverUnitreeH1::get_joint_velocities()
 
 /**
  * @brief Read the latest estimated upper-body joint torques.
- * @return Joint torque vector in newton-metres.
+ * @return A VectorXd containing the joint torques in newton-metres.
  */
 VectorXd RobotDriverUnitreeH1::get_joint_torques()
 {

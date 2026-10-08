@@ -60,6 +60,8 @@ using namespace Eigen;
  *        "position_controlled", "velocity_controlled", and "torque_controlled".
  * @param ENTER_DAMPING_MODE_ON_DEINIT If true, damping mode is entered during deinitialization.
  * @param DUMMY_MODE If true, the driver starts in dummy mode.
+ * @param shutdown_signaler Shared sas::ShutdownSignaler. Forwarded to driver components
+ *        and polled every tick. Used to signal the driver to execute controlled shutdown.
  * @throws std::runtime_error if the supplied control mode string is invalid.
  */
 DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, 
@@ -71,7 +73,7 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface,
                                    loco_client_(shutdown_signaler, DriverUnitreeLocoClient::ROBOT::H1, 0.01),
                                    low_state_(shutdown_signaler, DriverUnitreeLowState::ROBOT::H1){
 
-    common_construction_tasks(network_interface, control_mode, ENTER_DAMPING_MODE_ON_DEINIT, DUMMY_MODE);
+    common_construction_tasks_(network_interface, control_mode, ENTER_DAMPING_MODE_ON_DEINIT, DUMMY_MODE);
     
 }
 
@@ -80,6 +82,8 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface,
  * @param network_interface Network interface used for Unitree DDS communication.
  * @param control_mode Active control mode. Supported values are
  *        "position_controlled", "velocity_controlled", and "torque_controlled".
+ * @param shutdown_signaler Shared sas::ShutdownSignaler. Forwarded to driver components
+ *        and polled every tick. Used to signal the driver to execute controlled shutdown.
  * @throws std::runtime_error if the supplied control mode string is invalid.
  */
 DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, 
@@ -89,12 +93,14 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface,
                                    loco_client_(shutdown_signaler, DriverUnitreeLocoClient::ROBOT::H1, 0.01),
                                    low_state_(shutdown_signaler, DriverUnitreeLowState::ROBOT::H1){
 
-    common_construction_tasks(network_interface, control_mode, false, false);
+    common_construction_tasks_(network_interface, control_mode, false, false);
 }
 
 /**
  * @brief Construct a driver instance using the default position-control mode.
  * @param network_interface Network interface used for Unitree DDS communication.
+ * @param shutdown_signaler Shared sas::ShutdownSignaler. Forwarded to driver components
+ *        and polled every tick. Used to signal the driver to execute controlled shutdown.
  */
 DriverUnitreeH1::DriverUnitreeH1(std::string network_interface, 
                                  const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler)
@@ -102,7 +108,7 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface,
                                    loco_client_(shutdown_signaler, DriverUnitreeLocoClient::ROBOT::H1, 0.01),
                                    low_state_(shutdown_signaler, DriverUnitreeLowState::ROBOT::H1){
 
-    common_construction_tasks(network_interface, "position_controlled", false, false);
+    common_construction_tasks_(network_interface, "position_controlled", false, false);
     
 }
 
@@ -115,7 +121,7 @@ DriverUnitreeH1::DriverUnitreeH1(std::string network_interface,
  * @param DUMMY_MODE If true, the driver is initialized in passive dummy mode.
  * @throws std::runtime_error if the supplied control mode string is invalid.
  */
-void DriverUnitreeH1::common_construction_tasks(std::string network_interface, 
+void DriverUnitreeH1::common_construction_tasks_(std::string network_interface, 
                                                 std::string control_mode, 
                                                 bool ENTER_DAMPING_MODE_ON_DEINIT, 
                                                 bool DUMMY_MODE){

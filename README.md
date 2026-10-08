@@ -1,12 +1,55 @@
-# sas_robot_driver_unitree_h1 - Lego Drivers Branch
+# sas_robot_driver_unitree_h1
 
 ![GitHub License](https://img.shields.io/github/license/Adorno-Lab/sas_robot_driver_unitree_z1)![Static Badge](https://img.shields.io/badge/ROS2-Jazzy-blue)![Static Badge](https://img.shields.io/badge/powered_by-DQ_Robotics-red)![Static Badge](https://img.shields.io/badge/SmartArmStack-green)![Static Badge](https://img.shields.io/badge/Ubuntu-24.04_LTS-orange)
 
-This repository contains a SAS driver and simulation capabilities for the Unitree H1, developed based on the Unitree B1 implementation by Juan José Quiroz Omaña. The H1 drivers are maintained by Daniel S. J. Derwent. For questions or issues, please contact [daniel.derwent@manchester.ac.uk](mailto:daniel.derwent@manchester.ac.uk).
+This repository contains a SAS driver and simulation capabilities for the Unitree H1, developed based on the [Unitree B1 driver](https://github.com/Adorno-Lab/sas_robot_driver_unitree_b1/tree/main) by Juan José Quiroz Omaña. The H1 drivers are maintained by Daniel S. J. Derwent. For questions or issues, please contact [daniel.derwent@manchester.ac.uk](mailto:daniel.derwent@manchester.ac.uk).
 
 > [!WARNING]
-> FSM IDs, balance-mode values, and other integer codes accepted by Unitree SDK2 functions are not portable across robots or firmware versions. The same integer can mean different things between firmware revisions of the same robot (for example, the Unitree G1's "Start" state has been observed at FSM ID 200, 500, 501, and 801 depending on firmware version and waist DoF configuration). This driver uses FSM codes (defined in `src/DriverUnitreeH1.hpp`) determined empirically through tests conducted on the H1 robots in our lab's possession. These values may not be appropriate for your H1.
+> As noted by Juan José Quiroz Omaña in the [unitree_drivers documentation](https://adorno-lab.github.io/unitree_drivers/), FSM IDs, balance-mode values, and other integer codes accepted by Unitree SDK2 functions are not portable across robots or firmware versions. The same integer can mean different things between firmware revisions of the same robot (for example, the Unitree G1's "Start" state has been observed at FSM ID 200, 500, 501, and 801 depending on firmware version and waist DoF configuration). This driver uses FSM codes (defined in `src/DriverUnitreeH1.hpp`) determined empirically through tests conducted on the H1 robots in our lab's possession. These values may not be appropriate for your H1.
 > Before using the driver, users should confirm the correct FSM/balance-mode values against the SDK `h1_loco_client.hpp` header and firmware installed on the specific robot you're commanding.
+
+## Structure of the driver
+
+Using these drivers, users can obtain live information from the robot's onboard sensors, (including IMU readings as well as motor positions, velocities, torques and casing temperatures) and can command the robot by setting upper body joint position targets and high level torso velocity commands. Low-level control of individual leg motors is not currently supported. Velocity and torque control of the upper body (arms and waist joint) are also not currently supported.
+
+The H1 driver mainly consists of two classes, each contained in their own files. These are:
+
+ - `DriverUnitreeH1` - Lower level class that handles communication with the robot firmware via driver components (aka the "lego classes") provided by the [unitree_drivers package](https://github.com/Adorno-Lab/unitree_drivers/tree/main). The source code for this class is available in the files `src/DriverUnitreeH1.cpp` and `src/DriverUnitreeH1.hpp`, and examples are available under `src/standalone_scripts/`. 
+ - `sas::RobotDriverUnitreeH1` - Higher level class that wraps `DriverUnitreeH1` and provides a ROS interface using the [Smart Arm Stack](https://smartarmstack.github.io/) (SAS) framework. The source code for this class is available in the files `src/sas_robot_driver_unitree_h1.cpp` and `include/sas_robot_driver_unitree_h1/sas_robot_driver_unitree_h1.hpp`. Examples are available under `src/ROS2_scripts/`. 
+
+The driver maintains a strict separation between the classes with respect to communications. All ROS2 communications with the user's applications (controllers etc) are handled by the `RobotDriverUnitreeH1` class, and all DDS communications with the robot's firmware are handled by the unitree_drivers lego classes. The `DriverUnitreeH1` class does not directly handle any communications.
+
+Example launch files are available for real robots (`launch/yellow_H1_launch.py`) and for a "dummy" robot (`launch/dummy_H1_launch.py`). The dummy launch file starts the driver in "dummy mode", which allows the drivers to be tested without being connected to the real hardware, which is useful for certain debugging operations. Dummy mode should never be used while connected to a real robot, because it may still command the connected robot to move, and dummy mode disables some warnings built into the driver (e.g., warning the user if communications with the hardware are interrupted).
+
+See `sas::RobotDriverUnitreeH1` documentation for a list of ROS2 topics generated by this class.
+
+## Documentation
+
+> [!CAUTION]
+> Documentation of this repository is ongoing. While the docs can be constructed following the steps below, some classes and functions are not currently explained in depth.
+
+You can build a local copy of the documentation for this repository using Doxygen. To do so, first clone the repository:
+
+```shell
+git clone git@github.com:Adorno-Lab/sas_robot_driver_unitree_h1.git --recursive
+```
+
+and install Doxygen and its prerequisites:
+
+```shell
+sudo apt install doxygen graphviz
+```
+
+Note that the Github-style alert boxes, such as the warning above, will not render correctly in your local copy of the docs unless your Doxygen version is 1.11.0 or later. Depending on your operating system version, apt may install older versions than this.
+
+Then navigate to the repository and build the docs:
+
+```shell
+cd sas_robot_driver_unitree_h1
+doxygen Doxyfile
+```
+
+The docs will be generated inside the `build/docs` directory. Find and open the `build/docs/index.html` file in order to view the docs.
 
 ## How to use the simulator
 To use the simulator, first ensure that Docker is installed on the host machine, and then clone this repository together with its submodules:
@@ -53,7 +96,7 @@ Once all required files are available, the robot can be powered on and the trans
 > [!NOTE]
 > Ensure that the Ethernet cable is connected before the robot is powered on, since the arms will obstruct access once the startup procedure begins.
 
-The robot should be suspended above the floor with its arms hanging down, the waist pointing forward, and the ankle and shoulder-roll joints locked at their maximum positions. Activate power, then use `L2+B` on the remote control to enter damping mode. From there, use `L2+UP` to enter preparation mode, which will cause the robot to move.
+The robot should be suspended above the floor with its arms hanging down, the waist pointing forward, and the ankle and shoulder-roll joints locked at their maximum positions. Activate power, then use `L2+B` on the remote control to enter damping mode. From there, use `L2+UP` to enter preparation mode, which will cause the robot to move. 
 
 Once the robot is in preparation mode and the Ethernet connection is available, the required files can be transferred to the onboard computer using:
 
@@ -95,13 +138,8 @@ The code can then be built with the alias:
 build_and_source
 ```
 
-The test executables can be run using:
-
-```shell
-build/sas_robot_driver_unitree_h1/<executable_name>
-```
-
-For example, `build/sas_robot_driver_unitree_h1/basic_test` runs the example in `basic_test.cpp`. The scripts in `src/standalone_scripts` use the standalone C++ driver class without SAS or ROS functionality to test basic robot features. By contrast, the scripts in `src/ROS2_scripts` use the full SAS/ROS 2 driver interface and require the driver process to already be running in another terminal.
+> [!CAUTION]
+> The next step will cause the robot to start moving, including taking steps to autonomous balance itself (unless the dummy driver is selected). Before launching the drivers, ensure that the robot's feet are flat on the ground and that all personnel are have retreated to a safe distance.
 
 To launch the drivers, use:
 
@@ -109,4 +147,36 @@ To launch the drivers, use:
 launch_h1_driver <robot>
 ```
 
-where `<robot>` is `yellow` or `blue` for the real robots, or `dummy` for the dummy robot. The dummy robot allows the drivers to be tested without a connected hardware robot and disables the checks that verify real robot connectivity and communication. 
+where `<robot>` is `yellow` or `blue` for the real robots, or `dummy` for the dummy robot.
+
+The drivers can be stopped at any time by executing `ctrl+c` in the terminal.
+
+## How to run the examples
+
+Example scripts in this repository are divided into two groups, the standalone scripts (source files under `src/standalone_scripts/`) and the ROS2 scripts (source files under `src/ROS2_scripts/`).
+
+The standalone scripts use the basic C++ class `DriverUnitreeH1` without SAS or ROS functionality. They are fully self contained, with each example creating its own driver instance. Thus, the drivers do not need to be launched through the typical `launch_h1_driver <robot>` command before using these.
+
+To run the standalone examples, SSH into the robot and ensure that no other driver or example is currently running. Then simply execute:
+
+```shell
+cd sas_robot_driver_unitree_h1/
+build/sas_robot_driver_unitree_h1/<executable_name>
+```
+
+For example, `build/sas_robot_driver_unitree_h1/basic_test` runs the example in `src/standalone_scripts/basic_test.cpp`. The scripts in `src/standalone_scripts` use the standalone C++ driver class without SAS or ROS functionality to test basic robot features. 
+
+By contrast, the ROS2 scripts use the full SAS/ROS 2 driver interface and require the driver process to already be running in another terminal. Thus, to run these examples you should open two terminals, and SSH into the robot in both. Then, in one terminal launch the drivers:
+
+```shell
+launch_h1_driver <robot>
+```
+
+and in the second terminal run the example:
+
+```shell
+cd sas_robot_driver_unitree_h1/
+build/sas_robot_driver_unitree_h1/<executable_name>
+```
+
+For example, `build/sas_robot_driver_unitree_h1/ROS2_basic_test` runs the example in `src/ROS2_scripts/ROS2_basic_test.cpp`.

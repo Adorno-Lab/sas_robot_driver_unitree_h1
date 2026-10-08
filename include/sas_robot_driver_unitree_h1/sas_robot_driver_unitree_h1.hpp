@@ -19,8 +19,12 @@
 # ################################################################
 #
 #   Author: Daniel S. J. Derwent, email: daniel.derwent@manchester.ac.uk
-#   based on the version of this file in the unitree B1 driver by Juan Jose Quiroz Omana
-#   https://github.com/Adorno-Lab/sas_robot_driver_unitree_b1/tree/main
+#
+#   Acknowledgement: This file was adapted from the file 
+#                    src/sas_robot_driver_unitree_b1.hpp written by Juan Jose 
+#                    Quiroz Omana (juanjose.quirozomana@manchester.ac.uk) for the 
+#                    unitree B1 driver package:
+#                    https://github.com/Adorno-Lab/sas_robot_driver_unitree_b1/tree/main
 #
 # ################################################################
 */
@@ -63,11 +67,30 @@ struct RobotDriverUnitreeH1Configuration
 
 /**
  * @class RobotDriverUnitreeH1
- * @brief ROS 2 driver wrapper for the Unitree H1 robot backend.
+ * @brief Higher level class that wraps `DriverUnitreeH1` and provides a ROS interface.
  *
- * This class adapts the low-level Unitree H1 control interface to the SAS robot
- * driver API and exposes the required ROS 2 publishers, subscribers, and
- * lifecycle methods used by higher-level motion and state-estimation tooling.
+ * This class wraps `DriverUnitreeH1` and provides a higher level ROS interface
+ * that uses the [Smart Arm Stack](https://smartarmstack.github.io/) (SAS) framework.
+ * 
+ * Users are not intended to call the functions of this class directly. Instead, users
+ * wishing for a ROS2/SAS interface should launch the drivers as described in the ReadMe
+ * or the main docs page under "How to use the hardware drivers", and then interact with
+ * the driver by publishing to and reading from the relevant ROS2 topics.
+ * 
+ * Topics include:
+ *     - `/sas_h1/<robot_name>/get/joint_states` --- Subscribe to get the robot's current joint positions, velocities and torques
+ *     - `/sas_h1/<robot_name>/get/IMU_state` --- Subscribe to get the most recent IMU reading (orientation, gyroscope, accelerometer information)
+ *     - `/sas_h1/<robot_name>/get/imu_orientation` --- Subscribe to get the robot's current orientation (extracted from above)
+ *     - `/sas_h1/<robot_name>/get/stand_height_percent` --- Subscribe to get the robot's current stand height as a percentage of the configured range
+ *     - `/sas_h1/<robot_name>/get/temperatures` --- Subscribe to get the robot's current joint temperatures
+ *     - `/sas_h1/<robot_name>/set/target_joint_forces` --- Publish to set new target joint forces (if in torque controlled mode)
+ *     - `/sas_h1/<robot_name>/set/target_joint_positions` --- Publish to set new target joint positions (if in position controlled mode)
+ *     - `/sas_h1/<robot_name>/set/target_joint_velocities` --- Publish to set new target joint velocities (if in velocity controlled mode)
+ *     - `/sas_h1/<robot_name>/set/control_mode` --- Publish to set new control mode ("position_controlled", "velocity_controlled" or "torque_controlled")
+ *     - `/sas_h1/<robot_name>/set/stand_height_percent` --- Publish to set new stand height as a percentage of the configured range
+ *     - `/sas_h1/<robot_name>/set/target_twist` --- Publish to set new target torso twist
+ *  
+ * Usage examples are available under `src/ROS2_scripts/`. 
  */
 class RobotDriverUnitreeH1: public LeggedRobotDriver
 {
@@ -114,88 +137,25 @@ public:
     RobotDriverUnitreeH1()=delete;
     ~RobotDriverUnitreeH1();
 
-    /**
-     * @brief Construct the ROS 2 driver wrapper for a given robot configuration.
-     * @param node Shared ROS 2 node used to create publishers and subscriptions.
-     * @param configuration Driver configuration containing network and control settings.
-     * @param shutdown_signaler Signal source used by the base robot driver lifecycle.
-     */
     RobotDriverUnitreeH1(std::shared_ptr<Node>& node,
                          const RobotDriverUnitreeH1Configuration &configuration,
                          const std::shared_ptr<ShutdownSignaler>& shutdown_signaler);
 
-    /**
-     * @brief Read the current joint positions reported by the robot backend.
-     * @return A VectorXd containing the joint positions in radians.
-     */
-    VectorXd get_joint_positions() override;
 
-    /**
-     * @brief Send target joint positions to the active controller.
-     * @param desired_joint_positions_rad Desired joint angles in radians.
-     */
-    void set_target_joint_positions(const VectorXd& desired_joint_positions_rad) override;
-
-    /**
-     * @brief Read the current joint velocities reported by the robot backend.
-     * @return A VectorXd containing the joint velocities in radians per second.
-     */
-    VectorXd get_joint_velocities() override;
-
-    /**
-     * @brief Read the latest estimated joint torques.
-     * @return A VectorXd containing the joint torques in newton-metres.
-     */
-    VectorXd get_joint_torques() override;
-
-    /**
-     * @brief Connect the driver to the Unitree robot backend and establish the ROS 2 interfaces.
-     */
     void connect() override;
-
-    /**
-     * @brief Disconnect the driver from the robot backend and release communication resources.
-     */
     void disconnect() override;
-
-    /**
-     * @brief Initialize the robot after a successful connection is established.
-     */
     void initialize() override;
-
-    /**
-     * @brief Safely deinitialize the robot and stop motion before teardown.
-     */
     void deinitialize() override;
 
-    /**
-     * @brief Set a target body twist for the robot.
-     * @param twist A dual-quaternion representation of the target twist to apply.
-     */
+    VectorXd get_joint_positions() override;
+    VectorXd get_joint_velocities() override;
+    VectorXd get_joint_torques() override;
+
+    void set_target_joint_positions(const VectorXd& desired_joint_positions_rad) override;
     void set_target_twist(const DQ& twist) override;
-
-    /**
-     * @brief Set the target base orientation.
-     * @param r Target base orientation expressed as a dual quaternion.
-     */
     void set_target_base_orientation(const DQ& r) override;
-
-    /**
-     * @brief Set the target stand height as a percentage of the robot's configured operating range.
-     * @param base_height Desired stand-height percentage.
-     */
     void set_target_base_height(const double& base_height) override;
-
-    /**
-     * @brief Send target joint velocities to the robot backend.
-     * @param desired_joint_velocities_radps Desired joint velocities in radians per second.
-     */
     void set_target_joint_velocities(const VectorXd& desired_joint_velocities_radps) override;
-
-    /**
-     * @brief Send target joint torques to the robot backend.
-     * @param desired_joint_torques_Nm Desired joint torques in newton-metres.
-     */
     void set_target_joint_torques(const VectorXd& desired_joint_torques_Nm) override;
 };
 

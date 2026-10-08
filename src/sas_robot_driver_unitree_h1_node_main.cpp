@@ -19,8 +19,12 @@
 # ################################################################
 #
 #   Author: Daniel S. J. Derwent, email: daniel.derwent@manchester.ac.uk
-#   based on the version of this file in the unitree B1 driver by Juan Jose Quiroz Omana
-#   https://github.com/Adorno-Lab/sas_robot_driver_unitree_h1/tree/main
+#
+#   Acknowledgement: This file was adapted from the file 
+#                    src/sas_robot_driver_unitree_b1_node_main.cpp written by Juan
+#                    Jose Quiroz Omana (juanjose.quirozomana@manchester.ac.uk) for
+#                    the unitree B1 driver package:
+#                    https://github.com/Adorno-Lab/sas_robot_driver_unitree_b1/tree/main
 #
 # ################################################################
 */
@@ -61,8 +65,6 @@ int main(int argc, char** argv)
         sas::get_ros_parameter(node,"ENTER_DAMPING_MODE_ON_DEINIT", robot_driver_unitree_h1_configuration.ENTER_DAMPING_MODE_ON_DEINIT);
         sas::get_ros_parameter(node,"DUMMY_MODE", robot_driver_unitree_h1_configuration.DUMMY_MODE);
         sas::get_ros_parameter(node,"robot_name", robot_driver_unitree_h1_configuration.robot_name);
-        // sas::get_ros_parameter(node,"ROBOT_IP", robot_driver_unitree_h1_configuration.ROBOT_IP);
-        // sas::get_ros_parameter(node,"ROBOT_PORT", robot_driver_unitree_h1_configuration.ROBOT_PORT);
 
         auto robot_driver_unitree_h1 = std::make_shared<sas::RobotDriverUnitreeH1>(node,
                                                                         robot_driver_unitree_h1_configuration,

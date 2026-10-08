@@ -48,7 +48,7 @@ def generate_launch_description():
                 emulate_tty=True,
                 parameters=[
                     {
-                        "robot_name": "P_Body",
+                        "robot_name": "Dummy",
                         "thread_sampling_time_sec": 0.002,
                         "mode": "position_controlled",
                         "ENTER_DAMPING_MODE_ON_DEINIT": False,

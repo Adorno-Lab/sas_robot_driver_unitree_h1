@@ -20,6 +20,12 @@
 #
 #   Author: Daniel S. J. Derwent, email: daniel.derwent@manchester.ac.uk
 #
+#   Acknowledgement: This file was adapted from the file 
+#                    src/sas_robot_driver_unitree_b1.cpp written by Juan Jose 
+#                    Quiroz Omana (juanjose.quirozomana@manchester.ac.uk) for the 
+#                    unitree B1 driver package:
+#                    https://github.com/Adorno-Lab/sas_robot_driver_unitree_b1/tree/main
+#
 # ################################################################
 */
 
@@ -67,13 +73,13 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
     print_count_{0},
     clock_{0.002}
 {
-    impl_ = std::make_unique<RobotDriverUnitreeH1::Impl>();
+   impl_ = std::make_unique<RobotDriverUnitreeH1::Impl>();
 
-    impl_->unitree_h1_driver_ = std::make_shared<DriverUnitreeH1>(configuration_.network_interface, 
-                                                                  configuration_.mode, 
-                                                                  configuration_.ENTER_DAMPING_MODE_ON_DEINIT,
-                                                                  configuration_.DUMMY_MODE,
-                                                                  shutdown_signaler);
+   impl_->unitree_h1_driver_ = std::make_shared<DriverUnitreeH1>(configuration_.network_interface, 
+                                                               configuration_.mode, 
+                                                               configuration_.ENTER_DAMPING_MODE_ON_DEINIT,
+                                                               configuration_.DUMMY_MODE,
+                                                               shutdown_signaler);
 
    impl_->is_dummy_ = configuration_.DUMMY_MODE;
 
@@ -174,7 +180,7 @@ VectorXd RobotDriverUnitreeH1::get_joint_torques()
 }
 
 /**
- * @brief Connect the low-level Unitree backend and establish the ROS 2 control interface.
+ * @brief Establish communications with the robot hardware. Calls `DriverUnitreeH1::connect()`.
  */
 void RobotDriverUnitreeH1::connect()
 {
@@ -182,7 +188,8 @@ void RobotDriverUnitreeH1::connect()
 }
 
 /**
- * @brief Disconnect the driver and release the underlying communication channels.
+ * @brief Disconnects from the robot hardware, freeing communications resources. This function 
+ * is called automatically during teardown. Calls `DriverUnitreeH1::disconnect()`.
  */
 void RobotDriverUnitreeH1::disconnect()
 {
@@ -190,7 +197,13 @@ void RobotDriverUnitreeH1::disconnect()
 }
 
 /**
- * @brief Initialize the robot after the communication channels have been opened.
+ * @brief Initialize the robot after the communication channels have been opened. This will start
+ * the locomotion server, which will cause the robot to take steps autonomously if needed to
+ * balance itself. 
+ * 
+ * After this function has been called, the robot will begin to respond to user commands.
+ * 
+ * Calls DriverUnitreeH1::initialize()
  */
 void RobotDriverUnitreeH1::initialize()
 {
@@ -198,7 +211,8 @@ void RobotDriverUnitreeH1::initialize()
 }
 
 /**
- * @brief Safely deinitialize the robot and bring motion to a safe shutdown state.
+ * @brief Safely deinitialize the robot and bring motion to a safe shutdown state. This function 
+ * is called automatically during teardown. Calls DriverUnitreeH1::deinitialize()
  */
 void RobotDriverUnitreeH1::deinitialize()
 {
@@ -207,7 +221,9 @@ void RobotDriverUnitreeH1::deinitialize()
 
 // This function is required by the base class, although the target-twist command is handled in the control loop rather than through a dedicated subscriber. The periodic control-loop implementation remains the authoritative path for torso-velocity updates.
 /**
- * @brief Convert a target twist into the torso-velocity command expected by the backend.
+ * @brief Set the target torso twist.
+ * [DEPRECATED] Use of this function is no longer encouraged. Setting of target twists is 
+ * now handled by the LeggedRobotDriver control loop callback function. 
  * @param twist Desired twist represented as a dual quaternion twist vector.
  */
 void RobotDriverUnitreeH1::set_target_twist(const DQ& twist)
@@ -226,8 +242,8 @@ void RobotDriverUnitreeH1::set_target_twist(const DQ& twist)
 
 /**
  * @brief Set the target base orientation.
- *        This is currently unimplemented because the underlying Unitree H1 stack does not expose
- *        a direct equivalent API in the current driver integration.
+ * [NOT IMPLEMENTED] This is currently unimplemented because the high level Unitree API does
+ * not contain functionality to control the robot's torso orientation directly.
  * @param r Target base orientation, currently unused.
  */
 void RobotDriverUnitreeH1::set_target_base_orientation(const DQ& r)
@@ -236,8 +252,8 @@ void RobotDriverUnitreeH1::set_target_base_orientation(const DQ& r)
 }
 
 /**
- * @brief Set the robot stand height as a percentage of its configured operating range.
- * @param base_height Desired stand height percentage in the range supported by the backend.
+ * @brief Set the robot stand height as a percentage of its configured operating range. Called by the LeggedRobotDriver control loop by default.
+ * @param base_height Desired stand height percentage (0 to 100). Calls DriverUnitreeH1::set_stand_height_percent();
  */
 void RobotDriverUnitreeH1::set_target_base_height(const double& base_height)
 {
@@ -249,7 +265,8 @@ void RobotDriverUnitreeH1::set_target_base_height(const double& base_height)
 // ###########################################
 
 /**
- * @brief Publish the current IMU state and orientation information to ROS 2 topics.
+ * @brief Publish the most recent IMU reading to the relevant ROS 2 topics.
+ * Called by the LeggedRobotDriver control loop as an additional callback function. Calls DriverUnitreeH1::get_IMU_data().
  */
 void RobotDriverUnitreeH1::_read_imu_state_and_publish()
 {
@@ -294,7 +311,8 @@ void RobotDriverUnitreeH1::_read_imu_state_and_publish()
 }
 
 /**
- * @brief Publish the joint temperature readings to the configured ROS topic.
+ * @brief Publish the most recent joint temperature reading in degrees Celsius to the relevant ROS 2 topics.
+ * Called by the LeggedRobotDriver control loop as an additional callback function. Calls DriverUnitreeH1::get_joint_temperatures().
  */
 void RobotDriverUnitreeH1::_read_temperatures_and_publish()
 {
@@ -311,7 +329,8 @@ void RobotDriverUnitreeH1::_read_temperatures_and_publish()
 }
 
 /**
- * @brief Publish the current stand-height percentage to a ROS 2 topic.
+ * @brief Publish the current stand height percentage (0 to 100) to the relevant ROS 2 topics.
+ * Called by the LeggedRobotDriver control loop as an additional callback function. Calls DriverUnitreeH1::get_stand_height_percent().
  */
 void RobotDriverUnitreeH1::_read_stand_height_and_publish()
 {

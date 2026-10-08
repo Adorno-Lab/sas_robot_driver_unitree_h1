@@ -42,12 +42,11 @@ using namespace Eigen;
 
 /**
  * @class DriverUnitreeH1
- * @brief High-level control interface for the Unitree H1 robot.
+ * @brief Lower level class that handles communication with the robot firmware.
  *
- * This class manages the communication lifecycle, state acquisition, and command
- * dispatch for the robot's upper body, torso motion, and locomotion functions.
- * It encapsulates the underlying DDS and locomotion client interfaces and exposes
- * a small, driver-level API that can be used by higher-level controllers.
+ * This class handles communication with the robot firmware via the driver components
+ * provided by the [unitree_drivers package](https://github.com/Adorno-Lab/unitree_drivers/tree/main). 
+ * Usage examples are available under `src/standalone_scripts/`. 
  */
 class DriverUnitreeH1
 {
@@ -150,175 +149,40 @@ public:
     DriverUnitreeH1(const DriverUnitreeH1&) = delete;
     DriverUnitreeH1& operator=(const DriverUnitreeH1&) = delete;
 
-    /**
-     * @brief Construct a driver instance with explicit network configuration and control mode.
-     * @param network_interface Network interface used for Unitree DDS communication.
-     * @param control_mode Active control mode, one of "position_controlled",
-     *        "velocity_controlled", or "torque_controlled".
-     * @param ENTER_DAMPING_MODE_ON_DEINIT If true, the robot is placed in damping mode during deinitialization.
-     * @param DUMMY_MODE If true, the driver behaves in a passive dummy mode without hardware access.
-     * @throws std::runtime_error if the requested control mode is not recognised.
-     */
     DriverUnitreeH1(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE, const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler);
-
-    /**
-     * @brief Construct a driver instance with a specific network interface and control mode.
-     * @param network_interface Network interface used for Unitree DDS communication.
-     * @param control_mode Active control mode, one of "position_controlled",
-     *        "velocity_controlled", or "torque_controlled".
-     * @throws std::runtime_error if the requested control mode is not recognised.
-     */
     DriverUnitreeH1(std::string network_interface, std::string control_mode, const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler);
-
-    /**
-     * @brief Construct a driver instance using the default position-control mode.
-     * @param network_interface Network interface used for Unitree DDS communication.
-     */
     DriverUnitreeH1(std::string network_interface, const std::shared_ptr<marinholab::sas::core::ShutdownSignaler> &shutdown_signaler);
 
-    /**
-     * @brief Perform the common initialization tasks shared by all constructors.
-     * @param network_interface Network interface used for Unitree DDS communication.
-     * @param control_mode Requested control mode. Must be one of the supported values.
-     * @param ENTER_DAMPING_MODE_ON_DEINIT If true, damping mode is entered on release.
-     * @param DUMMY_MODE If true, the driver runs without robot communication.
-     * @throws std::runtime_error if the supplied control mode is invalid.
-     */
-    void common_construction_tasks(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE);
-
-    /**
-     * @brief Connect to the robot communication channels and locomotion server.
-     * @throws std::runtime_error if the low-level state subscriber or locomotion client cannot be initialized correctly.
-     */
     void connect();
-
-    /**
-     * @brief Initialize the robot after the communication channels are active.
-     * @throws std::runtime_error if the driver is not connected before initialization.
-     */
     void initialize();
-
-    /**
-     * @brief Safely stop locomotion and transition the robot into a deinitialized state.
-     * @throws nothing; this function is designed to be safe during teardown and destructor paths.
-     */
     void deinitialize();
-
-    /**
-     * @brief Close the communication channels and release the robot connection.
-     * @throws nothing; this function is designed to be safe during teardown and destructor paths.
-     */
     void disconnect();
 
-    /**
-     * @brief Read the current positions of the upper-body joints.
-     * @return A VectorXd with one entry per upper-body joint, in radians.
-     * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
-     */
-    VectorXd get_upper_body_joint_positions();
-
-    /**
-     * @brief Read the current velocities of the upper-body joints.
-     * @return A VectorXd with one entry per upper-body joint, in radians per second.
-     * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
-     */
-    VectorXd get_upper_body_joint_velocities() const;
-
-    /**
-     * @brief Read the estimated torques of the upper-body joints.
-     * @return A VectorXd with one entry per upper-body joint, in newton-metres.
-     * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
-     */
-    VectorXd get_upper_body_joint_torques() const;
-
-    /**
-     * @brief Read the joint casing temperatures reported by the robot.
-     * @return A VectorXd containing the measured temperatures in degrees Celsius.
-     * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
-     */
-    VectorXd get_joint_temperatures() const;
-
-    /**
-     * @brief Read the torso linear and angular velocity estimate.
-     * @return A 3-vector of the form {vx, vy, omega}.
-     * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
-     */
-    VectorXd get_torso_velocity() const;
-
-    /**
-     * @brief Returns the most recent IMU sample reported by the low-state observer.
-     * @return The latest IMU data packet, including quaternion orientation,
-     *         angular velocity, linear acceleration, and validity information.
-     * @throws std::runtime_error if the driver is not initialized.
-     */
-    DriverUnitreeLowState::IMUData get_IMU_data() const;
-
-    /**
-     * @brief Query the current stand height as a percentage of the configured operating range.
-     * @return A percentage in the range supported by the robot's stand-height controller.
-     */
-    float get_stand_height_percent() const;
-
-    /**
-     * @brief Read the reported battery temperatures.
-     * @return A 2-vector containing the battery temperature measurements in degrees Celsius.
-     * @throws std::runtime_error if this feature is not supported by the current firmware or configuration.
-     */
-    VectorXd get_battery_temperatures() const;
-
-    /**
-     * @brief Query the battery state of charge.
-     * @return Battery state of charge as a percentage.
-     * @throws std::runtime_error if this feature is not supported by the current firmware or configuration.
-     */
-    int get_battery_state_of_charge() const;
-
-    /**
-     * @brief Change the active upper-body control mode at runtime.
-     * @param new_mode A supported control mode string: "position_controlled", "velocity_controlled", or "torque_controlled".
-     * @throws std::runtime_error if the mode string is invalid or the driver is not initialized.
-     */
     void change_control_mode(const std::string& new_mode);
 
-    /**
-     * @brief Return the currently active control mode string.
-     * @return The active upper-body control mode.
-     * @throws std::runtime_error if the driver is not initialized.
-     */
+    VectorXd get_upper_body_joint_positions();
+    VectorXd get_upper_body_joint_velocities() const;
+    VectorXd get_upper_body_joint_torques() const;
+    VectorXd get_joint_temperatures() const;
+    VectorXd get_torso_velocity() const;
+    VectorXd get_battery_temperatures() const;
+
+    DriverUnitreeLowState::IMUData get_IMU_data() const;
+
+    float get_stand_height_percent() const;
+
+    int get_battery_state_of_charge() const;
+
     std::string get_control_mode();
 
-    /**
-     * @brief Command all upper-body joints to the specified target angles.
-     * @param desired_joint_positions_rad Desired joint angles in radians.
-     * @throws std::runtime_error if the driver is not initialized, the requested mode is not position control, or the vector size is incorrect.
-     */
     void set_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad);
-
-    /**
-     * @brief Command all upper-body joints to the specified target velocities.
-     * @param desired_joint_velocities_rad_per_sec Desired joint velocities in radians per second.
-     * @throws std::runtime_error if the driver is not initialized, the requested mode is not velocity control, or the vector size is incorrect.
-     */
     void set_upper_body_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec);
-
-    /**
-     * @brief Command all upper-body joints to the specified joint torques.
-     * @param desired_joint_torques_Nm Desired joint torques in newton-metres.
-     * @throws std::runtime_error if the driver is not initialized, the requested mode is not torque control, or the vector size is incorrect.
-     */
     void set_upper_body_joint_torques(const VectorXd& desired_joint_torques_Nm);
-
-    /**
-     * @brief Command the torso velocity in the robot frame.
-     * @param desired_torso_velocity_mps_radps A 3-vector containing {vx, vy, omega}.
-     * @throws std::runtime_error if the driver is not initialized or the supplied vector is not size 3.
-     */
     void set_torso_velocity(const VectorXd& desired_torso_velocity_mps_radps);
-
-    /**
-     * @brief Set the robot standing height as a percentage of the configured range.
-     * @param desired_height_percent Height setpoint expressed as a percentage between the stand-height limits.
-     */
     void set_stand_height_percent(const float desired_height_percent);
+
+private:
+
+    void common_construction_tasks_(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE);
 
 };

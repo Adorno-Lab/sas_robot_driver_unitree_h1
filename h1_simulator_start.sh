@@ -23,5 +23,10 @@
 #
 # ################################################################
 
+set -e
+
+# Use the first argument, or the original scene if none is supplied.
+export COPPELIA_SIM_SCENE_FILE="${1:-h1FixedBaseScene.ttt}"
+
 xhost +local:root
 docker compose -f docker/simulator/Compose.yml up

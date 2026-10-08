@@ -67,12 +67,14 @@ sh h1_simulator_build.sh
 Once the image is built, it can be started with:
 
 ```shell
-sh h1_simulator_start.sh
+sh h1_simulator_start.sh <scene_file_name>
 ```
+
+where `<scene_file_name>` is one of the files under `simulation/scenes/`, for example `h1FixedBaseScene.ttt`.
 
 The simulator uses the [sas_robot_driver_coppeliasim package](https://github.com/MarinhoLab/sas_robot_driver_coppeliasim), which allows the simulated robot to be controlled through a standard SAS interface.
 
-At the time of writing, the simulator is limited to scenarios in which the robot base is fixed and only the upper-body joints are actuated. More generalised capabilities are planned for future releases.
+The simulator is currently under development, but it is planned to simulate the H1 robot in such a way that the upper body (arms and waist) joints can be commanded individually, while the base is treated as holonomic and is given high level velocity commands.
 
 ## How to use the hardware drivers
 

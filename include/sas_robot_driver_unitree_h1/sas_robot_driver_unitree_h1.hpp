@@ -79,10 +79,10 @@ struct RobotDriverUnitreeH1Configuration
  * 
  * Topics include:
  *     - `/sas_h1/<robot_name>/get/joint_states` --- Subscribe to get the robot's current joint positions, velocities and torques
+ *     - `/sas_h1/<robot_name>/get/joint_temperatures` --- Subscribe to get the robot's current joint temperatures
  *     - `/sas_h1/<robot_name>/get/IMU_state` --- Subscribe to get the most recent IMU reading (orientation, gyroscope, accelerometer information)
  *     - `/sas_h1/<robot_name>/get/imu_orientation` --- Subscribe to get the robot's current orientation (extracted from above)
  *     - `/sas_h1/<robot_name>/get/stand_height_percent` --- Subscribe to get the robot's current stand height as a percentage of the configured range
- *     - `/sas_h1/<robot_name>/get/temperatures` --- Subscribe to get the robot's current joint temperatures
  *     - `/sas_h1/<robot_name>/set/target_joint_forces` --- Publish to set new target joint forces (if in torque controlled mode)
  *     - `/sas_h1/<robot_name>/set/target_joint_positions` --- Publish to set new target joint positions (if in position controlled mode)
  *     - `/sas_h1/<robot_name>/set/target_joint_velocities` --- Publish to set new target joint velocities (if in velocity controlled mode)

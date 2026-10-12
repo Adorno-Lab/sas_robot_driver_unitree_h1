@@ -32,7 +32,7 @@ class ExperimentLogger(Node):
 
         imu_topic = f"/sas_h1/{ROBOT_NAME}/get/IMU_state"
         joint_topic = f"/sas_h1/{ROBOT_NAME}/get/joint_states"
-        temps_topic = f"/sas_h1/{ROBOT_NAME}/get/temperatures"
+        temps_topic = f"/sas_h1/{ROBOT_NAME}/get/joint_temperatures"
 
         self.create_subscription(Imu, imu_topic, self.imu_callback, 10)
         self.create_subscription(JointState, joint_topic, self.joint_callback, 10)

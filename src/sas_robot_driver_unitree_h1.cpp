@@ -86,7 +86,7 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
    // Create publishers and subscribers that aren't part of the base class
    publisher_IMU_state_ = node_->create_publisher<sensor_msgs::msg::Imu>(topic_prefix_ + "/get/IMU_state", 1);
    publisher_IMU_orientation_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(topic_prefix_ + "/get/imu_orientation",1);
-   publisher_temperatures_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(topic_prefix_ + "/get/temperatures",1);
+   publisher_temperatures_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(topic_prefix_ + "/get/joint_temperatures",1);
    publisher_stand_height_percent_ = node_->create_publisher<std_msgs::msg::Float64>(topic_prefix_ + "/get/stand_height_percent",1);
 
    subscriber_target_twist_ = node_->create_subscription<geometry_msgs::msg::TwistStamped>(

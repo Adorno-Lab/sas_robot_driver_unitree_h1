@@ -23,6 +23,8 @@ find_package(sas_robot_driver REQUIRED)
 find_package(unitree_sdk2 REQUIRED)
 find_package(unitree_drivers REQUIRED)
 
+find_package(OpenCV REQUIRED COMPONENTS core imgcodecs highgui)
+
 ####################################
 # DQ Robotics
 ####################################
@@ -236,6 +238,19 @@ add_executable(ROS2_velocity_test
 
 target_link_libraries(ROS2_velocity_test
   ${PROJECT_NAME}
+)
+
+add_executable(camera_test
+  src/standalone_scripts/camera_test.cpp
+)
+
+target_include_directories(camera_test PRIVATE
+  ${OpenCV_INCLUDE_DIRS}
+)
+
+target_link_libraries(camera_test
+  ${PROJECT_NAME}
+  ${OpenCV_LIBS}
 )
 
 ####################################

@@ -23,7 +23,12 @@ find_package(sas_robot_driver REQUIRED)
 find_package(unitree_sdk2 REQUIRED)
 find_package(unitree_drivers REQUIRED)
 
-find_package(OpenCV REQUIRED COMPONENTS core imgcodecs highgui)
+find_package(OpenCV REQUIRED COMPONENTS
+  core
+  imgcodecs
+  imgproc
+  highgui
+)
 
 ####################################
 # DQ Robotics
@@ -251,6 +256,55 @@ target_include_directories(camera_test PRIVATE
 target_link_libraries(camera_test
   ${PROJECT_NAME}
   ${OpenCV_LIBS}
+)
+
+# Camera publisher
+add_executable(ROS2_camera_publisher
+  src/ROS2_scripts/ROS2_camera_publisher.cpp
+)
+
+target_compile_features(ROS2_camera_publisher PRIVATE cxx_std_17)
+
+ament_target_dependencies(ROS2_camera_publisher
+  rclcpp
+  sensor_msgs
+)
+
+target_include_directories(ROS2_camera_publisher PRIVATE
+  ${OpenCV_INCLUDE_DIRS}
+)
+
+target_link_libraries(ROS2_camera_publisher
+  unitree_sdk2
+  ${OpenCV_LIBS}
+)
+
+
+# Camera subscriber/viewer
+add_executable(ROS2_camera_viewer
+  src/ROS2_scripts/ROS2_camera_viewer.cpp
+)
+
+target_compile_features(ROS2_camera_viewer PRIVATE cxx_std_17)
+
+ament_target_dependencies(ROS2_camera_viewer
+  rclcpp
+  sensor_msgs
+)
+
+target_include_directories(ROS2_camera_viewer PRIVATE
+  ${OpenCV_INCLUDE_DIRS}
+)
+
+target_link_libraries(ROS2_camera_viewer
+  ${OpenCV_LIBS}
+)
+
+
+install(TARGETS
+  ROS2_camera_publisher
+  ROS2_camera_viewer
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
 ####################################

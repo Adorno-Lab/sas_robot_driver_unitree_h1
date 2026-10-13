@@ -132,6 +132,8 @@ protected:
     void _set_stand_height_percent_from_subscriber();
     void _read_stand_height_and_publish();
 
+    void _set_high_level_mode(const HIGH_LEVEL_MODE& mode) override;
+
 public:
     RobotDriverUnitreeH1(const RobotDriverUnitreeH1&)=delete;
     RobotDriverUnitreeH1()=delete;

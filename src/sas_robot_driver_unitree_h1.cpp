@@ -20,7 +20,7 @@
 #
 #   Author: Daniel S. J. Derwent, email: daniel.derwent@manchester.ac.uk
 #
-#   Acknowledgement: This file was adapted from the file 
+#   Acknowledgement: This file was originally adapted from the file 
 #                    src/sas_robot_driver_unitree_b1.cpp written by Juan Jose 
 #                    Quiroz Omana (juanjose.quirozomana@manchester.ac.uk) for the 
 #                    unitree B1 driver package:
@@ -52,7 +52,7 @@ namespace sas
 class RobotDriverUnitreeH1::Impl
 {
 public:
-   std::shared_ptr<DriverUnitreeH1> unitree_h1_driver_;
+   std::shared_ptr<DriverUnitreeH1> hardware_;
    bool is_dummy_;
 
    Impl() = default;
@@ -75,7 +75,7 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
 {
    impl_ = std::make_unique<RobotDriverUnitreeH1::Impl>();
 
-   impl_->unitree_h1_driver_ = std::make_shared<DriverUnitreeH1>(configuration_.network_interface, 
+   impl_->hardware_ = std::make_shared<DriverUnitreeH1>(configuration_.network_interface, 
                                                                configuration_.mode, 
                                                                configuration_.ENTER_DAMPING_MODE_ON_DEINIT,
                                                                configuration_.DUMMY_MODE,
@@ -144,12 +144,30 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
 RobotDriverUnitreeH1::~RobotDriverUnitreeH1() = default;
 
 /**
+ * @brief Update the high level control mode. Driver always starts in IDLE mode.
+ * @return A LeggedRobotDriver::HIGH_LEVEL_MODE (IDLE, STANDING or WALKING).
+ */
+void RobotDriverUnitreeG1::_set_high_level_mode(const HIGH_LEVEL_MODE &mode)
+{
+   // The H1s capabilities are unrelated to whether its walking or standing, this distinction is only 
+   // important for the G1. Therefore, this function doesn't need to do anything other than maintain
+   // compatibility with the other legged drivers.
+
+   // Stop moving for the mode change, because the other legged drivers do this too.
+   impl_->hardware_->set_target_high_level_velocities({0.0, 0.0, 0.0});
+   
+   // Then just return, because we don't actually need to do anything.
+   return;
+   }
+}
+
+/**
  * @brief Read the current upper-body joint positions from the backend driver.
  * @return A VectorXd containing the joint positions in radians.
  */
 VectorXd RobotDriverUnitreeH1::get_joint_positions()
 {
-   return impl_->unitree_h1_driver_->get_upper_body_joint_positions();
+   return impl_->hardware_->get_upper_body_joint_positions();
 }
 
 /**
@@ -158,7 +176,7 @@ VectorXd RobotDriverUnitreeH1::get_joint_positions()
  */
 void RobotDriverUnitreeH1::set_target_joint_positions(const VectorXd& desired_joint_positions_rad)
 {
-   impl_->unitree_h1_driver_->set_upper_body_joint_positions(desired_joint_positions_rad);
+   impl_->hardware_->set_upper_body_joint_positions(desired_joint_positions_rad);
 }
 
 /**
@@ -167,7 +185,7 @@ void RobotDriverUnitreeH1::set_target_joint_positions(const VectorXd& desired_jo
  */
 VectorXd RobotDriverUnitreeH1::get_joint_velocities()
 {
-   return impl_->unitree_h1_driver_->get_upper_body_joint_velocities();
+   return impl_->hardware_->get_upper_body_joint_velocities();
 }
 
 /**
@@ -176,7 +194,7 @@ VectorXd RobotDriverUnitreeH1::get_joint_velocities()
  */
 VectorXd RobotDriverUnitreeH1::get_joint_torques()
 {
-   return impl_->unitree_h1_driver_->get_upper_body_joint_torques();
+   return impl_->hardware_->get_upper_body_joint_torques();
 }
 
 /**
@@ -184,7 +202,7 @@ VectorXd RobotDriverUnitreeH1::get_joint_torques()
  */
 void RobotDriverUnitreeH1::connect()
 {
-   impl_->unitree_h1_driver_->connect();
+   impl_->hardware_->connect();
 }
 
 /**
@@ -193,7 +211,7 @@ void RobotDriverUnitreeH1::connect()
  */
 void RobotDriverUnitreeH1::disconnect()
 {
-   impl_->unitree_h1_driver_->disconnect();
+   impl_->hardware_->disconnect();
 }
 
 /**
@@ -207,7 +225,7 @@ void RobotDriverUnitreeH1::disconnect()
  */
 void RobotDriverUnitreeH1::initialize()
 {
-   impl_->unitree_h1_driver_->initialize();
+   impl_->hardware_->initialize();
 }
 
 /**
@@ -216,7 +234,7 @@ void RobotDriverUnitreeH1::initialize()
  */
 void RobotDriverUnitreeH1::deinitialize()
 {
-   impl_->unitree_h1_driver_->deinitialize();
+   impl_->hardware_->deinitialize();
 }
 
 // This function is required by the base class, although the target-twist command is handled in the control loop rather than through a dedicated subscriber. The periodic control-loop implementation remains the authoritative path for torso-velocity updates.
@@ -237,18 +255,18 @@ void RobotDriverUnitreeH1::set_target_twist(const DQ& twist)
    VectorXd desired_velocity(3);
    desired_velocity << vx, vy, wz;
 
-   impl_->unitree_h1_driver_->set_torso_velocity(desired_velocity);
+   impl_->hardware_->set_torso_velocity(desired_velocity);
 }
 
 /**
  * @brief Set the target base orientation.
- * [NOT IMPLEMENTED] This is currently unimplemented because the high level Unitree API does
+ * This function is not supported because the high level Unitree API does
  * not contain functionality to control the robot's torso orientation directly.
- * @param r Target base orientation, currently unused.
+ * @param r Target base orientation, unused.
  */
-void RobotDriverUnitreeH1::set_target_base_orientation(const DQ& r)
+void RobotDriverUnitreeH1::set_target_base_orientation(const DQ &r)
 {
-   (void)r;
+   throw std::logic_error("[RobotDriverUnitreeH1::set_target_base_orientation]: This function is not supported.");
 }
 
 /**
@@ -257,7 +275,7 @@ void RobotDriverUnitreeH1::set_target_base_orientation(const DQ& r)
  */
 void RobotDriverUnitreeH1::set_target_base_height(const double& base_height)
 {
-   impl_->unitree_h1_driver_->set_stand_height_percent(base_height);
+   impl_->hardware_->set_stand_height_percent(base_height);
 }
 
 // ###########################################
@@ -277,7 +295,7 @@ void RobotDriverUnitreeH1::_read_imu_state_and_publish()
    geometry_msgs::msg::PoseStamped ros_msg_pose;
    ros_msg_pose.header.stamp = node_->get_clock()->now();
 
-   DriverUnitreeLowState::IMUData imu_data = impl_->unitree_h1_driver_->get_IMU_data();
+   DriverUnitreeLowState::IMUData imu_data = impl_->hardware_->get_IMU_data();
 
    // If the data is invalid (i.e., it did not come from a real measurement) then stop the process
    // right here, don't publish anything.
@@ -316,7 +334,7 @@ void RobotDriverUnitreeH1::_read_imu_state_and_publish()
  */
 void RobotDriverUnitreeH1::_read_temperatures_and_publish()
 {
-   auto joint_temps = impl_->unitree_h1_driver_->get_joint_temperatures();
+   auto joint_temps = impl_->hardware_->get_joint_temperatures();
    
    std_msgs::msg::Float64MultiArray msg;
 
@@ -334,7 +352,7 @@ void RobotDriverUnitreeH1::_read_temperatures_and_publish()
  */
 void RobotDriverUnitreeH1::_read_stand_height_and_publish()
 {
-   auto stand_height_percent = impl_->unitree_h1_driver_->get_stand_height_percent();
+   auto stand_height_percent = impl_->hardware_->get_stand_height_percent();
       
    std_msgs::msg::Float64 msg;
 
@@ -376,7 +394,7 @@ void RobotDriverUnitreeH1::_callback_target_stand_height_percent(const std_msgs:
  */
 void RobotDriverUnitreeH1::_callback_set_control_mode(const std_msgs::msg::String& msg)
 {
-   impl_->unitree_h1_driver_->change_control_mode(msg.data);
+   impl_->hardware_->change_control_mode(msg.data);
 }
 
 /**
@@ -391,7 +409,7 @@ void RobotDriverUnitreeH1::_set_torso_velocities_from_subscriber()
         VectorXd desired_velocities(3);
         desired_velocities << target_twist_(3), target_twist_(4), target_twist_(2);
 
-        impl_->unitree_h1_driver_->set_torso_velocity(desired_velocities);
+        impl_->hardware_->set_torso_velocity(desired_velocities);
 
         new_target_twist_available_ = false;
     }
@@ -404,7 +422,7 @@ void RobotDriverUnitreeH1::_set_stand_height_percent_from_subscriber()
 {
    if (new_target_stand_height_percent_available_)
    {
-      impl_->unitree_h1_driver_->set_stand_height_percent(target_stand_height_percent_);
+      impl_->hardware_->set_stand_height_percent(target_stand_height_percent_);
       new_target_stand_height_percent_available_ = false;
    }
 }
@@ -414,7 +432,7 @@ void RobotDriverUnitreeH1::_set_stand_height_percent_from_subscriber()
  * @param desired_joint_velocities_radps Target joint velocities in radians per second.
  */
 void RobotDriverUnitreeH1::set_target_joint_velocities(const VectorXd& desired_joint_velocities_radps){
-   impl_->unitree_h1_driver_->set_upper_body_joint_velocities(desired_joint_velocities_radps);
+   impl_->hardware_->set_upper_body_joint_velocities(desired_joint_velocities_radps);
 }
 
 /**
@@ -422,7 +440,7 @@ void RobotDriverUnitreeH1::set_target_joint_velocities(const VectorXd& desired_j
  * @param desired_joint_torques_Nm Target joint torques in newton-metres.
  */
 void RobotDriverUnitreeH1::set_target_joint_torques(const VectorXd& desired_joint_torques_Nm){
-   impl_->unitree_h1_driver_->set_upper_body_joint_torques(desired_joint_torques_Nm);
+   impl_->hardware_->set_upper_body_joint_torques(desired_joint_torques_Nm);
 }
 
 } // End of namespace sas

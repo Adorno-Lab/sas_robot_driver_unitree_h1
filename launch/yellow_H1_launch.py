@@ -29,37 +29,71 @@ https://github.com/MarinhoLab/sas_kuka_control_template/blob/main/launch/real_ro
 
 Run this script in a different terminal window or tab. Be ready to close this, as this activates the real robot if the
 connection is successful.
+
+If the variable enable_camera is set to true, then the camera feed will also be published on the topic
+/sas_h1/<robot_name>/get/camera_feed. If not, then the camera node will not be launched.
 """
 
 from launch import LaunchDescription
-from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument
+from launch.conditions import IfCondition
+from launch.substitutions import LaunchConfiguration
+
+from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
+    package = "sas_robot_driver_unitree_h1"
+    robot_name = "P_Body"
+    namespace = "sas_h1"
+    network_interface = "eth0"
+    output = "screen"
 
-    return LaunchDescription(
-        [
-            DeclareLaunchArgument("sigterm_timeout", default_value="30"),
-            Node(
-                package="sas_robot_driver_unitree_h1",
-                executable="sas_robot_driver_unitree_h1_node",
-                name="P_Body",
-                namespace="sas_h1",
-                output="screen",
-                emulate_tty=True,
-                parameters=[
-                    {
-                        "robot_name": "P_Body",
-                        "thread_sampling_time_sec": 0.002,
-                        "mode": "position_controlled",
-                        "ENTER_DAMPING_MODE_ON_DEINIT": False,
-                        "network_interface": "eth0",
-                        "DUMMY_MODE": False,
-                        # "ROBOT_IP": "192.168.8.226", #192.168.123.220
-                        # "ROBOT_PORT": 8082,
-                    }
-                ],
-            ),
-        ]
+    arguments = [
+        DeclareLaunchArgument("sigterm_timeout", default_value="30"),
+        DeclareLaunchArgument("enable_camera", default_value="false"),
+    ]
+
+    # Start the main driver as in the other launch files.
+    driver = Node(
+        package=package,
+        executable="sas_robot_driver_unitree_h1_node",
+        name=robot_name,
+        namespace=namespace,
+        output=output,
+        emulate_tty=True,
+        parameters=[
+            {
+                "robot_name": robot_name,
+                "thread_sampling_time_sec": 0.002,
+                "mode": "position_controlled",
+                "ENTER_DAMPING_MODE_ON_DEINIT": False,
+                "network_interface": network_interface,
+                "DUMMY_MODE": False,
+                # "ROBOT_IP": "192.168.8.226", #192.168.123.220
+                # "ROBOT_PORT": 8082,
+            }
+        ],
     )
+
+    # If enable_camera is true, then also start the camera process in its own node.
+    camera = Node(
+        package=package,
+        executable="sas_robot_driver_unitree_h1_camera_node",
+        name="robot_name_" + "camera",
+        namespace=namespace,
+        output=output,
+        condition=IfCondition(LaunchConfiguration("enable_camera")),
+        parameters=[
+            {
+                "robot_name": robot_name,
+                "network_interface": network_interface,
+                "publish_rate": 20.0,  # in Hz
+                "scale": 0.5,  # Downscaling of images, 0 to 1
+                "jpeg_quality": 70,  # Jpeg quality, 0 to 100.
+            }
+        ],
+    )
+
+    return LaunchDescription(arguments + [driver, camera])

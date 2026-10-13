@@ -66,7 +66,6 @@ int main(int argc, char* argv[])
 
     try
     {
-        // An empty interface preserves the original example's behaviour.
         unitree::robot::ChannelFactory::Instance()->Init(0, interface);
 
         unitree::robot::go2::VideoClient video_client;

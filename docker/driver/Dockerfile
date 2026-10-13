@@ -56,12 +56,30 @@ RUN cat <<'EOF' >> ~/.bashrc
 alias build_and_source='[ -d build ] && rm -rf build; [ -d install ] && rm -rf install; [ -d log ] && rm -rf log; colcon build && source install/setup.bash'
 
 launch_h1_driver() {
-    if [ $# -ne 1 ]; then
-        echo "Usage: launch_driver <launch_file>"
+    if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+        echo "Usage: launch_h1_driver <robot> [enable_camera]"
         return 1
     fi
 
-    ros2 launch sas_robot_driver_unitree_h1 $1_H1_launch.py
+    local enable_camera=false
+
+    case "${2:-}" in
+        "")
+            # No optional argument: launch without the camera.
+            ;;
+        enable_camera)
+            enable_camera=true
+            ;;
+        *)
+            echo "Unknown option: $2"
+            echo "Usage: launch_h1_driver <robot> [enable_camera]"
+            return 1
+            ;;
+    esac
+
+    ros2 launch sas_robot_driver_unitree_h1 \
+        "${1}_H1_launch.py" \
+        "enable_camera:=${enable_camera}"
 }
 
 EOF

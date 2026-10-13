@@ -1,3 +1,28 @@
+/*
+# Copyright (c) 2026-2026 Adorno-Lab software developments
+#
+#    This file is part of sas_robot_driver_unitree_h1.
+#
+#    This is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Lesser General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This software is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public License
+#    along with this software.  If not, see <https://www.gnu.org/licenses/>.
+#
+# ################################################################
+#
+#   Author: Daniel S. J. Derwent, email: daniel.derwent@manchester.ac.uk
+#
+# ################################################################
+*/
+
 /**
  * @file ROS2_camera_viewer.cpp
  * @brief Display JPEG camera images received from the H1 ROS 2 publisher.
@@ -6,7 +31,7 @@
  *   ROS 2 compressed image -> retain latest message -> decode -> display
  *
  * Default topic:
- *   /sas_h1/camera/image_raw/compressed
+ *   /sas_h1/P_Body/get/camera_feed
  *
  * Message type:
  *   sensor_msgs::msg::CompressedImage
@@ -31,50 +56,46 @@
 
 class H1CameraViewer : public rclcpp::Node
 {
+private:
+    rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr subscription_;
+
+    // Holds at most one pending message between callback processing
+    // and display. Access remains on the single main thread.
+    sensor_msgs::msg::CompressedImage::ConstSharedPtr latest_message_;
+
+    bool received_first_frame_{false};
+
 public:
-    H1CameraViewer()
-        : Node("h1_camera_viewer")
+    H1CameraViewer(): Node("h1_camera_viewer")
     {
-        // ----------------------------------------------------------
-        // 1. Use same topic as publisher
-        // ----------------------------------------------------------
-        const auto topic = declare_parameter<std::string>("topic", "/sas_h1/camera/image_raw/compressed");
+        // Use same topic name as publisher
+        const auto topic = declare_parameter<std::string>("topic", "/sas_h1/P_Body/get/camera_feed");
 
-
-        // ----------------------------------------------------------
-        // 2. Subscribe
-        // ----------------------------------------------------------
-        // Best effort allows frame loss rather than requiring retries.
-        // Depth 1 prevents a large backlog of queued images.
+        // Subscribe to topic
         auto qos = rclcpp::SensorDataQoS();
         qos.keep_last(1);
 
-        subscription_ =
-            create_subscription<sensor_msgs::msg::CompressedImage>(
+        // Store each update on the topic in the variable latest_message_
+        subscription_ = create_subscription<sensor_msgs::msg::CompressedImage>(
                 topic,
                 qos,
                 [this](
                     sensor_msgs::msg::CompressedImage::ConstSharedPtr msg)
                 {
-                    // Keep ownership of the incoming message through
-                    // its shared pointer, without copying JPEG bytes.
-                    //
-                    // Replacing the pointer discards any previous
-                    // message that has not yet been displayed.
                     latest_message_ = std::move(msg);
                 });
 
-        RCLCPP_INFO(
-            get_logger(),
-            "Subscribed to %s. Press Q or Escape to exit.",
-            topic.c_str());
+        RCLCPP_INFO(get_logger(), "Subscribed to %s. Press Q or Escape to exit.", topic.c_str());
+    }
+
+    static const char* window_name()
+    {
+        return "Unitree H1 compressed ROS 2 camera";
     }
 
     void display_latest_frame()
     {
-        // ----------------------------------------------------------
-        // 3. Consume the latest available message
-        // ----------------------------------------------------------
+
         if (!latest_message_)
         {
             return;
@@ -92,26 +113,17 @@ public:
 
         try
         {
-            // ------------------------------------------------------
-            // 4. Decode the JPEG into a displayable BGR image
-            // ------------------------------------------------------
-            // This viewer is intended for the matching JPEG publisher.
-            // It does not implement arbitrary image-transport formats.
-            cv::Mat frame =
-                cv::imdecode(message->data, cv::IMREAD_COLOR);
+            // Decode the image
+            cv::Mat frame = cv::imdecode(message->data, cv::IMREAD_COLOR);
 
             if (frame.empty())
             {
-                RCLCPP_WARN_THROTTLE(
-                    get_logger(), *get_clock(), 5000,
-                    "Could not decode compressed image");
+                RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,"Could not decode compressed image");
                 return;
             }
 
 
-            // ------------------------------------------------------
-            // 5. Display the already-upright image
-            // ------------------------------------------------------
+            // Display the image
             cv::imshow(window_name(), frame);
 
             // Report the first successful image received
@@ -128,25 +140,9 @@ public:
         }
         catch (const cv::Exception& error)
         {
-            RCLCPP_ERROR_THROTTLE(
-                get_logger(), *get_clock(), 5000,
-                "Image display failed: %s", error.what());
+            RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 5000,"Image display failed: %s", error.what());
         }
     }
-
-    static const char* window_name()
-    {
-        return "Unitree H1 compressed ROS 2 camera";
-    }
-
-private:
-    rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr subscription_;
-
-    // Holds at most one pending message between callback processing
-    // and display. Access remains on the single main thread.
-    sensor_msgs::msg::CompressedImage::ConstSharedPtr latest_message_;
-
-    bool received_first_frame_{false};
 };
 
 
@@ -159,18 +155,14 @@ int main(int argc, char* argv[])
     {
         auto node = std::make_shared<H1CameraViewer>();
 
-        // ----------------------------------------------------------
-        // 6. Create a resizable display window
-        // ----------------------------------------------------------
+        // Create a resizable display window
         cv::namedWindow(H1CameraViewer::window_name(), cv::WINDOW_NORMAL);
 
 
-        // ----------------------------------------------------------
-        // 7. Interleave ROS callbacks and GUI event processing
+        // Interleave ROS callbacks and GUI event processing
         // ----------------------------------------------------------
         // A normal blocking rclcpp::spin() would not give this main loop
         // an opportunity to process window events independently.
-        //
         // spin_some() processes available ROS work, then returns so
         // the latest image can be displayed and GUI events handled.
         rclcpp::executors::SingleThreadedExecutor executor;
@@ -208,9 +200,7 @@ int main(int argc, char* argv[])
     }
 
 
-    // --------------------------------------------------------------
-    // 8. Release GUI resources and shut down
-    // --------------------------------------------------------------
+    // Release GUI resources and shut down
     cv::destroyAllWindows();
 
     if (rclcpp::ok())
@@ -220,4 +210,3 @@ int main(int argc, char* argv[])
 
     return exit_code;
 }
-``

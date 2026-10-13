@@ -137,6 +137,9 @@ install(
 # ----------------------------------
 # Node executables
 # ----------------------------------
+
+# Main driver node
+
 add_executable(sas_robot_driver_unitree_h1_node
   src/sas_robot_driver_unitree_h1_node_main.cpp
 )
@@ -153,6 +156,30 @@ ament_target_dependencies(sas_robot_driver_unitree_h1_node
 )
 
 install(TARGETS sas_robot_driver_unitree_h1_node
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
+)
+
+# Camera node
+
+add_executable(sas_robot_driver_unitree_h1_camera_node
+  src/sas_robot_driver_unitree_h1_camera_node_main.cpp
+  src/sas_robot_driver_unitree_h1_camera.cpp
+)
+
+target_link_libraries(sas_robot_driver_unitree_h1_camera_node
+  unitree_sdk2
+  ${OpenCV_LIBS}
+  ${PROJECT_NAME}
+)
+
+ament_target_dependencies(sas_robot_driver_unitree_h1_camera_node
+  rclcpp
+  sensor_msgs
+  sas_core
+  sas_common
+)
+
+install(TARGETS sas_robot_driver_unitree_h1_camera_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -258,26 +285,26 @@ target_link_libraries(camera_test
   ${OpenCV_LIBS}
 )
 
-# Camera publisher
-add_executable(ROS2_camera_publisher
-  src/ROS2_scripts/ROS2_camera_publisher.cpp
-)
+# # Camera publisher
+# add_executable(ROS2_camera_publisher
+#   src/ROS2_scripts/ROS2_camera_publisher.cpp
+# )
 
-target_compile_features(ROS2_camera_publisher PRIVATE cxx_std_17)
+# target_compile_features(ROS2_camera_publisher PRIVATE cxx_std_17)
 
-ament_target_dependencies(ROS2_camera_publisher
-  rclcpp
-  sensor_msgs
-)
+# ament_target_dependencies(ROS2_camera_publisher
+#   rclcpp
+#   sensor_msgs
+# )
 
-target_include_directories(ROS2_camera_publisher PRIVATE
-  ${OpenCV_INCLUDE_DIRS}
-)
+# target_include_directories(ROS2_camera_publisher PRIVATE
+#   ${OpenCV_INCLUDE_DIRS}
+# )
 
-target_link_libraries(ROS2_camera_publisher
-  unitree_sdk2
-  ${OpenCV_LIBS}
-)
+# target_link_libraries(ROS2_camera_publisher
+#   unitree_sdk2
+#   ${OpenCV_LIBS}
+# )
 
 
 # Camera subscriber/viewer
@@ -301,8 +328,13 @@ target_link_libraries(ROS2_camera_viewer
 )
 
 
+# install(TARGETS
+#   ROS2_camera_publisher
+#   ROS2_camera_viewer
+#   RUNTIME DESTINATION lib/${PROJECT_NAME}
+# )
+
 install(TARGETS
-  ROS2_camera_publisher
   ROS2_camera_viewer
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )

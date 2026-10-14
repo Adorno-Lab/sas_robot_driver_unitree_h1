@@ -329,96 +329,53 @@ void DriverUnitreeH1::disconnect(){
 // --------------------------------------------
 
 /**
- * @brief Return the current upper-body joint positions from the robot state.
+ * @brief Return the current joint positions for a given limb.
+ * @param limb The limb in question
  * @return A VectorXd containing the upper-body joint positions in radians.
- * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
+ * @throws std::runtime_error if the driver is not initialized.
  */
-VectorXd DriverUnitreeH1::get_upper_body_joint_positions() {
+VectorXd DriverUnitreeH1::get_joint_positions(DriverUnitreeLowState::LIMB limb) const {
 
     // Check the robot is initialized
     if (current_status_ != STATUS::INITIALIZED) {
-        throw std::runtime_error(
-            "[DriverUnitreeH1::get_upper_body_joint_positions] "
-            "Function called when robot is not properly initialized!");
+        throw std::runtime_error("[DriverUnitreeH1::get_joint_positions] Function called when robot is not properly initialized!");
     }
 
-    std::vector<double> left_arm_positions_rad = arm_sdk_.get_positions(DriverUnitreeArmSDK::LIMB::LEFT_ARM);
-    std::vector<double> right_arm_positions_rad = arm_sdk_.get_positions(DriverUnitreeArmSDK::LIMB::RIGHT_ARM);
-    std::vector<double> waist_positions_rad = arm_sdk_.get_positions(DriverUnitreeArmSDK::LIMB::WAIST);
+    const VectorXd joint_positions_rad = low_state_.get_joint_positions(limb);
 
-    // Sanity-check dimensions
-    if (left_arm_positions_rad.size() != 4) {
-        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_positions] Expected 4 left arm joints, got " +std::to_string(left_arm_positions_rad.size()));
-    }
-
-    if (right_arm_positions_rad.size() != 4) {
-        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_positions] Expected 4 right arm joints, got " +std::to_string(right_arm_positions_rad.size()));
-    }
-
-    if (waist_positions_rad.size() != 1) {
-        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_positions] Expected 1 waist joint, got " +std::to_string(waist_positions_rad.size()));
-    }
-
-    VectorXd current_overall_jpos_rad(9);
-    current_overall_jpos_rad.segment<4>(0) = Eigen::Map<const Vector4d>(left_arm_positions_rad.data());
-    current_overall_jpos_rad.segment<4>(4) = Eigen::Map<const Vector4d>(right_arm_positions_rad.data());
-    current_overall_jpos_rad(8) = waist_positions_rad[0];
-
-    return current_overall_jpos_rad;
+    return joint_positions_rad;
 }
 
 /**
- * @brief Return the current upper-body joint velocities from the robot state.
+ * @brief Return the current joint velocities for a given limb.
+ * @param limb The limb in question
  * @return A VectorXd containing the upper-body joint velocities in radians per second.
- * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
+ * @throws std::runtime_error if the driver is not initialized.
  */
-VectorXd DriverUnitreeH1::get_upper_body_joint_velocities() const {
+VectorXd DriverUnitreeH1::get_joint_velocities(DriverUnitreeLowState::LIMB limb) const {
     
     if(current_status_!=STATUS::INITIALIZED){
-        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_velocities] Function called when robot is not properly initialized!");
+        throw std::runtime_error("[DriverUnitreeH1::get_joint_velocities] Function called when robot is not properly initialized!");
     }
 
-    const VectorXd left_arm_velocities_rps = low_state_.get_joint_velocities(DriverUnitreeLowState::LIMB::LEFT_ARM);
-    const VectorXd right_arm_velocities_rps = low_state_.get_joint_velocities(DriverUnitreeLowState::LIMB::RIGHT_ARM);
-    const VectorXd waist_velocities_rps = low_state_.get_joint_velocities(DriverUnitreeLowState::LIMB::TORSO);
-
-    // Sanity-check dimensions
-    if (left_arm_velocities_rps.size() != 4 || right_arm_velocities_rps.size() != 4 || waist_velocities_rps.size() != 1){
-        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_velocities] Unexpected limb dimensions.");
-    }
-
-    VectorXd joint_velocities_rps(9);
-    joint_velocities_rps << left_arm_velocities_rps,
-                         right_arm_velocities_rps,
-                         waist_velocities_rps;
+    const VectorXd joint_velocities_rps = low_state_.get_joint_velocities(limb);
 
     return joint_velocities_rps;
 }
 
 /**
- * @brief Return the estimated torques for the upper-body joints.
- * @return A VectorXd containing the upper-body joint torques in newton-metres.
- * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
+ * @brief Return the current joint torques for a given limb.
+ * @param limb The limb in question
+ * @return A VectorXd containing the upper-body joint torques in newton meters.
+ * @throws std::runtime_error if the driver is not initialized.
  */
-VectorXd DriverUnitreeH1::get_upper_body_joint_torques() const
+VectorXd DriverUnitreeH1::get_joint_torques(DriverUnitreeLowState::LIMB limb) const
 {
     if (current_status_ != STATUS::INITIALIZED) {
-        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_torques] Function called when robot is not properly initialized!");
+        throw std::runtime_error("[DriverUnitreeH1::get_joint_torques] Function called when robot is not properly initialized!");
     }
 
-    const VectorXd left_arm_torques_Nm = low_state_.get_joint_torques(DriverUnitreeLowState::LIMB::LEFT_ARM);
-    const VectorXd right_arm_torques_Nm = low_state_.get_joint_torques(DriverUnitreeLowState::LIMB::RIGHT_ARM);
-    const VectorXd waist_torques_Nm = low_state_.get_joint_torques(DriverUnitreeLowState::LIMB::TORSO);
-
-    // Sanity-check dimensions
-    if (left_arm_torques_Nm.size() != 4 || right_arm_torques_Nm.size() != 4 || waist_torques_Nm.size() != 1){
-        throw std::runtime_error("[DriverUnitreeH1::get_upper_body_joint_torques] Unexpected limb dimensions.");
-    }
-
-    VectorXd joint_torques_Nm(9);
-    joint_torques_Nm << left_arm_torques_Nm,
-                         right_arm_torques_Nm,
-                         waist_torques_Nm;
+    const VectorXd joint_torques_Nm = low_state_.get_joint_torques(limb);
 
     return joint_torques_Nm;
 }
@@ -441,7 +398,7 @@ VectorXd DriverUnitreeH1::get_joint_temperatures() const
 
     const VectorXd left_arm_temps_C = low_state_.get_joint_temperatures(DriverUnitreeLowState::LIMB::LEFT_ARM);
     const VectorXd right_arm_temps_C = low_state_.get_joint_temperatures(DriverUnitreeLowState::LIMB::RIGHT_ARM);
-    const VectorXd waist_temps_C = low_state_.get_joint_temperatures(DriverUnitreeLowState::LIMB::TORSO);
+    const VectorXd waist_temps_C = low_state_.get_joint_temperatures(DriverUnitreeLowState::LIMB::WAIST);
 
     // Sanity-check dimensions
     if (left_arm_temps_C.size() != 4 || right_arm_temps_C.size() != 4 || waist_temps_C.size() != 1){
@@ -537,29 +494,27 @@ VectorXd DriverUnitreeH1::get_battery_temperatures() const {
 // --------------------------------------------
 
 /**
- * @brief Return the current stand height as a percentage of the configured operating range.
- * @return The current stand-height percentage within the robot's operating range.
+ * @brief Return the current stand height in meters.
+ * @return The current stand-height in meters.
  */
-float DriverUnitreeH1::get_stand_height_percent() const {
+float DriverUnitreeH1::get_stand_height() const {
     
     // If this is the dummy driver then spoof the data
     if(is_dummy_){
-        return 50;
+        return 0.7;
     }
     
-    float stand_height;
     stand_height = loco_client_.get_stand_height();
-    float percent = (stand_height-0.6)/(0.2)*100;
-    return(percent);
+    return(stand_height);
 }
 
 /**
- * @brief Set the robot stand height as a percentage of the configured operating range.
- * @param desired_height_percent Desired stand-height percentage in the operating range.
+ * @brief Set the robot stand height in meters.
+ * @param desired_height Desired stand-height.
  */
-void DriverUnitreeH1::set_stand_height_percent(const float desired_height_percent){
-    float absolute = ((desired_height_percent/100)*0.2)+0.6;
-    loco_client_.set_stand_height(absolute);
+void DriverUnitreeH1::set_stand_height(const float desired_height){
+
+    loco_client_.set_stand_height(desired_height);
 }
 
 // --------------------------------------------
@@ -606,41 +561,51 @@ std::string DriverUnitreeH1::get_control_mode() {
 }
 
 /**
- * @brief Send position commands to all upper-body joints.
+ * @brief Send position commands to the joints in a particular limb.
  * @param desired_joint_positions_rad Desired joint positions in radians.
- * @throws std::runtime_error if the driver is not initialized, the active mode is not
- *         position control, or the input size is incorrect.
+ * @param limb The limb in question
+ * @throws std::runtime_error if the driver is not initialized or the active mode is not
+ *         position control.
  */
-void DriverUnitreeH1::set_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad) {
+void DriverUnitreeH1::set_joint_positions(const VectorXd& desired_joint_positions_rad, DriverUnitreeLowState::LIMB limb) {
     
     if(current_status_!=STATUS::INITIALIZED){
-        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_positions] Function called when robot is not properly initialized!");
+        throw std::runtime_error("[DriverUnitreeH1::set_joint_positions] Function called when robot is not properly initialized!");
     }
 
     if(current_mode_!=MODE::POSITION_CONTROLLED){
-        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_positions] Function called when robot is not in position control mode!");
+        throw std::runtime_error("[DriverUnitreeH1::set_joint_positions] Function called when robot is not in position control mode!");
     }
 
-    if(desired_joint_positions_rad.size()!=upper_body_joints_.size()){
-        throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_positions] Input has incorrect size! (got "+std::to_string(desired_joint_positions_rad.size())+", expected "+std::to_string(upper_body_joints_.size())+")");
+
+    // The switch is necessary because the function is passed a DriverUnitreeLowState::LIMB, but set_target_positions()
+    // requires a DriverUnitreeArmSDK::LIMB.
+    switch (limb)
+    {
+    case DriverUnitreeLowState::LIMB::LEFT_ARM:
+        arm_sdk_.set_target_positions(DriverUnitreeArmSDK::LIMB::LEFT_ARM, desired_joint_positions_rad);
+        return;
+    case DriverUnitreeLowState::LIMB::RIGHT_ARM:
+        arm_sdk_.set_target_positions(DriverUnitreeArmSDK::LIMB::RIGHT_ARM, desired_joint_positions_rad);
+        return;
+    case DriverUnitreeLowState::LIMB::WAIST:
+        arm_sdk_.set_target_positions(DriverUnitreeArmSDK::LIMB::WAIST, desired_joint_positions_rad);
+        return;
+    case DriverUnitreeLowState::LIMB::LEFT_LEG:
+    case DriverUnitreeLowState::LIMB::RIGHT_LEG:
+        break;
     }
-
-    std::vector<double> left_arm_values(desired_joint_positions_rad.data(),desired_joint_positions_rad.data() + 4);
-    std::vector<double> right_arm_values(desired_joint_positions_rad.data() + 4,desired_joint_positions_rad.data() + 8);
-    std::vector<double> waist_values{desired_joint_positions_rad(8)};
-
-    arm_sdk_.set_target_positions(DriverUnitreeArmSDK::LIMB::LEFT_ARM, left_arm_values);
-    arm_sdk_.set_target_positions(DriverUnitreeArmSDK::LIMB::RIGHT_ARM, right_arm_values);
-    arm_sdk_.set_target_positions(DriverUnitreeArmSDK::LIMB::WAIST, waist_values);
+    throw std::logic_error("[DriverUnitreeH1::set_joint_positions] Leg joints cannot be directly commanded!");
 }
 
 /**
- * @brief Send velocity commands to all upper-body joints.
+ * @brief Send velocity commands to the joints in a particular limb.
  * @param desired_joint_velocities_rad_per_sec Desired joint velocities in radians per second.
- * @throws std::runtime_error if the driver is not initialized, the active mode is not
- *         velocity control, or the input size is incorrect.
+ * @param limb The limb in question
+ * @throws std::runtime_error if the driver is not initialized or the active mode is not
+ *         velocity control
  */
-void DriverUnitreeH1::set_upper_body_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec) {
+void DriverUnitreeH1::set_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec, DriverUnitreeLowState::LIMB limb) {
     
     if(current_status_!=STATUS::INITIALIZED){
         throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_velocities] Function called when robot is not properly initialized!");
@@ -660,12 +625,13 @@ void DriverUnitreeH1::set_upper_body_joint_velocities(const VectorXd& desired_jo
 }
 
 /**
- * @brief Send torque commands to all upper-body joints.
+ * @brief Send torque commands to the joints in a particular limb.
  * @param desired_joint_torques_Nm Desired joint torques in newton-metres.
- * @throws std::runtime_error if the driver is not initialized, the active mode is not
- *         torque control, or the input size is incorrect.
+ * @param limb The limb in question
+ * @throws std::runtime_error if the driver is not initialized or the active mode is not
+ *         torque control
  */
-void DriverUnitreeH1::set_upper_body_joint_torques(const VectorXd& desired_joint_torques_Nm) {
+void DriverUnitreeH1::set_joint_torques(const VectorXd& desired_joint_torques_Nm, DriverUnitreeLowState::LIMB limb) {
     
     if(current_status_!=STATUS::INITIALIZED){
         throw std::runtime_error("[DriverUnitreeH1::set_upper_body_joint_torques] Function called when robot is not properly initialized!");
@@ -704,4 +670,13 @@ void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_
     vy = desired_torso_velocity_mps_radps(1);
     v_yaw = desired_torso_velocity_mps_radps(2);
     loco_client_.set_target_high_level_velocities({vx, vy, v_yaw});
+}
+
+// --------------------------------------------
+//  Private functions
+// --------------------------------------------
+
+Eigen::VectorXd DriverUnitreeH1::to_eigen_(const std::vector<double>& vec)
+{
+    return Eigen::Map<const Eigen::VectorXd>(vec.data(), vec.size());
 }

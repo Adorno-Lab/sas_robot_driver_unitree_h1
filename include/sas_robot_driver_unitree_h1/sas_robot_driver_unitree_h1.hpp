@@ -149,16 +149,23 @@ public:
     void initialize() override;
     void deinitialize() override;
 
-    VectorXd get_joint_positions() override;
+    // VectorXd get_joint_positions() override;
     VectorXd get_joint_velocities() override;
     VectorXd get_joint_torques() override;
+    DQ get_orientation() override;
+    DQ get_angular_velocity() override;
+    DQ get_linear_acceleration() override;
+    std::vector<HIGH_LEVEL_MODE> get_supported_high_level_modes() const override;
+    bool is_supported(const LEGGED_FUNCTIONALITY& functionality) const override;
+    std::vector<LimbEntry> get_limbs() const override;
 
-    void set_target_joint_positions(const VectorXd& desired_joint_positions_rad) override;
+    // void set_target_joint_positions(const VectorXd& desired_joint_positions_rad) override;
     void set_target_twist(const DQ& twist) override;
     void set_target_base_orientation(const DQ& r) override;
     void set_target_base_height(const double& base_height) override;
     void set_target_joint_velocities(const VectorXd& desired_joint_velocities_radps) override;
     void set_target_joint_torques(const VectorXd& desired_joint_torques_Nm) override;
+    
 };
 
 }

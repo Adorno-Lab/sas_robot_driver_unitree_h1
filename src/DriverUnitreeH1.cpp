@@ -671,12 +671,3 @@ void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_
     v_yaw = desired_torso_velocity_mps_radps(2);
     loco_client_.set_target_high_level_velocities({vx, vy, v_yaw});
 }
-
-// --------------------------------------------
-//  Private functions
-// --------------------------------------------
-
-Eigen::VectorXd DriverUnitreeH1::to_eigen_(const std::vector<double>& vec)
-{
-    return Eigen::Map<const Eigen::VectorXd>(vec.data(), vec.size());
-}

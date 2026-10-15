@@ -62,26 +62,26 @@ struct H1Limb
 
 // Joint position limits taken from https://support.unitree.com/home/en/H1_developer/About_H1
 const std::vector<H1Limb> kH1Limbs = {
-    {"left_leg", LIMB::LEFT_LEG,
-     {"LeftHipPitch", "LeftHipRoll", "LeftHipYaw", "LeftKnee", "LeftAnkle"},
-     {-3.14, -0.43, -0.43, -0.26, -0.87},
-     { 3.14,  0.43,  0.43,  2.05,  0.52}},
-    {"right_leg", LIMB::RIGHT_LEG,
-     {"RightHipPitch", "RightHipRoll", "RightHipYaw", "RightKnee", "RightAnkle"},
-     {-3.14, -0.43, -0.43, -0.26, -0.87},
-     { 3.14,  0.43,  0.43,  2.05,  0.52}},
-    {"waist", LIMB::WAIST,
-     {"WaistYaw"},
-     {-2.35},
-     { 2.35}},
-    {"left_arm", LIMB::LEFT_ARM,
-     {"LeftShoulderPitch", "LeftShoulderRoll", "LeftShoulderYaw", "LeftElbow"},
-     {-2.87, -0.34, -1.30, -1.25},
-     { 2.87,  3.11,  4.45,  2.61}},
-    {"right_arm", LIMB::RIGHT_ARM,
-     {"RightShoulderPitch", "RightShoulderRoll", "RightShoulderYaw", "RightElbow"},
-     {-2.87, -3.11, -4.45, -1.25},
-     { 2.87,  0.34,  1.30,  2.61}},
+   {"left_arm", LIMB::LEFT_ARM,
+      {"LeftShoulderPitch", "LeftShoulderRoll", "LeftShoulderYaw", "LeftElbow"},
+      {-2.87, -0.34, -1.30, -1.25},
+      { 2.87,  3.11,  4.45,  2.61}},
+   {"right_arm", LIMB::RIGHT_ARM,
+      {"RightShoulderPitch", "RightShoulderRoll", "RightShoulderYaw", "RightElbow"},
+      {-2.87, -3.11, -4.45, -1.25},
+      { 2.87,  0.34,  1.30,  2.61}},
+   {"waist", LIMB::WAIST,
+      {"WaistYaw"},
+      {-2.35},
+      { 2.35}},
+   {"left_leg", LIMB::LEFT_LEG,
+      {"LeftHipPitch", "LeftHipRoll", "LeftHipYaw", "LeftKnee", "LeftAnkle"},
+      {-3.14, -0.43, -0.43, -0.26, -0.87},
+      { 3.14,  0.43,  0.43,  2.05,  0.52}},
+   {"right_leg", LIMB::RIGHT_LEG,
+      {"RightHipPitch", "RightHipRoll", "RightHipYaw", "RightKnee", "RightAnkle"},
+      {-3.14, -0.43, -0.43, -0.26, -0.87},
+      { 3.14,  0.43,  0.43,  2.05,  0.52}},
 };
 
 VectorXd _to_vectorxd(const std::vector<double>& values)
@@ -101,7 +101,6 @@ class RobotDriverUnitreeH1::Impl
 {
 public:
    std::shared_ptr<DriverUnitreeH1> hardware_;
-   bool is_dummy_;
    std::vector<LimbEntry> limbs_;
 
    Impl() = default;
@@ -111,26 +110,18 @@ public:
 // Constructor and Lifecycle Functions
 // ###########################################
 
-RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
-                                           const RobotDriverUnitreeH1Configuration &configuration,
+RobotDriverUnitreeH1::RobotDriverUnitreeH1(const RobotDriverUnitreeH1Configuration &configuration,
                                            const std::shared_ptr<ShutdownSignaler> &shutdown_signaler)
     :LeggedRobotDriver{shutdown_signaler},
-    topic_prefix_{configuration.robot_name},
-    configuration_{configuration},
-    node_{node},
-    timer_period_{0.002},
-    print_count_{0},
-    clock_{0.002}
+    configuration_{configuration}
 {
    impl_ = std::make_unique<RobotDriverUnitreeH1::Impl>();
 
    impl_->hardware_ = std::make_shared<DriverUnitreeH1>(configuration_.network_interface, 
-                                                               configuration_.mode, 
-                                                               configuration_.ENTER_DAMPING_MODE_ON_DEINIT,
-                                                               configuration_.DUMMY_MODE,
-                                                               shutdown_signaler);
-
-   impl_->is_dummy_ = configuration_.DUMMY_MODE;
+                                                        configuration_.mode, 
+                                                        configuration_.ENTER_DAMPING_MODE_ON_DEINIT,
+                                                        configuration_.DUMMY_MODE,
+                                                        shutdown_signaler);
 
    // Set up the limbs vector
    for (const auto& h1_limb : kH1Limbs)
@@ -144,62 +135,6 @@ RobotDriverUnitreeH1::RobotDriverUnitreeH1(std::shared_ptr<Node> &node,
       impl_->limbs_.push_back({h1_limb.name, driver, h1_limb.joint_names});
    }
 
-   // Create publishers and subscribers that aren't part of the base class
-   publisher_IMU_state_ = node_->create_publisher<sensor_msgs::msg::Imu>(topic_prefix_ + "/get/IMU_state", 1);
-   publisher_IMU_orientation_ = node_->create_publisher<geometry_msgs::msg::PoseStamped>(topic_prefix_ + "/get/imu_orientation",1);
-   publisher_temperatures_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(topic_prefix_ + "/get/joint_temperatures",1);
-   publisher_stand_height_ = node_->create_publisher<std_msgs::msg::Float64>(topic_prefix_ + "/get/stand_height",1);
-
-   subscriber_target_twist_ = node_->create_subscription<geometry_msgs::msg::TwistStamped>(
-      topic_prefix_ + "/set/target_twist",
-      1,
-      std::bind(&RobotDriverUnitreeH1::_callback_target_twist, this, std::placeholders::_1)
-   );
-
-   subscriber_target_stand_height_ = node_->create_subscription<std_msgs::msg::Float64>(
-      topic_prefix_ + "/set/stand_height",
-      1,
-      std::bind(&RobotDriverUnitreeH1::_callback_target_stand_height, this, std::placeholders::_1)
-   );
-
-   subscriber_set_control_mode_ = node_->create_subscription<std_msgs::msg::String>(
-      topic_prefix_ + "/set/control_mode",
-      1,
-      std::bind(&RobotDriverUnitreeH1::_callback_set_control_mode, this, std::placeholders::_1)
-   );
-
-   // Register the control-loop callback that updates the ROS 2 state and applies any pending commands.
-   set_control_loop_callback([this]() {
-      try {
-         _read_imu_state_and_publish();
-      } catch (const std::exception& e) {
-         std::cout << "[ERROR] [RobotDriverUnitreeH1::_read_imu_state_and_publish] Exception caught: "<<e.what()<<std::endl;
-      }
-
-      try {
-         _read_temperatures_and_publish();
-      } catch (const std::exception& e) {
-         std::cout << "[ERROR] [RobotDriverUnitreeH1::_read_temperatures_and_publish] Exception caught: "<<e.what()<<std::endl;
-      }
-
-      try {
-         _read_stand_height_and_publish();
-      } catch (const std::exception& e) {
-         std::cout << "[ERROR] [RobotDriverUnitreeH1::_read_stand_height_and_publish] Exception caught: "<<e.what()<<std::endl;
-      }
-
-      try {
-         _set_torso_velocities_from_subscriber();
-      } catch (const std::exception& e) {
-         std::cout << "[ERROR] [RobotDriverUnitreeH1::_set_torso_velocities_from_subscriber] Exception caught: "<<e.what()<<std::endl;
-      }
-
-      try {
-         _set_stand_height_from_subscriber();
-      } catch (const std::exception& e) {
-         std::cout << "[ERROR] [RobotDriverUnitreeH1::_set_stand_height_from_subscriber] Exception caught: "<<e.what()<<std::endl;
-      }
-    });
 }
 
 RobotDriverUnitreeH1::~RobotDriverUnitreeH1() = default;
@@ -248,24 +183,6 @@ void RobotDriverUnitreeH1::deinitialize()
 // ###########################################
 // State Getters
 // ###########################################
-
-/**
- * @brief Read the current upper-body joint velocities from the backend driver.
- * @return A VectorXd containing the joint velocities in radians per second.
- */
-VectorXd RobotDriverUnitreeH1::get_joint_velocities()
-{
-   return impl_->hardware_->get_upper_body_joint_velocities();
-}
-
-/**
- * @brief Read the latest estimated upper-body joint torques.
- * @return A VectorXd containing the joint torques in newton-metres.
- */
-VectorXd RobotDriverUnitreeH1::get_joint_torques()
-{
-   return impl_->hardware_->get_upper_body_joint_torques();
-}
 
 /**
  * @brief Read the latest imu orientation measurement.
@@ -378,6 +295,27 @@ std::vector<LeggedRobotDriver::LimbEntry> RobotDriverUnitreeH1::get_limbs() cons
    return impl_->limbs_;
 }
 
+/**
+ * @brief Get a vector of bools describing whether each limb is commandable in the current mode.
+ * @return A the vector of bools described above, in the order of the limbs in impl_->limbs_.
+ */
+std::vector<bool> RobotDriverUnitreeH1::get_commandable_limbs() const
+{
+   // The arms and waist are commandable in all modes, while the legs are never commandable,
+   // so we dont have to consider the current high level mode here.
+   std::vector<bool> commandable;
+   commandable.reserve(impl_->limbs_.size());
+
+   for (const auto& limb : impl_->limbs_)
+   {
+      commandable.push_back(
+         limb.name == "left_arm" ||
+         limb.name == "right_arm" ||
+         limb.name == "waist");
+   }
+
+   return commandable;
+}
 
 // ###########################################
 // Target Setters
@@ -405,21 +343,9 @@ void RobotDriverUnitreeH1::_set_high_level_mode(const HIGH_LEVEL_MODE &mode)
    
 }
 
-// /**
-//  * @brief Forward upper-body joint position targets to the low-level H1 driver.
-//  * @param desired_joint_positions_rad Desired joint positions in radians.
-//  */
-// void RobotDriverUnitreeH1::set_target_joint_positions(const VectorXd& desired_joint_positions_rad)
-// {
-//    impl_->hardware_->set_upper_body_joint_positions(desired_joint_positions_rad);
-// }
-
-// This function is required by the base class, although the target-twist command is handled in the control loop rather than through a dedicated subscriber. The periodic control-loop implementation remains the authoritative path for torso-velocity updates.
 /**
  * @brief Set the target torso twist.
- * [DEPRECATED] Use of this function is no longer encouraged. Setting of target twists is 
- * now handled by the LeggedRobotDriver control loop callback function. 
- * @param twist Desired twist represented as a dual quaternion twist vector.
+ * @param twist Desired twist represented as a dual quaternion twist.
  */
 void RobotDriverUnitreeH1::set_target_twist(const DQ& twist)
 {
@@ -453,171 +379,6 @@ void RobotDriverUnitreeH1::set_target_base_orientation(const DQ &r)
 void RobotDriverUnitreeH1::set_target_base_height(const double& base_height)
 {
    impl_->hardware_->set_stand_height(base_height);
-}
-
-// ###########################################
-// Additional Functions
-// ###########################################
-
-/**
- * @brief Publish the most recent IMU reading to the relevant ROS 2 topics.
- * Called by the LeggedRobotDriver control loop as an additional callback function. Calls DriverUnitreeH1::get_IMU_data().
- */
-void RobotDriverUnitreeH1::_read_imu_state_and_publish()
-{
-
-   sensor_msgs::msg::Imu ros_msg_imu;
-   ros_msg_imu.header.stamp = node_->get_clock()->now();
-
-   geometry_msgs::msg::PoseStamped ros_msg_pose;
-   ros_msg_pose.header.stamp = node_->get_clock()->now();
-
-   DriverUnitreeLowState::IMUData imu_data = impl_->hardware_->get_IMU_data();
-
-   // If the data is invalid (i.e., it did not come from a real measurement) then stop the process
-   // right here, don't publish anything.
-   if(!imu_data.valid){
-      return;
-   }
-
-   DQ orientation = DQ(
-      imu_data.quaternion.at(0), //w
-      imu_data.quaternion.at(1), //x
-      imu_data.quaternion.at(2), //y
-      imu_data.quaternion.at(3)).normalize(); //z
-
-   publisher_IMU_orientation_->publish(sas::dq_to_geometry_msgs_pose_stamped(orientation));
-
-   VectorXd vec_orientation = orientation.vec4();
-   ros_msg_imu.orientation.w = vec_orientation(0);
-   ros_msg_imu.orientation.x = vec_orientation(1);
-   ros_msg_imu.orientation.y = vec_orientation(2);
-   ros_msg_imu.orientation.z = vec_orientation(3);
-
-   ros_msg_imu.angular_velocity.x = imu_data.gyroscope.at(0);
-   ros_msg_imu.angular_velocity.y = imu_data.gyroscope.at(1);
-   ros_msg_imu.angular_velocity.z = imu_data.gyroscope.at(2);
-
-   ros_msg_imu.linear_acceleration.x = imu_data.accelerometer.at(0);
-   ros_msg_imu.linear_acceleration.y = imu_data.accelerometer.at(1);
-   ros_msg_imu.linear_acceleration.z = imu_data.accelerometer.at(2);
-
-   publisher_IMU_state_->publish(ros_msg_imu);
-}
-
-/**
- * @brief Publish the most recent joint temperature reading in degrees Celsius to the relevant ROS 2 topics.
- * Called by the LeggedRobotDriver control loop as an additional callback function. Calls DriverUnitreeH1::get_joint_temperatures().
- */
-void RobotDriverUnitreeH1::_read_temperatures_and_publish()
-{
-   auto joint_temps = impl_->hardware_->get_joint_temperatures();
-   
-   std_msgs::msg::Float64MultiArray msg;
-
-   msg.data.reserve(joint_temps.size());
-
-   msg.data.insert(msg.data.end(),
-                  joint_temps.data(),
-                  joint_temps.data() + joint_temps.size());
-   publisher_temperatures_->publish(msg);
-}
-
-/**
- * @brief Publish the current stand height in meters to the relevant ROS 2 topics.
- * Called by the LeggedRobotDriver control loop as an additional callback function. Calls DriverUnitreeH1::get_stand_height().
- */
-void RobotDriverUnitreeH1::_read_stand_height_and_publish()
-{
-   auto stand_height = impl_->hardware_->get_stand_height();
-      
-   std_msgs::msg::Float64 msg;
-
-   msg.data=stand_height;
-
-   publisher_stand_height->publish(msg);
-}
-
-/**
- * @brief Store the most recent target twist from the ROS subscription.
- * @param msg Incoming twist message.
- */
-void RobotDriverUnitreeH1::_callback_target_twist(const geometry_msgs::msg::TwistStamped& msg)
-{
-   target_twist_ <<msg.twist.angular.x,
-                  msg.twist.angular.y,
-                  msg.twist.angular.z,
-                  msg.twist.linear.x,
-                  msg.twist.linear.y,
-                  msg.twist.linear.z;
-
-   new_target_twist_available_ = true;
-}
-
-/**
- * @brief Store the most recent stand-height command from the ROS subscription.
- * @param msg Incoming stand-height command message.
- */
-void RobotDriverUnitreeH1::_callback_target_stand_height_percent(const std_msgs::msg::Float64& msg)
-{
-   target_stand_height_percent_=msg.data;
-
-   new_target_stand_height_percent_available_ = true;
-}
-
-/**
- * @brief Change the active control mode using a ROS 2 string message.
- * @param msg Incoming control-mode command.
- */
-void RobotDriverUnitreeH1::_callback_set_control_mode(const std_msgs::msg::String& msg)
-{
-   impl_->hardware_->change_control_mode(msg.data);
-}
-
-/**
- * @brief Apply a pending torso-velocity command from the subscriber queue.
- */
-void RobotDriverUnitreeH1::_set_torso_velocities_from_subscriber()
-{
-    if (new_target_twist_available_)
-    {
-        //    0  1  2  3  4  5
-        //   wx wy wz vx vy vz
-        VectorXd desired_velocities(3);
-        desired_velocities << target_twist_(3), target_twist_(4), target_twist_(2);
-
-        impl_->hardware_->set_torso_velocity(desired_velocities);
-
-        new_target_twist_available_ = false;
-    }
-}
-
-/**
- * @brief Apply a pending stand-height command from the subscriber queue.
- */
-void RobotDriverUnitreeH1::_set_stand_height_percent_from_subscriber()
-{
-   if (new_target_stand_height_percent_available_)
-   {
-      impl_->hardware_->set_stand_height_percent(target_stand_height_percent_);
-      new_target_stand_height_percent_available_ = false;
-   }
-}
-
-/**
- * @brief Forward joint-velocity targets to the backend driver.
- * @param desired_joint_velocities_radps Target joint velocities in radians per second.
- */
-void RobotDriverUnitreeH1::set_target_joint_velocities(const VectorXd& desired_joint_velocities_radps){
-   impl_->hardware_->set_upper_body_joint_velocities(desired_joint_velocities_radps);
-}
-
-/**
- * @brief Forward joint-torque targets to the backend driver.
- * @param desired_joint_torques_Nm Target joint torques in newton-metres.
- */
-void RobotDriverUnitreeH1::set_target_joint_torques(const VectorXd& desired_joint_torques_Nm){
-   impl_->hardware_->set_upper_body_joint_torques(desired_joint_torques_Nm);
 }
 
 } // End of namespace sas

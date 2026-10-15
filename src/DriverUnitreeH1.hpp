@@ -184,5 +184,4 @@ public:
 private:
 
     void common_construction_tasks_(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE);
-    Eigen::VectorXd to_eigen_(const std::vector<double>& vec)
 };

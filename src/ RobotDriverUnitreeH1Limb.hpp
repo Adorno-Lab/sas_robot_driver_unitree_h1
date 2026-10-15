@@ -64,9 +64,7 @@ public:
                              const std::shared_ptr<ShutdownSignaler>& shutdown_signaler);
 
     Eigen::VectorXd get_joint_positions() override;
-
     Eigen::VectorXd get_joint_velocities() override;
-
     Eigen::VectorXd get_joint_torques() override;
 
     void set_target_joint_positions(const Eigen::VectorXd& target_joint_positions) override;

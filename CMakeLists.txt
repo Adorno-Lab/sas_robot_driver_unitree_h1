@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.12)
 
 project(sas_robot_driver_unitree_h1)
 
@@ -22,6 +22,7 @@ find_package(sas_robot_driver REQUIRED)
 
 find_package(unitree_sdk2 REQUIRED)
 find_package(unitree_drivers REQUIRED)
+find_package(sas_legged_msgs REQUIRED)
 
 find_package(OpenCV REQUIRED COMPONENTS
   core
@@ -56,10 +57,16 @@ find_library(DQROBOTICS_LIBRARY
 # Driver shared library
 ####################################
 
+# Collect all sas_tools implementation files, including subdirectories.
+file(GLOB_RECURSE SAS_TOOLS_SOURCES CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/sas_tools/sas_tools/src/*.cpp"
+)
+
 add_library(${PROJECT_NAME} SHARED
   src/DriverUnitreeH1.cpp
+  src/RobotDriverUnitreeH1Limb.cpp
   src/sas_robot_driver_unitree_h1.cpp
-  src/sas_tools/src/LeggedRobotDriver.cpp
+  ${SAS_TOOLS_SOURCES}
 )
 
 
@@ -68,6 +75,7 @@ ament_target_dependencies(${PROJECT_NAME}
   sas_core
   sas_common
   sas_robot_driver
+  sas_legged_msgs
 )
 
 
@@ -77,11 +85,8 @@ target_include_directories(${PROJECT_NAME}
     $<INSTALL_INTERFACE:include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<INSTALL_INTERFACE:src>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/sas_tools/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/sas_tools/sas_tools/include>
     $<INSTALL_INTERFACE:include>
-
-  # PRIVATE
-  #   ${CMAKE_CURRENT_SOURCE_DIR}/src/unitree_sdk2/include
 )
 
 
@@ -111,6 +116,7 @@ ament_export_dependencies(
   sas_core
   sas_common
   sas_robot_driver
+  sas_legged_msgs
 )
 
 
@@ -153,6 +159,7 @@ ament_target_dependencies(sas_robot_driver_unitree_h1_node
   sas_core
   sas_common
   sas_robot_driver
+  sas_legged_msgs
 )
 
 install(TARGETS sas_robot_driver_unitree_h1_node

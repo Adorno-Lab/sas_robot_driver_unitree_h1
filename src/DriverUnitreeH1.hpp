@@ -160,6 +160,9 @@ public:
 
     void change_control_mode(const std::string& new_mode);
 
+    VectorXd get_all_upper_body_joint_positions() const;
+    VectorXd get_all_upper_body_joint_velocities() const;
+    VectorXd get_all_upper_body_joint_torques() const;
     VectorXd get_joint_positions(DriverUnitreeLowState::LIMB limb) const;
     VectorXd get_joint_velocities(DriverUnitreeLowState::LIMB limb) const;
     VectorXd get_joint_torques(DriverUnitreeLowState::LIMB limb) const;
@@ -175,6 +178,9 @@ public:
 
     std::string get_control_mode();
 
+    void set_all_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad);
+    void set_all_upper_body_joint_velocities(const VectorXd& desired_joint_velocities_radps);
+    void set_all_upper_body_joint_torques(const VectorXd& desired_joint_torques_Nm);
     void set_joint_positions(const VectorXd& desired_joint_positions_rad, DriverUnitreeLowState::LIMB limb);
     void set_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec, DriverUnitreeLowState::LIMB limb);
     void set_joint_torques(const VectorXd& desired_joint_torques_Nm, DriverUnitreeLowState::LIMB limb);
@@ -184,4 +190,6 @@ public:
 private:
 
     void common_construction_tasks_(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE);
+    VectorXd get_dummy_joint_values_(DriverUnitreeLowState::LIMB limb) const;
+
 };

@@ -67,6 +67,7 @@ def generate_launch_description():
             {
                 "robot_name": robot_name,
                 "thread_sampling_time_sec": 0.002,
+                "twist_timeout_sec": 0.2,
                 "mode": "position_controlled",
                 "ENTER_DAMPING_MODE_ON_DEINIT": False,
                 "network_interface": network_interface,

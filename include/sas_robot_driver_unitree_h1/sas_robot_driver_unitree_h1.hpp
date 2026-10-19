@@ -82,12 +82,12 @@ struct RobotDriverUnitreeH1Configuration
  *     - `/sas_h1/<robot_name>/get/joint_temperatures` --- Subscribe to get the robot's current joint temperatures
  *     - `/sas_h1/<robot_name>/get/IMU_state` --- Subscribe to get the most recent IMU reading (orientation, gyroscope, accelerometer information)
  *     - `/sas_h1/<robot_name>/get/imu_orientation` --- Subscribe to get the robot's current orientation (extracted from above)
- *     - `/sas_h1/<robot_name>/get/stand_height_percent` --- Subscribe to get the robot's current stand height as a percentage of the configured range
+ *     - `/sas_h1/<robot_name>/get/stand_height` --- Subscribe to get the robot's current stand height in meters
  *     - `/sas_h1/<robot_name>/set/target_joint_forces` --- Publish to set new target joint forces (if in torque controlled mode)
  *     - `/sas_h1/<robot_name>/set/target_joint_positions` --- Publish to set new target joint positions (if in position controlled mode)
  *     - `/sas_h1/<robot_name>/set/target_joint_velocities` --- Publish to set new target joint velocities (if in velocity controlled mode)
  *     - `/sas_h1/<robot_name>/set/control_mode` --- Publish to set new control mode ("position_controlled", "velocity_controlled" or "torque_controlled")
- *     - `/sas_h1/<robot_name>/set/stand_height_percent` --- Publish to set new stand height as a percentage of the configured range
+ *     - `/sas_h1/<robot_name>/set/stand_height` --- Publish to set new stand height in meters
  *     - `/sas_h1/<robot_name>/set/target_twist` --- Publish to set new target torso twist
  *  
  * Usage examples are available under `src/ROS2_scripts/`. 
@@ -132,10 +132,7 @@ public:
 
     void set_target_twist(const DQ& twist) override;
     void set_target_base_orientation(const DQ& r) override;
-    void set_target_base_height(const double& base_height) override;
-    void set_target_joint_velocities(const VectorXd& desired_joint_velocities_radps) override;
-    void set_target_joint_torques(const VectorXd& desired_joint_torques_Nm) override;
-       
+    void set_target_base_height(const double& base_height) override;      
 
 };
 

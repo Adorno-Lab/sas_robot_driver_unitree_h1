@@ -12,10 +12,19 @@ FROM murilomarinho/sas:jazzy
 
 # Use bash as the default shell
 SHELL ["/bin/bash", "-c"]
-  
-# Add the sourcing of the ROS2 overlay to the bashrc file.
-RUN echo "# Source the ROS2 overlay, as instructed in https://ros2-tutorial.readthedocs.io" >> ~/.bashrc
-RUN echo "source install/setup.bash" >> ~/.bashrc
+
+# Make the message package available in interactive terminals.
+# Only source the driver overlay if it has already been built.
+RUN cat <<'EOF' >> /root/.bashrc
+
+# SAS legged message interfaces.
+source /opt/sas_legged_msgs/setup.bash
+
+# H1 driver overlay, when available.
+if [ -f /sas_robot_driver_unitree_h1/install/local_setup.bash ]; then
+    source /sas_robot_driver_unitree_h1/install/local_setup.bash
+fi
+EOF
 
 # Set the workspace as the working directory
 WORKDIR /sas_robot_driver_unitree_h1
@@ -45,6 +54,23 @@ RUN cmake -S src/unitree_drivers \
     cmake --build /tmp/unitree_build -j$(nproc) && \
     cmake --install /tmp/unitree_build
 
+# # ####################################################
+# #              Build SAS legged messages             #
+# # ####################################################
+
+# Build the message package explicitly from the submodule.
+# Install outside the driver workspace so that cleaning the
+# driver's build/install directories does not delete it.
+#
+# This step uses local sources only. All dependencies must
+# already be available in the base image.
+RUN source /opt/ros/jazzy/setup.bash && \
+    colcon --log-base /tmp/sas_legged_msgs_log build \
+      --base-paths /sas_robot_driver_unitree_h1/src/sas_tools/sas_legged_msgs \
+      --packages-select sas_legged_msgs \
+      --build-base /tmp/sas_legged_msgs_build \
+      --install-base /opt/sas_legged_msgs
+
 RUN ldconfig
 
 # ####################################################
@@ -53,7 +79,23 @@ RUN ldconfig
 
 # ALIASES
 RUN cat <<'EOF' >> ~/.bashrc
-alias build_and_source='[ -d build ] && rm -rf build; [ -d install ] && rm -rf install; [ -d log ] && rm -rf log; colcon build && source install/setup.bash'
+build_and_source() {
+    (
+        # Run the build in a subshell so directory changes and build-environment changes remain local.
+        cd /sas_robot_driver_unitree_h1 || exit 1
+
+        # Ensure the prebuilt message package is available.
+        source /opt/sas_legged_msgs/setup.bash || exit 1
+
+        # Clean only the driver workspace.
+        rm -rf build install log
+
+        colcon build
+    ) || return 1
+
+    # Make the rebuilt driver available in this terminal.
+    source /sas_robot_driver_unitree_h1/install/setup.bash
+}
 
 launch_h1_driver() {
     if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then

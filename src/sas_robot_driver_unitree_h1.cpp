@@ -30,10 +30,12 @@
 */
 
 #include <sas_robot_driver_unitree_h1/sas_robot_driver_unitree_h1.hpp>
-
 #include "DriverUnitreeH1.hpp"
+#include "RobotDriverUnitreeH1Limb.hpp"
+
 #include <iostream>
 #include <memory>
+
 #include <sas_common/sas_common.hpp>
 #include <sas_core/eigen3_std_conversions.hpp>
 #include <sas_conversions/DQ_geometry_msgs_conversions.hpp>
@@ -86,7 +88,7 @@ const std::vector<H1Limb> kH1Limbs = {
 
 VectorXd _to_vectorxd(const std::vector<double>& values)
 {
-    return Eigen::Map<const VectorXd>(values.data(), static_cast<Eigen::Index>(values.size()));
+   return Eigen::Map<const VectorXd>(values.data(), static_cast<Eigen::Index>(values.size()));
 }
 
 }
@@ -194,7 +196,7 @@ DQ RobotDriverUnitreeH1::get_orientation()
 
    // If the data is invalid (i.e., it did not come from a real measurement) then stop the process
    // right here, return zero.
-   if (!imu_data.valid || r.vec4().norm() == 0.0){
+   if (!imu_data.valid){
         return DQ(0);
    }
 
@@ -202,7 +204,15 @@ DQ RobotDriverUnitreeH1::get_orientation()
       imu_data.quaternion.at(0), //w
       imu_data.quaternion.at(1), //x
       imu_data.quaternion.at(2), //y
-      imu_data.quaternion.at(3)).normalize(); //z
+      imu_data.quaternion.at(3));//z
+      
+   // Likewise, return zero if the DQ has norm 0, dont try to normalise it because this will cause problems.
+   if(orientation.vec4().norm() == 0.0){
+      return DQ(0);
+   }
+   
+   // Otherwise, normalise and return.
+   orientation.normalize();
 
    return orientation;
 }
@@ -251,7 +261,7 @@ DQ RobotDriverUnitreeH1::get_linear_acceleration()
       imu_data.accelerometer.at(1), //y
       imu_data.accelerometer.at(2)); //z
 
-   return angular_velocity;
+   return linear_acceleration;
 
 }
 
@@ -332,7 +342,7 @@ void RobotDriverUnitreeH1::_set_high_level_mode(const HIGH_LEVEL_MODE &mode)
    // that we don't support a dedicated standing mode.
 
    // Stop moving for the mode change, because the other legged drivers do this too.
-   impl_->hardware_->set_target_high_level_velocities({0.0, 0.0, 0.0});
+   impl_->hardware_->set_torso_velocity(VectorXd::Zero(0));
    
    if(mode==HIGH_LEVEL_MODE::STANDING){
       throw std::runtime_error("[RobotDriverUnitreeH1::_set_high_level_mode] Unitree H1 does not support standing mode!"); 

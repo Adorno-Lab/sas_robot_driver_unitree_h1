@@ -91,9 +91,9 @@ int main()
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-            auto positions = driver.get_upper_body_joint_positions();
-            auto velocities = driver.get_upper_body_joint_velocities();
-            auto torques = driver.get_upper_body_joint_torques();
+            auto positions = driver.get_all_upper_body_joint_positions();
+            auto velocities = driver.get_all_upper_body_joint_velocities();
+            auto torques = driver.get_all_upper_body_joint_torques();
             auto joint_temps = driver.get_joint_temperatures();
             // auto battery_soc = driver.get_battery_state_of_charge();
             // auto battery_temps = driver.get_battery_temperatures();

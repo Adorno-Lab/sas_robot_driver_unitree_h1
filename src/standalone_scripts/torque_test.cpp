@@ -72,10 +72,10 @@ int main(){
 
     std::cout << "    Begin motion..."<<std::endl;
     for(int i=0; i<num_cycles; i++){
-        driver.set_upper_body_joint_torques(desired_torques);
+        driver.set_all_upper_body_joint_torques(desired_torques);
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
-    driver.set_upper_body_joint_torques(VectorXd::Zero(19));
+    driver.set_all_upper_body_joint_torques(VectorXd::Zero(19));
     std::cout << "    Done." << std::endl;
 
     // Deinitialize

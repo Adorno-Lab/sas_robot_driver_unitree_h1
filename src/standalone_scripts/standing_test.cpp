@@ -75,46 +75,46 @@ int main(){
 
     std::cout << "        Press ENTER to go to start height...";
     std::cin.get();
-    float current_height_percent = driver.get_stand_height_percent();
-    float target_height_percent = 50;
-    float starting_height_percent = current_height_percent;
+    float current_height = driver.get_stand_height();
+    float target_height = 0.7;
+    float starting_height = current_height;
     for(int i=0; i<num_cycles; i++){
-        current_height_percent = starting_height_percent + (static_cast<float>(i)/num_cycles) * (target_height_percent-starting_height_percent);
-        driver.set_stand_height_percent(current_height_percent);
-        std::cout << "            Height: "<<current_height_percent<<"%"<<std::endl;
+        current_height = starting_height + (static_cast<float>(i)/num_cycles) * (target_height-starting_height);
+        driver.set_stand_height(current_height);
+        std::cout << "            Height: "<<current_height<<" m"<<std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
     std::cout << "        Press ENTER to go to up...";
     std::cin.get();
-    target_height_percent = 100;
-    starting_height_percent = current_height_percent;
+    target_height = 0.8;
+    starting_height = current_height;
     for(int i=0; i<num_cycles; i++){
-        current_height_percent = starting_height_percent + (static_cast<float>(i)/num_cycles) * (target_height_percent-starting_height_percent);
-        driver.set_stand_height_percent(current_height_percent);
-        std::cout << "            Height: "<<current_height_percent<<"%"<<std::endl;
+        current_height = starting_height + (static_cast<float>(i)/num_cycles) * (target_height-starting_height);
+        driver.set_stand_height(current_height);
+        std::cout << "            Height: "<<current_height<<" m"<<std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
     std::cout << "        Press ENTER to go to down...";
     std::cin.get();
-    target_height_percent = 0;
-    starting_height_percent = current_height_percent;
+    target_height = 0.6;
+    starting_height = current_height;
     for(int i=0; i<num_cycles*2; i++){
-        current_height_percent = starting_height_percent + (static_cast<float>(i)/(num_cycles*2)) * (target_height_percent-starting_height_percent);
-        driver.set_stand_height_percent(current_height_percent);
-        std::cout << "            Height: "<<current_height_percent<<"%"<<std::endl;
+        current_height = starting_height + (static_cast<float>(i)/(num_cycles*2)) * (target_height-starting_height);
+        driver.set_stand_height(current_height);
+        std::cout << "            Height: "<<current_height<<" m"<<std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
     std::cout << "        Press ENTER to go return to normal...";
     std::cin.get();
-    target_height_percent = 50;
-    starting_height_percent = current_height_percent;
+    target_height = 0.7;
+    starting_height = current_height;
     for(int i=0; i<num_cycles; i++){
-        current_height_percent = starting_height_percent + (static_cast<float>(i)/num_cycles) * (target_height_percent-starting_height_percent);
-        driver.set_stand_height_percent(current_height_percent);
-        std::cout << "            Height: "<<current_height_percent<<"%"<<std::endl;
+        current_height = starting_height + (static_cast<float>(i)/num_cycles) * (target_height-starting_height);
+        driver.set_stand_height(current_height);
+        std::cout << "            Height: "<<current_height<<" m"<<std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 

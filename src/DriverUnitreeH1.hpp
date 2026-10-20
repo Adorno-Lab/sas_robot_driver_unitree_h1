@@ -160,29 +160,36 @@ public:
 
     void change_control_mode(const std::string& new_mode);
 
-    VectorXd get_upper_body_joint_positions();
-    VectorXd get_upper_body_joint_velocities() const;
-    VectorXd get_upper_body_joint_torques() const;
+    VectorXd get_all_upper_body_joint_positions() const;
+    VectorXd get_all_upper_body_joint_velocities() const;
+    VectorXd get_all_upper_body_joint_torques() const;
+    VectorXd get_joint_positions(DriverUnitreeLowState::LIMB limb) const;
+    VectorXd get_joint_velocities(DriverUnitreeLowState::LIMB limb) const;
+    VectorXd get_joint_torques(DriverUnitreeLowState::LIMB limb) const;
     VectorXd get_joint_temperatures() const;
     VectorXd get_torso_velocity() const;
     VectorXd get_battery_temperatures() const;
 
     DriverUnitreeLowState::IMUData get_IMU_data() const;
 
-    float get_stand_height_percent() const;
+    float get_stand_height() const;
 
     int get_battery_state_of_charge() const;
 
     std::string get_control_mode();
 
-    void set_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad);
-    void set_upper_body_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec);
-    void set_upper_body_joint_torques(const VectorXd& desired_joint_torques_Nm);
+    void set_all_upper_body_joint_positions(const VectorXd& desired_joint_positions_rad);
+    void set_all_upper_body_joint_velocities(const VectorXd& desired_joint_velocities_radps);
+    void set_all_upper_body_joint_torques(const VectorXd& desired_joint_torques_Nm);
+    void set_joint_positions(const VectorXd& desired_joint_positions_rad, DriverUnitreeLowState::LIMB limb);
+    void set_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec, DriverUnitreeLowState::LIMB limb);
+    void set_joint_torques(const VectorXd& desired_joint_torques_Nm, DriverUnitreeLowState::LIMB limb);
     void set_torso_velocity(const VectorXd& desired_torso_velocity_mps_radps);
-    void set_stand_height_percent(const float desired_height_percent);
+    void set_stand_height(const float desired_height);
 
 private:
 
     void common_construction_tasks_(std::string network_interface, std::string control_mode, bool ENTER_DAMPING_MODE_ON_DEINIT, bool DUMMY_MODE);
+    VectorXd get_dummy_joint_values_(DriverUnitreeLowState::LIMB limb) const;
 
 };

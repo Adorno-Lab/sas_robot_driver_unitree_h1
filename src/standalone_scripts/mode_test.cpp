@@ -69,9 +69,9 @@ int main(){
     target_pos << 0.f,  1.571,  1.571, 0.f,
                   0.f, -1.571, -1.571, 0.f, 
                   0.f;
-    VectorXd starting_pos = driver.get_upper_body_joint_positions();
+    VectorXd starting_pos = driver.get_all_upper_body_joint_positions();
     for(int i=0; i<num_cycles; i++){
-        driver.set_upper_body_joint_positions(starting_pos + (static_cast<float>(i)/num_cycles)*(target_pos-starting_pos));
+        driver.set_all_upper_body_joint_positions(starting_pos + (static_cast<float>(i)/num_cycles)*(target_pos-starting_pos));
         std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep_time_sec / 0.001f)));
     }
     std::cout << "    Done." << std::endl;
@@ -83,7 +83,7 @@ int main(){
                   0.f, 0.f,  0.f, 0.f, 
                   0.f;
     try{
-        driver.set_upper_body_joint_velocities(target_vels);
+        driver.set_all_upper_body_joint_velocities(target_vels);
     }
     catch (const std::exception& e){
         std::cout << "[ERROR] "<<e.what()<<std::endl;
@@ -98,7 +98,7 @@ int main(){
 
     std::cout << "    Sending velocity commands again..."<<std::endl;
     try{
-        driver.set_upper_body_joint_velocities(target_vels);
+        driver.set_all_upper_body_joint_velocities(target_vels);
     }
     catch (const std::exception& e){
         std::cout << "[ERROR] "<<e.what()<<std::endl;

@@ -82,12 +82,12 @@ struct RobotDriverUnitreeH1Configuration
  *     - `/sas_h1/<robot_name>/get/joint_temperatures` --- Subscribe to get the robot's current joint temperatures
  *     - `/sas_h1/<robot_name>/get/IMU_state` --- Subscribe to get the most recent IMU reading (orientation, gyroscope, accelerometer information)
  *     - `/sas_h1/<robot_name>/get/imu_orientation` --- Subscribe to get the robot's current orientation (extracted from above)
- *     - `/sas_h1/<robot_name>/get/stand_height_percent` --- Subscribe to get the robot's current stand height as a percentage of the configured range
+ *     - `/sas_h1/<robot_name>/get/stand_height` --- Subscribe to get the robot's current stand height in meters
  *     - `/sas_h1/<robot_name>/set/target_joint_forces` --- Publish to set new target joint forces (if in torque controlled mode)
  *     - `/sas_h1/<robot_name>/set/target_joint_positions` --- Publish to set new target joint positions (if in position controlled mode)
  *     - `/sas_h1/<robot_name>/set/target_joint_velocities` --- Publish to set new target joint velocities (if in velocity controlled mode)
  *     - `/sas_h1/<robot_name>/set/control_mode` --- Publish to set new control mode ("position_controlled", "velocity_controlled" or "torque_controlled")
- *     - `/sas_h1/<robot_name>/set/stand_height_percent` --- Publish to set new stand height as a percentage of the configured range
+ *     - `/sas_h1/<robot_name>/set/stand_height` --- Publish to set new stand height in meters
  *     - `/sas_h1/<robot_name>/set/target_twist` --- Publish to set new target torso twist
  *  
  * Usage examples are available under `src/ROS2_scripts/`. 
@@ -95,50 +95,22 @@ struct RobotDriverUnitreeH1Configuration
 class RobotDriverUnitreeH1: public LeggedRobotDriver
 {
 protected:
-    std::string topic_prefix_;
     RobotDriverUnitreeH1Configuration configuration_;
     std::shared_ptr<rclcpp::Node> node_;
 
 private:
-    double timer_period_;
-    int print_count_;
-    sas::Clock clock_;
-
-    Publisher<sensor_msgs::msg::Imu>::SharedPtr publisher_IMU_state_;
-    Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_IMU_orientation_;
-    Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr publisher_temperatures_;
-    Publisher<std_msgs::msg::Float64>::SharedPtr publisher_stand_height_percent_;
-
-    Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr subscriber_target_twist_;
-    VectorXd target_twist_ = VectorXd::Zero(6);
-    void _callback_target_twist(const geometry_msgs::msg::TwistStamped& msg);
-    bool new_target_twist_available_{false};
-
-    Subscription<std_msgs::msg::Float64>::SharedPtr subscriber_target_stand_height_percent_;
-    double target_stand_height_percent_ = 50;
-    void _callback_target_stand_height_percent(const std_msgs::msg::Float64& msg);
-    bool new_target_stand_height_percent_available_{false};
-
-    Subscription<std_msgs::msg::String>::SharedPtr subscriber_set_control_mode_;
-    void _callback_set_control_mode(const std_msgs::msg::String& msg);
-
     class Impl;
     std::unique_ptr<Impl> impl_;
 
 protected:
-    void _read_imu_state_and_publish();
-    void _read_temperatures_and_publish();
-    void _set_torso_velocities_from_subscriber();
-    void _set_stand_height_percent_from_subscriber();
-    void _read_stand_height_and_publish();
+    void _set_high_level_mode(const HIGH_LEVEL_MODE& mode) override;
 
 public:
     RobotDriverUnitreeH1(const RobotDriverUnitreeH1&)=delete;
     RobotDriverUnitreeH1()=delete;
     ~RobotDriverUnitreeH1();
 
-    RobotDriverUnitreeH1(std::shared_ptr<Node>& node,
-                         const RobotDriverUnitreeH1Configuration &configuration,
+    RobotDriverUnitreeH1(const RobotDriverUnitreeH1Configuration &configuration,
                          const std::shared_ptr<ShutdownSignaler>& shutdown_signaler);
 
 
@@ -147,16 +119,21 @@ public:
     void initialize() override;
     void deinitialize() override;
 
-    VectorXd get_joint_positions() override;
-    VectorXd get_joint_velocities() override;
-    VectorXd get_joint_torques() override;
+    DQ get_orientation() override;
+    DQ get_angular_velocity() override;
+    DQ get_linear_acceleration() override;
+    std::vector<HIGH_LEVEL_MODE> get_supported_high_level_modes() const override;
+    bool is_supported(const LEGGED_FUNCTIONALITY& functionality) const override;
+    std::vector<LimbEntry> get_limbs() const override;
+    std::vector<bool> get_commandable_limbs() const override;
+    // Note that we don't override get_base_orientation_limits(), which is a virtual function in
+    // LeggedRobotDriver, because the default implementation is recommended when the driver does 
+    // not support LEGGED_FUNCTIONALITY::BASE_ORIENTATION, which the H1 does not.
 
-    void set_target_joint_positions(const VectorXd& desired_joint_positions_rad) override;
     void set_target_twist(const DQ& twist) override;
     void set_target_base_orientation(const DQ& r) override;
-    void set_target_base_height(const double& base_height) override;
-    void set_target_joint_velocities(const VectorXd& desired_joint_velocities_radps) override;
-    void set_target_joint_torques(const VectorXd& desired_joint_torques_Nm) override;
+    void set_target_base_height(const double& base_height) override;      
+
 };
 
 }

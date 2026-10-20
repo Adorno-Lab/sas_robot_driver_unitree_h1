@@ -72,13 +72,13 @@ int main(){
                   0.f, -1.571, -1.571, 0.f, 
                   0.f;
     std::cout << "    Get current joint positions..."<<std::endl;
-    VectorXd starting_pos = driver.get_upper_body_joint_positions();
+    VectorXd starting_pos = driver.get_all_upper_body_joint_positions();
     VectorXd desired_torso_velocity(3);
     desired_torso_velocity<<0.2,0,0;
     std::cout << "    Begin motion..."<<std::endl;
     for(int i=0; i<num_cycles; i++){
         driver.set_torso_velocity(desired_torso_velocity);
-        driver.set_upper_body_joint_positions(starting_pos + (static_cast<float>(i)/num_cycles)*(target_pos-starting_pos));
+        driver.set_all_upper_body_joint_positions(starting_pos + (static_cast<float>(i)/num_cycles)*(target_pos-starting_pos));
         std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep_time_sec / 0.001f)));
     }
 

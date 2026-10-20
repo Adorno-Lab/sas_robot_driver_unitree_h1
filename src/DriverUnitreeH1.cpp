@@ -795,7 +795,7 @@ void DriverUnitreeH1::set_joint_torques(const VectorXd& desired_joint_torques_Nm
 void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_mps_radps) {
 
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::set_torso_velocity] Function called when robot is not properly initialized!");
+        throw std::runtime_error("[DriverUnitreeH1::set_torso_velocity] Function called when robot is not properly initialized!");
     }
 
     if(desired_torso_velocity_mps_radps.size()!=3){

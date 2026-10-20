@@ -342,7 +342,7 @@ void RobotDriverUnitreeH1::_set_high_level_mode(const HIGH_LEVEL_MODE &mode)
    // that we don't support a dedicated standing mode.
 
    // Stop moving for the mode change, because the other legged drivers do this too.
-   impl_->hardware_->set_torso_velocity(VectorXd::Zero(0));
+   impl_->hardware_->set_torso_velocity(VectorXd::Zero(3));
    
    if(mode==HIGH_LEVEL_MODE::STANDING){
       throw std::runtime_error("[RobotDriverUnitreeH1::_set_high_level_mode] Unitree H1 does not support standing mode!"); 

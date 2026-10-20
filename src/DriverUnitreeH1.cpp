@@ -42,9 +42,7 @@
 #include <Eigen/Core>
 #include <dqrobotics/DQ.h>
 
-
 #include "DriverUnitreeH1.hpp"
-#include "ErrorParsing.hpp"
 
 using namespace DQ_robotics;
 using namespace Eigen;

@@ -174,6 +174,9 @@ build/sas_robot_driver_unitree_h1/<executable_name>
 
 For example, `build/sas_robot_driver_unitree_h1/basic_test` runs the example in `src/standalone_scripts/basic_test.cpp`. The scripts in `src/standalone_scripts` use the standalone C++ driver class without SAS or ROS functionality to test basic robot features. 
 
+>[!WARNING]
+> The ROS2 scripts are not yet compatible with the new server interface! They may cause unsafe behaviour and should not be used!
+
 By contrast, with the exception of the camera viewer, the ROS2 scripts use the full SAS/ROS 2 driver interface and require the driver process to already be running in another terminal. Thus, to run these examples you should open two terminals, and SSH into the robot in both. Then, in one terminal launch the drivers:
 
 ```shell

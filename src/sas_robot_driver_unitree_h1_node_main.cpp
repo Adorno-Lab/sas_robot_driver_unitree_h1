@@ -46,7 +46,6 @@ void sig_int_handler(int)
 }
 
 /**
- * TODO: UPDATE FOR THE H1
  * Parameters (set by the launch file):
  *   - robot_name (string, mandatory):                    Name of the robot, used to determine topic names.
  *   - network_interface (string, mandatory):             e.g. "eth0" on the onboard computer.

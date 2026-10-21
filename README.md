@@ -50,6 +50,7 @@ doxygen Doxyfile
 The docs will be generated inside the `build/docs` directory. Find and open the `build/docs/index.html` file in order to view the docs.
 
 ## How to use the simulator
+
 To use the simulator, first ensure that Docker is installed on the host machine, and then clone this repository together with its submodules:
 
 ```shell
@@ -76,109 +77,206 @@ The simulator is currently under development, but it is planned to simulate the 
 
 ## How to use the hardware drivers
 
+### Installation
+
 To use the drivers on the real robot, first ensure that Docker is installed on the host computer and set up the H1 on a crane without powering it on yet. The robot is not currently connected to the internet, so all required files must be transferred from the host machine.
 
-Begin by pulling the files needed for transfer to the robot, including this repository:
+Begin by cloning this repository and its submodules:
 
 ```shell
 git clone git@github.com:Adorno-Lab/sas_robot_driver_unitree_h1.git --recursive
 ```
 
-You will also need a local copy of the base Docker image, since the robot will be unable to download it in the usual way. To obtain it, run:
-
-```shell
-docker pull murilomarinho/sas:jazzy
-docker save -o sas.tar murilomarinho/sas:jazzy
-```
-
-Once all required files are available, the robot can be powered on and the transfer process can begin.
-
-> [!NOTE]
-> Ensure that the Ethernet cable is connected before the robot is powered on, since the arms will obstruct access once the startup procedure begins.
-
-The robot should be suspended above the floor with its arms hanging down, the waist pointing forward, and the ankle and shoulder-roll joints locked at their maximum positions. Activate power, then use `L2+B` on the remote control to enter damping mode. From there, use `L2+UP` to enter preparation mode, which will cause the robot to move. 
-
-Once the robot is in preparation mode and the Ethernet connection is available, the required files can be transferred to the onboard computer using:
-
-```shell
-scp sas.tar unitree@192.168.123.162:~
-scp -r sas_robot_driver_unitree_h1/ unitree@192.168.123.162:~
-```
-
-This will prompt for a password; please contact Daniel if needed.
-
-Once the files are in place, connect to the robot via SSH:
-
-```shell
-ssh -X unitree@192.168.123.162
-```
-
-and begin the process of installing them. Start with the Docker image:
-
-```shell
-docker load -i sas.tar
-```
-
-Then build the container:
+Since we presume that the robot is not connected to the internet, we will build the docker container locally and then transmit it to the robot via an ethernet cable or closed LAN connection. To build the container do:
 
 ```shell
 cd sas_robot_driver_unitree_h1
 sh h1_driver_build.sh
 ```
 
-Once the container has been built, it can be entered with:
+> [!NOTE]
+> The H1 has an x86_64 architecture, and the `h1_driver_build.sh` script presumes that your computer _also_ has an x86_64 architecture. If this is not the case, then you will need to build the container image using emulation.
+
+Then save the image to a tar file for transmission to the robot:
 
 ```shell
-sh h1_driver_start.sh
+docker save -o h1_drivers.tar sas_robot_driver_unitree_h1:latest
 ```
 
-The code can then be built with the alias:
+We're now ready to power on to robot and begin the file transfer process. Power the robot on following the [guidance from Unitree](https://support.unitree.com/home/en/H1_developer/quick_start) and connect it to your computer using either an Ethernet cable or local wireless network. Then, the required files can be transferred to the onboard computer using:
 
 ```shell
-build_and_source
+scp h1_drivers.tar unitree@<YOUR-ROBOTS-IP-ADDRESS>:~
 ```
 
-> [!CAUTION]
-> The next step will cause the robot to start moving, including taking steps to autonomous balance itself (unless the dummy driver is selected). Before launching the drivers, ensure that the robot's feet are flat on the ground and that all personnel are have retreated to a safe distance.
-
-To launch the drivers use the alias:
+Once the files are in place, connect to the robot via SSH:
 
 ```shell
-launch_h1_driver <robot>
+ssh -X unitree@<YOUR-ROBOTS-IP-ADDRESS>
 ```
 
-where `<robot>` is `yellow` or `blue` for the real robots, or `dummy` for the dummy robot.
+and load the container image:
+
+```shell
+docker load -i h1_drivers.tar
+```
+
+### Running the drivers
+
+> [!WARNING]
+> The below command will cause the robot to start moving, including taking steps autonomously to maintain its balance! Before you execute it, make sure that the robot in [preparation mode / ready state](https://support.unitree.com/home/en/H1_developer/quick_start) with its feet touching the floor and its weight supported by a lifting device, and that everyone has retreated to a safe distance.
+
+From here, the drivers can be launched using:
+
+```shell
+docker run \
+    -it \
+    --name sas_robot_driver_unitree_h1 \
+    --rm \
+    --privileged \
+    --network host \
+    --ipc host \
+    --stop-timeout 40 \
+    -e ROS_DOMAIN_ID=<YOUR_ROS_DOMAIN_ID> \
+    sas_robot_driver_unitree_h1 <YOUR_ROBOT_NAME>
+```
+
+where `<YOUR_ROS_DOMAIN_ID>` is your ROS domain ID (if this line is omitted, then a default value of 42 is used) and  `<YOUR_ROBOT_NAME>` is the name of your robot. While the ROS domain ID is an optional argument, the robot name is required. This is because the ROS2 nodes and topics will use your robot's name in their titles. This allows you to have multiple H1 robots on the same ROS domain without getting them mixed up. Any robot name is acceptable, except for `dummy` and `bash`, as these both trigger special cases for development purposes (see below).
 
 The drivers can be stopped at any time by executing `ctrl+c` in the terminal.
+
+If you wish to incorporate the drivers into a Docker compose file you're writing, you can add a driver service like so:
+
+```yaml
+services:
+  h1_driver:
+    image: sas_robot_driver_unitree_h1:latest
+    command: ["<YOUR_ROBOT_NAME>"]
+
+    environment:
+      ROS_DOMAIN_ID: "<YOUR_ROS_DOMAIN_ID>"
+      
+    privileged: true
+    network_mode: host
+    ipc: host
+    stdin_open: true
+    tty: true
+    restart: "no"
+```
+
+### Developer tools
+
+Once the drivers are installed, an interactive session can be entered without automatically starting the drivers using:
+
+```shell
+docker run \
+    -it \
+    --name sas_robot_driver_unitree_h1 \
+    --rm \
+    --privileged \
+    --network host \
+    --ipc host \
+    --stop-timeout 40 \
+    -e ROS_DOMAIN_ID=<YOUR_ROS_DOMAIN_ID> \
+    sas_robot_driver_unitree_h1 bash
+```
+
+Likewise, the dummy driver can be launched using:
+
+```shell
+docker run \
+    -it \
+    --name sas_robot_driver_unitree_h1 \
+    --rm \
+    --privileged \
+    --network host \
+    --ipc host \
+    --stop-timeout 40 \
+    -e ROS_DOMAIN_ID=<YOUR_ROS_DOMAIN_ID> \
+    sas_robot_driver_unitree_h1 dummy
+```
+
+The dummy driver is a development tool that allows the drivers to be launched on a computer that isn't connected to an H1 robot. This can be useful for verifying that the drivers are working as intended after any changes. The dummy driver spoofs certain data readouts (e.g., the IMU) and is not intended for use on a real robot, so it should never be used on the H1's onboard computer.
+
 
 ## How to run the examples
 
 Example scripts in this repository are divided into two groups, the standalone scripts (source files under `src/standalone_scripts/`) and the ROS2 scripts (source files under `src/ROS2_scripts/`).
 
-The standalone scripts use the basic C++ class `DriverUnitreeH1` without SAS or ROS functionality. They are fully self contained, with each example creating its own driver instance. Thus, the drivers do not need to be launched through the typical `launch_h1_driver <robot>` command before using these.
+### Standalone Scripts
 
-To run the standalone examples, SSH into the robot and ensure that no other driver or example is currently running. Then simply execute:
+The standalone scripts are used to test basic robot features. They use the standalone C++ class `DriverUnitreeH1` without SAS or ROS functionality, and are fully self contained, with each example creating its own driver instance. Thus, the drivers do not need to be launched through the typical `launch_h1_driver <YOUR_ROBOT_NAME>` command before using these.
+
+To run the standalone examples, first SSH into the robot and ensure that no other driver or example is currently running. Then start an interactive session using:
+
+```shell
+docker run \
+    -it \
+    --name sas_robot_driver_unitree_h1 \
+    --rm \
+    --privileged \
+    --network host \
+    --ipc host \
+    --stop-timeout 40 \
+    -e ROS_DOMAIN_ID=<YOUR_ROS_DOMAIN_ID> \
+    sas_robot_driver_unitree_h1 bash
+```
+
+From there, you can run the standalone scripts using:
 
 ```shell
 cd sas_robot_driver_unitree_h1/
 build/sas_robot_driver_unitree_h1/<executable_name>
 ```
 
-For example, `build/sas_robot_driver_unitree_h1/basic_test` runs the example in `src/standalone_scripts/basic_test.cpp`. The scripts in `src/standalone_scripts` use the standalone C++ driver class without SAS or ROS functionality to test basic robot features. 
+For example, `build/sas_robot_driver_unitree_h1/basic_test` runs the example in `src/standalone_scripts/basic_test.cpp`.
+
+### ROS2 Scripts
 
 >[!WARNING]
 > The ROS2 scripts are not yet compatible with the new server interface! They may cause unsafe behaviour and should not be used!
 
-By contrast, the ROS2 scripts use the full SAS/ROS 2 driver interface and require the driver process to already be running in another terminal. Thus, to run these examples you should open two terminals, and SSH into the robot in both. Then, in one terminal launch the drivers:
+By contrast, the ROS2 scripts use the full SAS/ROS 2 driver interface and require the driver process to already be running on the robot. Thus, to run these examples you will need two terminals. In the first terminal (hereafter the _robot terminal_) connect to the robot via SSH and launch the drivers:
 
 ```shell
-launch_h1_driver <robot>
+docker run \
+    -it \
+    --name sas_robot_driver_unitree_h1 \
+    --rm \
+    --privileged \
+    --network host \
+    --ipc host \
+    --stop-timeout 40 \
+    -e ROS_DOMAIN_ID=<YOUR_ROS_DOMAIN_ID> \
+    sas_robot_driver_unitree_h1 <YOUR_ROBOT_NAME>
 ```
 
-and in the second terminal run the example:
+Then, making sure that your computer is on the same network as the H1, open a second terminal (hereafter the _control terminal_) and start an interactive session in the driver container:
 
 ```shell
-cd sas_robot_driver_unitree_h1/
+docker run \
+    -it \
+    --name sas_robot_driver_unitree_h1 \
+    --rm \
+    --privileged \
+    --network host \
+    --ipc host \
+    --stop-timeout 40 \
+    -e ROS_DOMAIN_ID=<YOUR_ROS_DOMAIN_ID> \
+    sas_robot_driver_unitree_h1 bash
+```
+
+At this stage you can check that the two containers are communicating properly by entering:
+
+```shell
+ros2 topic list
+```
+
+In the control terminal. This should reveal the ROS2 topics generated by the driver running on the H1. If these topics are absent, then something has gone wrong and the next steps wont work.
+
+Assuming that communications are working as they should, you can launch the example in the control terminal using:
+
+```shell
 build/sas_robot_driver_unitree_h1/<executable_name>
 ```
 

@@ -1,35 +1,22 @@
-# Note: This dockerfile is designed to work without an internet connection, since the H1's are
-#       not currently connected to the network. Instead, the files in this repo are moved to the
-#       robot via SCP over an ethernet cable, and then the build process occurs. See the Readme 
-#       for more information.
+# syntax=docker/dockerfile:1
 
 # ####################################################
 #                   Basic Setup                      #
 # ####################################################
 
-# Start from the base image created by Murillo
+# Start from the base image created by Murillo.
 FROM murilomarinho/sas:jazzy
 
-# Use bash as the default shell
+# Use bash for Dockerfile RUN instructions.
 SHELL ["/bin/bash", "-c"]
 
-# Make the message package available in interactive terminals.
-# Only source the driver overlay if it has already been built.
-RUN cat <<'EOF' >> /root/.bashrc
+# Default ROS domain; optionally override at runtime with -e ROS_DOMAIN_ID=<value>.
+ENV ROS_DOMAIN_ID=42
 
-# SAS legged message interfaces.
-source /opt/sas_legged_msgs/setup.bash
-
-# H1 driver overlay, when available.
-if [ -f /sas_robot_driver_unitree_h1/install/local_setup.bash ]; then
-    source /sas_robot_driver_unitree_h1/install/local_setup.bash
-fi
-EOF
-
-# Set the workspace as the working directory
+# Set the workspace as the working directory.
 WORKDIR /sas_robot_driver_unitree_h1
 
-# Copy the repository contents into the container
+# Copy the repository contents into the container.
 COPY . /sas_robot_driver_unitree_h1
 
 # ####################################################
@@ -54,16 +41,12 @@ RUN cmake -S src/unitree_drivers \
     cmake --build /tmp/unitree_build -j$(nproc) && \
     cmake --install /tmp/unitree_build
 
-# # ####################################################
-# #              Build SAS legged messages             #
-# # ####################################################
+# ####################################################
+#              Build SAS legged messages             #
+# ####################################################
 
-# Build the message package explicitly from the submodule.
 # Install outside the driver workspace so that cleaning the
 # driver's build/install directories does not delete it.
-#
-# This step uses local sources only. All dependencies must
-# already be available in the base image.
 RUN source /opt/ros/jazzy/setup.bash && \
     colcon --log-base /tmp/sas_legged_msgs_log build \
       --base-paths /sas_robot_driver_unitree_h1/src/sas_tools/sas_legged_msgs \
@@ -74,17 +57,36 @@ RUN source /opt/ros/jazzy/setup.bash && \
 RUN ldconfig
 
 # ####################################################
-#                   Set up Aliases                   #
+#                Build the H1 workspace              #
 # ####################################################
 
-# ALIASES
-RUN cat <<'EOF' >> ~/.bashrc
+# Use the same build sequence as the old build_and_source helper.
+RUN source /opt/ros/jazzy/setup.bash && \
+    source /opt/sas_legged_msgs/setup.bash && \
+    rm -rf build install log && \
+    colcon build
+
+# ####################################################
+#             Interactive terminal helpers           #
+# ####################################################
+
+RUN cat <<'EOF' >> /root/.bashrc
+
+# Make ROS, the message interfaces and the driver available.
+source /opt/ros/jazzy/setup.bash
+source /opt/sas_legged_msgs/setup.bash
+
+if [ -f /sas_robot_driver_unitree_h1/install/local_setup.bash ]; then
+    source /sas_robot_driver_unitree_h1/install/local_setup.bash
+fi
+
+# Helper retained for development use
 build_and_source() {
     (
-        # Run the build in a subshell so directory changes and build-environment changes remain local.
+        # Keep directory and build-environment changes local.
         cd /sas_robot_driver_unitree_h1 || exit 1
 
-        # Ensure the prebuilt message package is available.
+        source /opt/ros/jazzy/setup.bash || exit 1
         source /opt/sas_legged_msgs/setup.bash || exit 1
 
         # Clean only the driver workspace.
@@ -97,17 +99,34 @@ build_and_source() {
     source /sas_robot_driver_unitree_h1/install/setup.bash
 }
 
+# Launch the real-robot launch file.
 launch_h1_driver() {
-    if [ $# -ne 1 ]; then
-        echo "Usage: launch_driver <launch_file>"
+    if [ "$#" -lt 1 ]; then
+        echo "Usage: launch_h1_driver <robot_name> [launch arguments...]"
         return 1
     fi
 
-    ros2 launch sas_robot_driver_unitree_h1 $1_H1_launch.py
-}
+    local robot_name="$1"
+    shift
 
+    ros2 launch sas_robot_driver_unitree_h1 \
+        real_H1_launch.py \
+        "robot_name:=${robot_name}" \
+        "$@"
+}
 EOF
 
 # ####################################################
-#                 End of Dockerfile                  #
+#                 Container startup                  #
 # ####################################################
+
+# Keep the entrypoint outside the workspace so a development
+# bind mount over the workspace wouldn't hide it.
+COPY docker/driver/h1_entrypoint.sh /usr/local/bin/h1_entrypoint.sh
+RUN chmod +x /usr/local/bin/h1_entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/h1_entrypoint.sh"]
+
+# Clear any default command inherited from the base image.
+# A robot name must be supplied explicitly.
+CMD []

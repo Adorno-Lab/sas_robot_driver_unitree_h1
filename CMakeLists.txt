@@ -24,13 +24,6 @@ find_package(unitree_sdk2 REQUIRED)
 find_package(unitree_drivers REQUIRED)
 find_package(sas_legged_msgs REQUIRED)
 
-find_package(OpenCV REQUIRED COMPONENTS
-  core
-  imgcodecs
-  imgproc
-  highgui
-)
-
 ####################################
 # DQ Robotics
 ####################################
@@ -166,30 +159,6 @@ install(TARGETS sas_robot_driver_unitree_h1_node
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
-# Camera node
-
-add_executable(sas_robot_driver_unitree_h1_camera_node
-  src/sas_robot_driver_unitree_h1_camera_node_main.cpp
-  src/sas_robot_driver_unitree_h1_camera.cpp
-)
-
-target_link_libraries(sas_robot_driver_unitree_h1_camera_node
-  unitree_sdk2
-  ${OpenCV_LIBS}
-  ${PROJECT_NAME}
-)
-
-ament_target_dependencies(sas_robot_driver_unitree_h1_camera_node
-  rclcpp
-  sensor_msgs
-  sas_core
-  sas_common
-)
-
-install(TARGETS sas_robot_driver_unitree_h1_camera_node
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
-)
-
 
 ####################################
 # Launch files
@@ -277,73 +246,6 @@ add_executable(ROS2_velocity_test
 
 target_link_libraries(ROS2_velocity_test
   ${PROJECT_NAME}
-)
-
-add_executable(camera_test
-  src/standalone_scripts/camera_test.cpp
-)
-
-target_include_directories(camera_test PRIVATE
-  ${OpenCV_INCLUDE_DIRS}
-)
-
-target_link_libraries(camera_test
-  ${PROJECT_NAME}
-  ${OpenCV_LIBS}
-)
-
-# # Camera publisher
-# add_executable(ROS2_camera_publisher
-#   src/ROS2_scripts/ROS2_camera_publisher.cpp
-# )
-
-# target_compile_features(ROS2_camera_publisher PRIVATE cxx_std_17)
-
-# ament_target_dependencies(ROS2_camera_publisher
-#   rclcpp
-#   sensor_msgs
-# )
-
-# target_include_directories(ROS2_camera_publisher PRIVATE
-#   ${OpenCV_INCLUDE_DIRS}
-# )
-
-# target_link_libraries(ROS2_camera_publisher
-#   unitree_sdk2
-#   ${OpenCV_LIBS}
-# )
-
-
-# Camera subscriber/viewer
-add_executable(ROS2_camera_viewer
-  src/ROS2_scripts/ROS2_camera_viewer.cpp
-)
-
-target_compile_features(ROS2_camera_viewer PRIVATE cxx_std_17)
-
-ament_target_dependencies(ROS2_camera_viewer
-  rclcpp
-  sensor_msgs
-)
-
-target_include_directories(ROS2_camera_viewer PRIVATE
-  ${OpenCV_INCLUDE_DIRS}
-)
-
-target_link_libraries(ROS2_camera_viewer
-  ${OpenCV_LIBS}
-)
-
-
-# install(TARGETS
-#   ROS2_camera_publisher
-#   ROS2_camera_viewer
-#   RUNTIME DESTINATION lib/${PROJECT_NAME}
-# )
-
-install(TARGETS
-  ROS2_camera_viewer
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
 ####################################

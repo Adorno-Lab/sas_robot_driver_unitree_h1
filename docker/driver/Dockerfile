@@ -98,30 +98,12 @@ build_and_source() {
 }
 
 launch_h1_driver() {
-    if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-        echo "Usage: launch_h1_driver <robot> [enable_camera]"
+    if [ $# -ne 1 ]; then
+        echo "Usage: launch_driver <launch_file>"
         return 1
     fi
 
-    local enable_camera=false
-
-    case "${2:-}" in
-        "")
-            # No optional argument: launch without the camera.
-            ;;
-        enable_camera)
-            enable_camera=true
-            ;;
-        *)
-            echo "Unknown option: $2"
-            echo "Usage: launch_h1_driver <robot> [enable_camera]"
-            return 1
-            ;;
-    esac
-
-    ros2 launch sas_robot_driver_unitree_h1 \
-        "${1}_H1_launch.py" \
-        "enable_camera:=${enable_camera}"
+    ros2 launch sas_robot_driver_unitree_h1 $1_H1_launch.py
 }
 
 EOF

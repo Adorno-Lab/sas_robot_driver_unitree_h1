@@ -122,7 +122,7 @@ EOF
 
 # Keep the entrypoint outside the workspace so a development
 # bind mount over the workspace wouldn't hide it.
-COPY docker/driver/h1_entrypoint.sh /usr/local/bin/h1_entrypoint.sh
+COPY docker/h1_entrypoint.sh /usr/local/bin/h1_entrypoint.sh
 RUN chmod +x /usr/local/bin/h1_entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/h1_entrypoint.sh"]

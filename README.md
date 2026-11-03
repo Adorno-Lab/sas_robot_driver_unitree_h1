@@ -2,7 +2,7 @@
 
 ![GitHub License](https://img.shields.io/github/license/Adorno-Lab/sas_robot_driver_unitree_z1)![Static Badge](https://img.shields.io/badge/ROS2-Jazzy-blue)![Static Badge](https://img.shields.io/badge/powered_by-DQ_Robotics-red)![Static Badge](https://img.shields.io/badge/SmartArmStack-green)![Static Badge](https://img.shields.io/badge/Ubuntu-24.04_LTS-orange)
 
-This repository contains a SAS driver and simulation capabilities for the Unitree H1, developed based on the [Unitree B1 driver](https://github.com/Adorno-Lab/sas_robot_driver_unitree_b1/tree/main) by Juan José Quiroz Omaña. The H1 drivers are maintained by Daniel S. J. Derwent. For questions or issues, please contact [daniel.derwent@manchester.ac.uk](mailto:daniel.derwent@manchester.ac.uk).
+This repository contains a SAS driver for the Unitree H1, developed based on the drivers for the [Unitree B1](https://github.com/Adorno-Lab/sas_robot_driver_unitree_b1/tree/main) and [Unitree G1](https://github.com/Adorno-Lab/sas_robot_driver_unitree_g1/tree/main) both written by Juan José Quiroz Omaña. The H1 drivers are maintained by Daniel S. J. Derwent. For questions or issues, please contact [daniel.derwent@manchester.ac.uk](mailto:daniel.derwent@manchester.ac.uk).
 
 > [!WARNING]
 > As noted by Juan José Quiroz Omaña in the [unitree_drivers documentation](https://adorno-lab.github.io/unitree_drivers/), FSM IDs, balance-mode values, and other integer codes accepted by Unitree SDK2 functions are not portable across robots or firmware versions. The same integer can mean different things between firmware revisions of the same robot (for example, the Unitree G1's "Start" state has been observed at FSM ID 200, 500, 501, and 801 depending on firmware version and waist DoF configuration). This driver uses FSM codes (defined in `src/DriverUnitreeH1.hpp`) determined empirically through tests conducted on the H1 robots in our lab's possession. These values may not be appropriate for your H1.
@@ -10,7 +10,9 @@ This repository contains a SAS driver and simulation capabilities for the Unitre
 
 ## Structure of the driver
 
-Using these drivers, users can obtain live information from the robot's onboard sensors, (including IMU readings as well as motor positions, velocities, torques and casing temperatures) and can command the robot by setting upper body joint position targets and high level torso velocity commands. Low-level control of individual leg motors is not currently supported. Velocity and torque control of the upper body (arms and waist joint) are also not currently supported. To access the onboard camera feed you should use the [Unitree Video Hub](https://github.com/Adorno-Lab/unitree_videohub_bridge) package by Juan José Quiroz Omaña.
+Using these drivers, users can obtain live information from the robot's onboard sensors, (including IMU readings as well as motor positions, velocities, torques and casing temperatures) and can command the robot by setting upper body (arms and waist) joint position targets and high level torso velocity commands. Low-level control of individual leg motors is not currently supported. Velocity and torque control of the upper body are also not currently supported. 
+
+To access the onboard camera feed you should use the [Unitree Video Hub](https://github.com/Adorno-Lab/unitree_videohub_bridge) package by Juan José Quiroz Omaña.
 
 The H1 driver mainly consists of two classes, each contained in their own files. These are:
 
@@ -49,35 +51,7 @@ doxygen Doxyfile
 
 The docs will be generated inside the `build/docs` directory. Find and open the `build/docs/index.html` file in order to view the docs.
 
-## How to use the simulator
-
-To use the simulator, first ensure that Docker is installed on the host machine, and then clone this repository together with its submodules:
-
-```shell
-git clone git@github.com:Adorno-Lab/sas_robot_driver_unitree_h1.git --recursive
-```
-
-The simulator image can then be built with:
-
-```shell
-sh h1_simulator_build.sh
-```
-
-Once the image is built, it can be started with:
-
-```shell
-sh h1_simulator_start.sh <scene_file_name>
-```
-
-where `<scene_file_name>` is one of the files under `simulation/scenes/`, for example `h1FixedBaseScene.ttt`.
-
-The simulator uses the [sas_robot_driver_coppeliasim package](https://github.com/MarinhoLab/sas_robot_driver_coppeliasim), which allows the simulated robot to be controlled through a standard SAS interface.
-
-The simulator is currently under development, but it is planned to simulate the H1 robot in such a way that the upper body (arms and waist) joints can be commanded individually, while the base is treated as holonomic and is given high level velocity commands.
-
-## How to use the hardware drivers
-
-### Installation
+## Installation
 
 To use the drivers on the real robot, first ensure that Docker is installed on the host computer and set up the H1 on a crane without powering it on yet. The robot is not currently connected to the internet, so all required files must be transferred from the host machine.
 
@@ -121,7 +95,7 @@ and load the container image:
 docker load -i h1_drivers.tar
 ```
 
-### Running the drivers
+## Running the drivers
 
 > [!WARNING]
 > The below command will cause the robot to start moving, including taking steps autonomously to maintain its balance! Before you execute it, make sure that the robot in [preparation mode / ready state](https://support.unitree.com/home/en/H1_developer/quick_start) with its feet touching the floor and its weight supported by a lifting device, and that everyone has retreated to a safe distance.
@@ -164,7 +138,7 @@ services:
     restart: "no"
 ```
 
-### Developer tools
+## Developer tools
 
 Once the drivers are installed, an interactive session can be entered without automatically starting the drivers using:
 
@@ -199,13 +173,13 @@ docker run \
 The dummy driver is a development tool that allows the drivers to be launched on a computer that isn't connected to an H1 robot. This can be useful for verifying that the drivers are working as intended after any changes. The dummy driver spoofs certain data readouts (e.g., the IMU) and is not intended for use on a real robot, so it should never be used on the H1's onboard computer.
 
 
-## How to run the examples
+## Examples
 
 Example scripts in this repository are divided into two groups, the standalone scripts (source files under `src/standalone_scripts/`) and the ROS2 scripts (source files under `src/ROS2_scripts/`).
 
 ### Standalone Scripts
 
-The standalone scripts are used to test basic robot features. They use the standalone C++ class `DriverUnitreeH1` without SAS or ROS functionality, and are fully self contained, with each example creating its own driver instance. Thus, the drivers do not need to be launched through the typical `launch_h1_driver <YOUR_ROBOT_NAME>` command before using these.
+The standalone scripts are used to test basic robot features. They use the standalone C++ class `DriverUnitreeH1` without SAS or ROS functionality, and are fully self contained, with each example creating its own driver instance. Thus, the drivers do not need to be launched through the above `docker run ...` command before using these.
 
 To run the standalone examples, first SSH into the robot and ensure that no other driver or example is currently running. Then start an interactive session using:
 

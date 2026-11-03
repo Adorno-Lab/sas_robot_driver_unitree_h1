@@ -79,11 +79,11 @@ const std::vector<H1Limb> kH1Limbs = {
    {"left_leg", LIMB::LEFT_LEG,
       {"LeftHipPitch", "LeftHipRoll", "LeftHipYaw", "LeftKnee", "LeftAnkle"},
       {-3.14, -0.43, -0.43, -0.26, -0.87},
-      { 3.14,  0.43,  0.43,  2.05,  0.52}},
+      { 2.53,  0.43,  0.43,  2.05,  0.52}},
    {"right_leg", LIMB::RIGHT_LEG,
       {"RightHipPitch", "RightHipRoll", "RightHipYaw", "RightKnee", "RightAnkle"},
       {-3.14, -0.43, -0.43, -0.26, -0.87},
-      { 3.14,  0.43,  0.43,  2.05,  0.52}},
+      { 2.53,  0.43,  0.43,  2.05,  0.52}},
 };
 
 VectorXd _to_vectorxd(const std::vector<double>& values)

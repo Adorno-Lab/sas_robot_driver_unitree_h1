@@ -288,6 +288,12 @@ bool RobotDriverUnitreeH1::is_supported(const LEGGED_FUNCTIONALITY &functionalit
          return true;
       case LEGGED_FUNCTIONALITY::BASE_ORIENTATION:
          return false;
+      case LEGGED_FUNCTIONALITY::BASE_HEIGHT_WHILE_WALKING:
+         return true;
+      case LEGGED_FUNCTIONALITY::MEASURED_TWIST:
+         return false;
+      case LEGGED_FUNCTIONALITY::BATTERY:
+         return false;
       default:
          // If there are any other functionalities later introduced that I don't know about at time of 
          // writing, then return false for those.
@@ -325,6 +331,12 @@ std::vector<bool> RobotDriverUnitreeH1::get_commandable_limbs() const
    }
 
    return commandable;
+}
+
+std::tuple<double, double, double> RobotDriverUnitreeH1::get_base_height_limits() const
+{
+   // {min, max, nominal}
+   return {0.6, 0.8, 0.7};
 }
 
 // ###########################################

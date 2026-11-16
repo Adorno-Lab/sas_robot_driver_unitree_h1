@@ -126,9 +126,15 @@ public:
     bool is_supported(const LEGGED_FUNCTIONALITY& functionality) const override;
     std::vector<LimbEntry> get_limbs() const override;
     std::vector<bool> get_commandable_limbs() const override;
-    // Note that we don't override get_base_orientation_limits(), which is a virtual function in
-    // LeggedRobotDriver, because the default implementation is recommended when the driver does 
-    // not support LEGGED_FUNCTIONALITY::BASE_ORIENTATION, which the H1 does not.
+    std::tuple<double, double, double> get_base_height_limits() const override;
+
+    // Note that this driver does not override get_base_orientation_limits(), 
+    // get_battery_percentage(), or get_measured_twist(), despite these being virtual in
+    // LeggedRobotDriver.
+
+    // This is because the default implementations are recommended when the driver does not support
+    // the relevant functionalities (BASE_ORIENTATION, BATTERY, and MEASURED_TWIST, respectively)
+    // which the H1 does not.
 
     void set_target_twist(const DQ& twist) override;
     void set_target_base_orientation(const DQ& r) override;

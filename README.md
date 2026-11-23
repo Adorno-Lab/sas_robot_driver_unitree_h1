@@ -140,7 +140,7 @@ services:
 
 ## Developer tools
 
-Once the drivers are installed, an interactive session can be entered without automatically starting the drivers using:
+Once the drivers are installed, an interactive Bash session can be entered without automatically starting the drivers using:
 
 ```shell
 docker run \
@@ -154,6 +154,8 @@ docker run \
     -e ROS_DOMAIN_ID=<YOUR_ROS_DOMAIN_ID> \
     sas_robot_driver_unitree_h1 bash
 ```
+
+A helper script is available to run from this repository's root directory, `sh h1_driver_dev_start.sh` which will start an interactive Bash session. This helper bind mounts the repository into the container, allowing for the rapid development and testing of changes.
 
 Likewise, the dummy driver can be launched using:
 
@@ -175,25 +177,19 @@ The dummy driver is a development tool that allows the drivers to be launched on
 
 ## Examples
 
-Example scripts in this repository are divided into two groups, the standalone scripts (source files under `src/standalone_scripts/`) and the ROS2 scripts (source files under `src/ROS2_scripts/`).
+Example programs in this repository are divided into two groups: standalone examples under `examples/standalone_examples/` and ROS 2 examples under `examples/ROS2_examples/`. Each set currently contains two examples:
 
-### Standalone Scripts
+- `print_example` -> Prints out data obtained from the driver's various getter functions, including joint positions, velocities and torques as well as IMU data and motor temperatures.
+- `movement_example` -> Guides the robot through a sequence of movements to demonstrate driver functionalities. These include raising and lowering the base height, moving the arms, and walking backwards and forwards.
 
-The standalone scripts are used to test basic robot features. They use the standalone C++ class `DriverUnitreeH1` without SAS or ROS functionality, and are fully self contained, with each example creating its own driver instance. Thus, the drivers do not need to be launched through the above `docker run ...` command before using these.
+### Standalone Examples
 
-To run the standalone examples, first SSH into the robot and ensure that no other driver or example is currently running. Then start an interactive session using:
+The standalone examples (`/examples/standalone_examples/`) are used to demonstrate the use of the raw C++ interface, and to verify the continued functioning of the drivers after updates are made. They use the standalone C++ class `DriverUnitreeH1` without SAS or ROS functionality, and are fully self contained, with each example creating its own driver instance.
+
+To run the standalone examples, first SSH into the robot and ensure that no other driver or example is currently running. Then start an interactive session using the helper script:
 
 ```shell
-docker run \
-    -it \
-    --name sas_robot_driver_unitree_h1 \
-    --rm \
-    --privileged \
-    --network host \
-    --ipc host \
-    --stop-timeout 40 \
-    -e ROS_DOMAIN_ID=<YOUR_ROS_DOMAIN_ID> \
-    sas_robot_driver_unitree_h1 bash
+sh h1_driver_dev_start.sh
 ```
 
 From there, you can run the standalone scripts using:
@@ -203,7 +199,9 @@ cd sas_robot_driver_unitree_h1/
 build/sas_robot_driver_unitree_h1/<executable_name>
 ```
 
-For example, `build/sas_robot_driver_unitree_h1/basic_test` runs the example in `src/standalone_scripts/basic_test.cpp`.
+For example, `build/sas_robot_driver_unitree_h1/movement_example` runs `examples/standalone_examples/movement_example.cpp`. 
+
+Pass the optional argument `--dummy` to any standalone example to use the dummy driver instead of starting a real robot driver, for example `build/sas_robot_driver_unitree_h1/movement_example --dummy`.
 
 ### ROS2 Scripts
 
@@ -254,4 +252,4 @@ Assuming that communications are working as they should, you can launch the exam
 build/sas_robot_driver_unitree_h1/<executable_name>
 ```
 
-For example, `build/sas_robot_driver_unitree_h1/ROS2_basic_test` runs the example in `src/ROS2_scripts/ROS2_basic_test.cpp`.
+For example, `build/sas_robot_driver_unitree_h1/ROS2_movement_example` runs `examples/ROS2_examples/movement_example.cpp`.

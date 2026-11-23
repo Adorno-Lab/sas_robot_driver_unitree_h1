@@ -188,6 +188,8 @@ fi
 #
 # Final argument:
 #   Select the existing sas_robot_driver_unitree_h1 Docker image.
+#   The following command argument opens a Bash session instead of
+#   automatically starting a driver.
 docker run \
     -it \
     --name sas_robot_driver_unitree_h1 \
@@ -197,4 +199,5 @@ docker run \
     --ipc host \
     "$@" \
     -v "$(pwd):/sas_robot_driver_unitree_h1" \
-    sas_robot_driver_unitree_h1
+    sas_robot_driver_unitree_h1 \
+    bash

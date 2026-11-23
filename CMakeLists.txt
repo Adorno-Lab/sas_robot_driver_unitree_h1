@@ -15,6 +15,9 @@ find_package(ament_cmake REQUIRED)
 
 find_package(Eigen3 REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 
 find_package(sas_core REQUIRED)
 find_package(sas_common REQUIRED)
@@ -27,24 +30,11 @@ find_package(sas_legged_msgs REQUIRED)
 ####################################
 # DQ Robotics
 ####################################
-# Installed system library:
-#   /usr/lib/libdqrobotics.so
-# Headers:
-#   /usr/include/dqrobotics
 
 find_library(DQROBOTICS_LIBRARY
   NAMES dqrobotics
   REQUIRED
 )
-
-
-# ####################################
-# # Unitree SDK2
-# ####################################
-
-# add_subdirectory(
-#   ${CMAKE_CURRENT_SOURCE_DIR}/src/unitree_sdk2
-# )
 
 ####################################
 # Driver shared library
@@ -92,7 +82,6 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 
-
 ####################################
 # Export library
 ####################################
@@ -134,10 +123,8 @@ install(
 
 
 # ----------------------------------
-# Node executables
+# Node executable
 # ----------------------------------
-
-# Main driver node
 
 add_executable(sas_robot_driver_unitree_h1_node
   src/sas_robot_driver_unitree_h1_node_main.cpp
@@ -170,82 +157,31 @@ install(
 
 
 ####################################
-# Test executables
+# Examples
 ####################################
 
-add_executable(basic_test
-  src/standalone_scripts/basic_test.cpp
+function(add_h1_example target source)
+  add_executable(${target} ${source})
+  target_link_libraries(${target} ${PROJECT_NAME})
+endfunction()
+
+add_h1_example(movement_example
+  examples/standalone_examples/movement_example.cpp
 )
 
-target_link_libraries(basic_test
-  ${PROJECT_NAME}
+add_h1_example(printer_example
+  examples/standalone_examples/printer_example.cpp
 )
 
-
-add_executable(velocity_test
-  src/standalone_scripts/velocity_test.cpp
+add_h1_example(ROS2_movement_example
+  examples/ROS2_examples/movement_example.cpp
 )
 
-target_link_libraries(velocity_test
-  ${PROJECT_NAME}
-)
-
-
-add_executable(printer_test
-  src/standalone_scripts/printer_test.cpp
-)
-
-target_link_libraries(printer_test
-  ${PROJECT_NAME}
-)
-
-
-add_executable(torque_test
-  src/standalone_scripts/torque_test.cpp
-)
-
-target_link_libraries(torque_test
-  ${PROJECT_NAME}
-)
-
-add_executable(standing_test
-  src/standalone_scripts/standing_test.cpp
-)
-
-target_link_libraries(standing_test
-  ${PROJECT_NAME}
-)
-
-add_executable(mode_test
-  src/standalone_scripts/mode_test.cpp
-)
-
-target_link_libraries(mode_test
-  ${PROJECT_NAME}
-)
-
-add_executable(limit_test
-  src/standalone_scripts/limit_test.cpp
-)
-
-target_link_libraries(limit_test
-  ${PROJECT_NAME}
-)
-
-add_executable(ROS2_basic_test
-  src/ROS2_scripts/ROS2_basic_test.cpp
-)
-
-target_link_libraries(ROS2_basic_test
-  ${PROJECT_NAME}
-)
-
-add_executable(ROS2_velocity_test
-  src/ROS2_scripts/ROS2_velocity_test.cpp
-)
-
-target_link_libraries(ROS2_velocity_test
-  ${PROJECT_NAME}
+ament_target_dependencies(ROS2_movement_example
+  rclcpp
+  geometry_msgs
+  sensor_msgs
+  std_msgs
 )
 
 ####################################

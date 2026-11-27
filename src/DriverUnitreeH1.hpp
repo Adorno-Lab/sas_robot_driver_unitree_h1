@@ -34,6 +34,8 @@
 #include <unitree_drivers/DriverUnitreeLocoClient.h>
 #include <unitree_drivers/DriverUnitreeArmSDK.h>
 #include <unitree_drivers/DriverUnitreeLowState.h>
+#include <unitree/idl/go2/SportModeState_.hpp>
+#include <unitree/robot/channel/channel_subscriber.hpp>
 
 #include <marinholab/sas/core/sas_shutdown_signaler.hpp>
 
@@ -62,6 +64,9 @@ private:
 
     static constexpr float comms_timeout_sec_ = 1.0f;
     static constexpr std::chrono::duration<double> comms_timeout_chrono_sec_ {comms_timeout_sec_};
+
+    unitree::robot::ChannelSubscriberPtr<unitree_go::msg::dds_::SportModeState_> odom_subscriber_;
+    unitree_go::msg::dds_::SportModeState_ odom_msg_;
 
 protected:
     enum class MODE
@@ -167,7 +172,8 @@ public:
     VectorXd get_joint_velocities(DriverUnitreeLowState::LIMB limb) const;
     VectorXd get_joint_torques(DriverUnitreeLowState::LIMB limb) const;
     VectorXd get_all_upper_body_joint_temperatures() const;
-    VectorXd get_torso_velocity() const;
+    VectorXd get_linear_velocity_in_pelvis_frame() const;
+    VectorXd get_angular_velocity_in_pelvis_frame() const;
     VectorXd get_battery_temperatures() const;
 
     DriverUnitreeLowState::IMUData get_IMU_data() const;

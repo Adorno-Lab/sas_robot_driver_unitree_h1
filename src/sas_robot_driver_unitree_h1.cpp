@@ -266,6 +266,21 @@ DQ RobotDriverUnitreeH1::get_linear_acceleration()
 }
 
 /**
+ * @brief Get the latest measured twist in the pelvis frame.
+ * @return A DQ containing the most recent measured twist in the pelvis frame.
+ */
+DQ RobotDriverUnitreeH1::get_measured_twist()
+{
+   VectorXd angular_vector_form = impl_->hardware_->get_angular_velocity_in_pelvis_frame();
+   VectorXd linear_vector_form = impl_->hardware_->get_linear_velocity_in_pelvis_frame();
+   
+   DQ angular_DQ_form = angular_vector_form(0)*i_ + angular_vector_form(1)*j_ + angular_vector_form(2)*k_;
+   DQ linear_DQ_form = linear_vector_form(0)*i_ + linear_vector_form(1)*j_ + linear_vector_form(2)*k_;
+
+   return angular_DQ_form + E_*linear_DQ_form;
+}
+
+/**
  * @brief Get the high level modes supported by this driver.
  * @return A vector of supported modes.
  */
@@ -291,7 +306,7 @@ bool RobotDriverUnitreeH1::is_supported(const LEGGED_FUNCTIONALITY &functionalit
       case LEGGED_FUNCTIONALITY::BASE_HEIGHT_WHILE_WALKING:
          return true;
       case LEGGED_FUNCTIONALITY::MEASURED_TWIST:
-         return false;
+         return true;
       case LEGGED_FUNCTIONALITY::BATTERY:
          return false;
       default:

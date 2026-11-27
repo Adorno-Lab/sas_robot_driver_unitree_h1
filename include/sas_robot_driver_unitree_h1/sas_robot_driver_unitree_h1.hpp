@@ -122,18 +122,19 @@ public:
     DQ get_orientation() override;
     DQ get_angular_velocity() override;
     DQ get_linear_acceleration() override;
+    DQ get_measured_twist() override;
     std::vector<HIGH_LEVEL_MODE> get_supported_high_level_modes() const override;
     bool is_supported(const LEGGED_FUNCTIONALITY& functionality) const override;
     std::vector<LimbEntry> get_limbs() const override;
     std::vector<bool> get_commandable_limbs() const override;
     std::tuple<double, double, double> get_base_height_limits() const override;
 
-    // Note that this driver does not override get_base_orientation_limits(), 
-    // get_battery_percentage(), or get_measured_twist(), despite these being virtual in
+    // Note that this driver does not override get_base_orientation_limits() or 
+    // get_battery_percentage() despite these being virtual in
     // LeggedRobotDriver.
 
     // This is because the default implementations are recommended when the driver does not support
-    // the relevant functionalities (BASE_ORIENTATION, BATTERY, and MEASURED_TWIST, respectively)
+    // the relevant functionalities (BASE_ORIENTATION and BATTERY, respectively)
     // which the H1 does not.
 
     void set_target_twist(const DQ& twist) override;

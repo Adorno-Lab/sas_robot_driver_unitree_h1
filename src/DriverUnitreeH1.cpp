@@ -24,6 +24,7 @@
 */
 
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <iostream>
 #include <thread> 
@@ -37,6 +38,7 @@
 #include <unitree/robot/h1/loco/h1_loco_client.hpp>
 #include <unitree/idl/go2/LowCmd_.hpp>
 #include <unitree/idl/go2/LowState_.hpp>
+#include <unitree/idl/go2/SportModeState_.hpp>
 #include <unitree/robot/channel/channel_publisher.hpp>
 #include <unitree/robot/channel/channel_subscriber.hpp>
 
@@ -181,6 +183,18 @@ void DriverUnitreeH1::connect(){
     loco_client_.connect();
     // The old driver set a comms timeout here, not sure how to do that in the new driver.
     std::cout << "        Done." << std::endl;
+
+    // Start the odometry subscriber
+    std::cout << "    Connecting to Odometry Service..." << std::endl;
+    unitree::robot::ChannelSubscriberPtr<unitree_go::msg::dds_::SportModeState_> subscriber(
+        new unitree::robot::ChannelSubscriber<unitree_go::msg::dds_::SportModeState_>("rt/odommodestate"));
+    odom_subscriber_ = subscriber;
+
+    odom_subscriber_->InitChannel([&](const void *msg) {
+        auto s = ( const unitree_go::msg::dds_::SportModeState_* )msg;
+        memcpy( &odom_msg_, s, sizeof( unitree_go::msg::dds_::SportModeState_ ) );
+    }, 1);
+    std::cout << "        Done." << std::endl;
     
     std::cout << "Connection complete." << std::endl;
     current_status_ = STATUS::CONNECTED;
@@ -210,6 +224,7 @@ void DriverUnitreeH1::initialize(){
     std::cout << "    Initializing Loco Client..." << std::endl;
     loco_client_.initialize();
     loco_client_.set_fsm_id(FSM_ID::START);
+    loco_client_.enable_odometry();
     std::cout << "        Done." << std::endl;
 
     std::cout << "    Initializing Arm SDK..." << std::endl;
@@ -494,22 +509,70 @@ VectorXd DriverUnitreeH1::get_all_upper_body_joint_temperatures() const
 // --------------------------------------------
 
 /**
- * @brief Return the current torso velocity estimate.
- * @return A 3-vector containing {vx, vy, omega} in the robot frame.
- * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
+ * @brief Return the current pelvis velocity estimate.
+ * @return A 3-vector containing {vx, vy, vz} in the robot pelvis frame in meters per second.
+ * @throws std::runtime_error if the driver is not initialized.
  */
-VectorXd DriverUnitreeH1::get_torso_velocity() const {
+VectorXd DriverUnitreeH1::get_linear_velocity_in_pelvis_frame() const {
     
     if(current_status_!=STATUS::INITIALIZED){
-            throw std::runtime_error("[DriverUnitreeH1::get_torso_velocity] Function called when robot is not properly initialized!");
+            throw std::runtime_error("[DriverUnitreeH1::get_linear_velocity_in_pelvis_frame] Function called when robot is not properly initialized!");
     }
     
-    std::cout << "DriverUnitreeH1::get_torso_velocity is not yet implemented." << std::endl;
-    return VectorXd::Zero(3);
+    // If this is the dummy driver then spoof the data
+    if(is_dummy_){
+        return VectorXd::Zero(3);
+    }
+
+    auto measured_velocity = odom_msg_.velocity();
+    VectorXd velocity(3);
+    velocity<< measured_velocity[0], measured_velocity[1], measured_velocity[2];
+
+    return velocity;
 }
 
 /**
- * @brief Return the most recent IMU sample from the low-state observer.
+ * @brief Return the current pelvis angular velocity estimate.
+ * @return A 3-vector containing {wx, wy, wz} in the robot pelvis frame in radians per second.
+ * @throws std::runtime_error if the driver is not initialized.
+ */
+VectorXd DriverUnitreeH1::get_angular_velocity_in_pelvis_frame() const {
+
+    if(current_status_!=STATUS::INITIALIZED){
+            throw std::runtime_error("[DriverUnitreeH1::get_angular_velocity_in_pelvis_frame] Function called when robot is not properly initialized!");
+    }
+
+    // If this is the dummy driver then spoof the data
+    if(is_dummy_){
+        return VectorXd::Zero(3);
+    }
+    VectorXd angular_velocity_IMU_frame(3), angular_velocity_pelvis_frame(3);
+
+    // Get measurements in IMU frame from low state observer
+    auto measured_angular_velocity = low_state_.get_imu_data().gyroscope;
+    angular_velocity_IMU_frame<< measured_angular_velocity[0], measured_angular_velocity[1], measured_angular_velocity[2];
+
+    // The IMU is yawed relative to the pelvis by the waist joint.
+    const double waist_yaw_position = get_joint_positions(DriverUnitreeLowState::LIMB::WAIST)(0);
+    const double waist_yaw_velocity = get_joint_velocities(DriverUnitreeLowState::LIMB::WAIST)(0);
+    const double cos_yaw = std::cos(waist_yaw_position);
+    const double sin_yaw = std::sin(waist_yaw_position);
+
+    // Rotate the IMU measurement into pelvis axes and remove torso motion
+    // relative to the pelvis about the waist yaw axis.
+    angular_velocity_pelvis_frame <<
+        cos_yaw * angular_velocity_IMU_frame(0) - sin_yaw * angular_velocity_IMU_frame(1),
+        sin_yaw * angular_velocity_IMU_frame(0) + cos_yaw * angular_velocity_IMU_frame(1),
+        angular_velocity_IMU_frame(2) - waist_yaw_velocity;
+
+    return angular_velocity_pelvis_frame;
+}
+
+
+/**
+ * @brief Return the most recent IMU sample from the low-state observer. Measurements
+ *        are given in the IMU frame. For angular velocity in the pelvis frame, see
+ *        get_angular_velocity_in_pelvis_frame().
  * @return The latest IMU data packet, including quaternion orientation,
  *         angular velocity, linear acceleration, and Euler angles when available.
  * @throws std::runtime_error if the driver is not initialized.

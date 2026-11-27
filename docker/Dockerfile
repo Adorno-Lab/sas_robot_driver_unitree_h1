@@ -109,10 +109,16 @@ launch_h1_driver() {
     local robot_name="$1"
     shift
 
-    ros2 launch sas_robot_driver_unitree_h1 \
-        real_H1_launch.py \
-        "robot_name:=${robot_name}" \
-        "$@"
+    if [ "${robot_name}" = "dummy" ]; then
+        ros2 launch sas_robot_driver_unitree_h1 \
+            dummy_H1_launch.py \
+            "$@"
+    else
+        ros2 launch sas_robot_driver_unitree_h1 \
+            real_H1_launch.py \
+            "robot_name:=${robot_name}" \
+            "$@"
+    fi
 }
 EOF
 

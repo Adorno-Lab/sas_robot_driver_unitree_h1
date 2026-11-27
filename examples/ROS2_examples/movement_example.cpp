@@ -23,8 +23,9 @@
 # ################################################################
 */
 
-// This ROS 2 example publishes target joint-velocity commands and control-mode updates to the H1
-// driver, then waits for joint-state feedback to confirm the velocity-control interface is active.
+// This ROS 2 example publishes target joint positions and torso twists to the H1 driver,
+// waits for valid joint-state feedback, and demonstrates the position-control interface
+// used by the SAS driver layer.
 
 #include <chrono>
 #include <cstddef>
@@ -37,11 +38,9 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
-#include <sas_conversions/DQ_geometry_msgs_conversions.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
-#include <std_msgs/msg/string.hpp>
 
 using Eigen::VectorXd;
 
@@ -59,15 +58,15 @@ int main(int argc, char * argv[])
 
     const std::string topic_prefix = "/sas_h1/P_Body";
 
-    auto joint_velocity_publisher =
+    auto joint_target_publisher =
         node->create_publisher<std_msgs::msg::Float64MultiArray>(
-            topic_prefix + "/set/target_joint_velocities",
+            topic_prefix + "/set/target_joint_positions",
             rclcpp::QoS(1));
 
-    auto mode_publisher =
-        node->create_publisher<std_msgs::msg::String>(
-            topic_prefix + "/set/control_mode",
-            rclcpp::QoS(1));
+    auto torso_target_publisher =
+    node->create_publisher<geometry_msgs::msg::TwistStamped>(
+        topic_prefix + "/set/target_twist",
+        rclcpp::QoS(1));
 
     // The latest valid joint positions received from the driver.
     VectorXd current_joint_positions = VectorXd::Zero(9);
@@ -115,8 +114,8 @@ int main(int argc, char * argv[])
     while (
         rclcpp::ok() &&
         (
-            joint_velocity_publisher->get_subscription_count() == 0 || 
-            mode_publisher ->get_subscription_count() == 0 ||
+            joint_target_publisher->get_subscription_count() == 0 ||
+            torso_target_publisher->get_subscription_count() == 0 ||
             !valid_joint_state_received
         ))
     {
@@ -186,20 +185,13 @@ int main(int argc, char * argv[])
             command_frequency_hz * motion_duration_sec);
 
     VectorXd target_pos(9);
-    // target_pos <<
-    //      0.0,  1.571,  1.571, 0.0,
-    //      0.0, -1.571, -1.571, 0.0,
-    //      0.0;
     target_pos <<
-         0.0, 0.0, 1.571, 0.0,
-         0.0, 0.0, 0.0  , 0.0,
+         0.0,  1.571,  1.571, 0.0,
+         0.0, -1.571, -1.571, 0.0,
          0.0;
-    const VectorXd starting_pos = current_joint_positions;
-    const auto motion_start =
-        std::chrono::steady_clock::now();
 
-    const auto max_motion_time =
-        std::chrono::seconds(10);
+    // Capture the latest valid state immediately before beginning the motion.
+    const VectorXd starting_pos = current_joint_positions;
 
     VectorXd desired_torso_velocity(3);
     desired_torso_velocity << 0.2, 0.0, 0.0;
@@ -222,21 +214,33 @@ int main(int argc, char * argv[])
     // Perform the motion
     // -------------------------------------------------------------------------
 
-    std::cout << "    Changing mode..." << std::endl;
-    std_msgs::msg::String mode_msg;
-    mode_msg.data="velocity_controlled";
-    mode_publisher->publish(mode_msg);
-    std::cout << "        Done." << std::endl;
-
     std::cout << "    Begin motion..." << std::endl;
 
-    auto position_error = (target_pos - current_joint_positions).norm();
-    double error_threshold = 0.15;
-    double gain = 1.0;
+    for (std::size_t i = 0;i < num_cycles && rclcpp::ok();++i){
+        const double alpha =
+            static_cast<double>(i + 1) /
+            static_cast<double>(num_cycles);
 
-    while(position_error > error_threshold && rclcpp::ok()){
+        const VectorXd current_target =
+            starting_pos +
+            alpha * (target_pos - starting_pos);
 
-        VectorXd velocity_target = gain * (target_pos - current_joint_positions);
+        // ---------------------------------------------------------------------
+        // Send torso command
+        // ---------------------------------------------------------------------
+
+        geometry_msgs::msg::TwistStamped torso_msg;
+
+        torso_msg.header.stamp = node->now();
+        torso_msg.twist.linear.x = desired_torso_velocity(0);
+        torso_msg.twist.linear.y = desired_torso_velocity(1);
+        torso_msg.twist.linear.z = 0.0;
+
+        torso_msg.twist.angular.x = 0.0;
+        torso_msg.twist.angular.y = 0.0;
+        torso_msg.twist.angular.z = desired_torso_velocity(2);
+
+        torso_target_publisher->publish(torso_msg);
 
         // ---------------------------------------------------------------------
         // Send joint command
@@ -245,11 +249,11 @@ int main(int argc, char * argv[])
         std_msgs::msg::Float64MultiArray joint_msg;
 
         joint_msg.data.assign(
-            velocity_target.data(),
-            velocity_target.data() +
-                velocity_target.size());
+            current_target.data(),
+            current_target.data() +
+                current_target.size());
 
-        joint_velocity_publisher->publish(joint_msg);
+        joint_target_publisher->publish(joint_msg);
 
         // Process ROS events without blocking. This keeps graph and
         // subscription processing active while the trajectory is running.
@@ -262,29 +266,26 @@ int main(int argc, char * argv[])
                 "The command loop failed to maintain %.1f Hz.",
                 command_frequency_hz);
         }
-
-        position_error = (target_pos - current_joint_positions).norm();
-        std::cout<<"Error: "<<position_error<<std::endl;
-
-        if (std::chrono::steady_clock::now() - motion_start > max_motion_time){
-            RCLCPP_ERROR(node->get_logger(),"Motion timed out.");
-            break;
-        }
     }
 
     // -------------------------------------------------------------------------
-    // Stop the movement
+    // Stop the torso
     // -------------------------------------------------------------------------
 
     if (rclcpp::ok()) {
-        std_msgs::msg::Float64MultiArray joint_msg;
-        VectorXd stop_vels = VectorXd::Zero(9);
-        joint_msg.data.assign(
-            stop_vels.data(),
-            stop_vels.data() +
-                stop_vels.size());
+        geometry_msgs::msg::TwistStamped torso_stop_msg;
 
-        joint_velocity_publisher->publish(joint_msg);
+        torso_stop_msg.header.stamp = node->now();
+
+        torso_stop_msg.twist.linear.x = 0.0;
+        torso_stop_msg.twist.linear.y = 0.0;
+        torso_stop_msg.twist.linear.z = 0.0;
+
+        torso_stop_msg.twist.angular.x = 0.0;
+        torso_stop_msg.twist.angular.y = 0.0;
+        torso_stop_msg.twist.angular.z = 0.0;
+
+        torso_target_publisher->publish(torso_stop_msg);
 
         /*
          * Give the middleware an opportunity to send the final command before

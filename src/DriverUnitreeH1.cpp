@@ -24,6 +24,7 @@
 */
 
 #include <chrono>
+#include <cstddef>
 #include <iostream>
 #include <thread> 
 #include <sstream> 
@@ -329,19 +330,19 @@ void DriverUnitreeH1::disconnect(){
 /**
  * @brief Return the current joint positions for all upper-body joints. Convenience function for when C++ interface is used standalone.
  * @return Nine joint positions in radians:
- *         left arm [0–3], right arm [4–7], and waist [8].
+ *         waist [0], left arm [1–4], and right arm [5–8].
  * @throws std::runtime_error if the driver is not initialized.
  */
 VectorXd DriverUnitreeH1::get_all_upper_body_joint_positions() const
 {
+    const VectorXd waist_positions = get_joint_positions(DriverUnitreeLowState::LIMB::WAIST);
     const VectorXd left_arm_positions = get_joint_positions(DriverUnitreeLowState::LIMB::LEFT_ARM);
     const VectorXd right_arm_positions = get_joint_positions(DriverUnitreeLowState::LIMB::RIGHT_ARM);
-    const VectorXd waist_positions = get_joint_positions(DriverUnitreeLowState::LIMB::WAIST);
 
     VectorXd joint_positions_rad(9);
-    joint_positions_rad << left_arm_positions,
-                           right_arm_positions,
-                           waist_positions;
+    joint_positions_rad << waist_positions,
+                           left_arm_positions,
+                           right_arm_positions;
 
     return joint_positions_rad;
 }
@@ -349,19 +350,19 @@ VectorXd DriverUnitreeH1::get_all_upper_body_joint_positions() const
 /**
  * @brief Return the current joint velocities for all upper-body joints. Convenience function for when C++ interface is used standalone.
  * @return Nine joint velocities in radians per second:
- *         left arm [0–3], right arm [4–7], and waist [8].
+ *         waist [0], left arm [1–4], and right arm [5–8].
  * @throws std::runtime_error if the driver is not initialized.
  */
 VectorXd DriverUnitreeH1::get_all_upper_body_joint_velocities() const
 {
+    const VectorXd waist_velocities = get_joint_velocities(DriverUnitreeLowState::LIMB::WAIST);
     const VectorXd left_arm_velocities = get_joint_velocities(DriverUnitreeLowState::LIMB::LEFT_ARM);
     const VectorXd right_arm_velocities = get_joint_velocities(DriverUnitreeLowState::LIMB::RIGHT_ARM);
-    const VectorXd waist_velocities = get_joint_velocities(DriverUnitreeLowState::LIMB::WAIST);
 
     VectorXd joint_velocities_radps(9);
-    joint_velocities_radps << left_arm_velocities,
-                           right_arm_velocities,
-                           waist_velocities;
+    joint_velocities_radps << waist_velocities, 
+                              left_arm_velocities,
+                              right_arm_velocities;
 
     return joint_velocities_radps;
 }
@@ -369,19 +370,19 @@ VectorXd DriverUnitreeH1::get_all_upper_body_joint_velocities() const
 /**
  * @brief Return the current joint torques for all upper-body joints. Convenience function for when C++ interface is used standalone.
  * @return Nine joint torques in Newton meters:
- *         left arm [0–3], right arm [4–7], and waist [8].
+ *         waist [0], left arm [1–4], and right arm [5–8].
  * @throws std::runtime_error if the driver is not initialized.
  */
 VectorXd DriverUnitreeH1::get_all_upper_body_joint_torques() const
 {
+    const VectorXd waist_torques = get_joint_torques(DriverUnitreeLowState::LIMB::WAIST);
     const VectorXd left_arm_torques = get_joint_torques(DriverUnitreeLowState::LIMB::LEFT_ARM);
     const VectorXd right_arm_torques = get_joint_torques(DriverUnitreeLowState::LIMB::RIGHT_ARM);
-    const VectorXd waist_torques = get_joint_torques(DriverUnitreeLowState::LIMB::WAIST);
 
     VectorXd joint_torques_Nm(9);
-    joint_torques_Nm << left_arm_torques,
-                           right_arm_torques,
-                           waist_torques;
+    joint_torques_Nm << waist_torques,
+                        left_arm_torques,
+                        right_arm_torques;
 
     return joint_torques_Nm;
 }
@@ -456,12 +457,13 @@ VectorXd DriverUnitreeH1::get_joint_torques(DriverUnitreeLowState::LIMB limb) co
 /**
  * @brief Return the current casing temperatures for all joints.
  * @return A VectorXd containing the joint temperatures in degrees Celsius.
+ *         waist [0], left arm [1–4], and right arm [5–8].
  * @throws std::runtime_error if the driver is not initialized or the state connection has timed out.
  */
-VectorXd DriverUnitreeH1::get_joint_temperatures() const
+VectorXd DriverUnitreeH1::get_all_upper_body_joint_temperatures() const
 {
     if (current_status_ != STATUS::INITIALIZED) {
-        throw std::runtime_error("[DriverUnitreeH1::get_joint_temperatures] Function called when robot is not properly initialized!");
+        throw std::runtime_error("[DriverUnitreeH1::get_all_upper_body_joint_temperatures] Function called when robot is not properly initialized!");
     }
 
     // If this is the dummy driver, then return all zeros.
@@ -469,19 +471,19 @@ VectorXd DriverUnitreeH1::get_joint_temperatures() const
         return VectorXd::Zero(robot_joints_.size());
     }
 
+    const VectorXd waist_temps_C = low_state_.get_joint_temperatures(DriverUnitreeLowState::LIMB::WAIST);
     const VectorXd left_arm_temps_C = low_state_.get_joint_temperatures(DriverUnitreeLowState::LIMB::LEFT_ARM);
     const VectorXd right_arm_temps_C = low_state_.get_joint_temperatures(DriverUnitreeLowState::LIMB::RIGHT_ARM);
-    const VectorXd waist_temps_C = low_state_.get_joint_temperatures(DriverUnitreeLowState::LIMB::WAIST);
 
     // Sanity-check dimensions
     if (left_arm_temps_C.size() != 4 || right_arm_temps_C.size() != 4 || waist_temps_C.size() != 1){
-        throw std::runtime_error("[DriverUnitreeH1::get_joint_temperatures] Unexpected limb dimensions.");
+        throw std::runtime_error("[DriverUnitreeH1::get_all_upper_body_joint_temperatures] Unexpected limb dimensions.");
     }
 
     VectorXd joint_temps_C(9);
-    joint_temps_C << left_arm_temps_C,
-                     right_arm_temps_C,
-                     waist_temps_C;
+    joint_temps_C << waist_temps_C,
+                    left_arm_temps_C,
+                     right_arm_temps_C;
 
     return joint_temps_C;
 
@@ -587,6 +589,11 @@ float DriverUnitreeH1::get_stand_height() const {
  */
 void DriverUnitreeH1::set_stand_height(const float desired_height){
 
+    // If this is the dummy driver, there's no robot connected anyway, so just return.
+    if(is_dummy_){
+        return;
+    }
+
     loco_client_.set_stand_height(desired_height);
 }
 
@@ -636,7 +643,7 @@ std::string DriverUnitreeH1::get_control_mode() {
 /**
  * @brief Send position commands to all upper-body joints. Convenience function for when C++ interface is used standalone.
  * @param desired_joint_positions_rad Nine joint positions in radians:
- *        left arm [0–3], right arm [4–7], and waist [8].
+ *        waist [0], left arm [1–4], and right arm [5–8].
  * @throws std::invalid_argument if the input does not contain nine elements.
  * @throws std::runtime_error if the driver is not initialised or is not in position control mode.
  */
@@ -645,19 +652,24 @@ void DriverUnitreeH1::set_all_upper_body_joint_positions(const VectorXd& desired
         throw std::invalid_argument("[DriverUnitreeH1::set_all_upper_body_joint_positions] Expected exactly 9 joint positions!");
     }
 
-    const VectorXd left_arm_positions = desired_joint_positions_rad.head(4);
-    const VectorXd right_arm_positions = desired_joint_positions_rad.segment(4, 4);
-    const VectorXd waist_positions = desired_joint_positions_rad.tail(1);
+    // If this is the dummy driver, there's no robot connected anyway, so just return.
+    if(is_dummy_){
+        return;
+    }
 
+    const VectorXd waist_positions = desired_joint_positions_rad.head(1);
+    const VectorXd left_arm_positions = desired_joint_positions_rad.segment(1,4);
+    const VectorXd right_arm_positions = desired_joint_positions_rad.tail(4);
+
+    set_joint_positions(waist_positions, DriverUnitreeLowState::LIMB::WAIST);
     set_joint_positions(left_arm_positions, DriverUnitreeLowState::LIMB::LEFT_ARM);
     set_joint_positions(right_arm_positions, DriverUnitreeLowState::LIMB::RIGHT_ARM);
-    set_joint_positions(waist_positions, DriverUnitreeLowState::LIMB::WAIST);
 }
 
 /**
  * @brief Send velocity commands to all upper-body joints. Convenience function for when C++ interface is used standalone.
  * @param desired_joint_velocities_radps Nine joint velocities in radians per second:
- *        left arm [0–3], right arm [4–7], and waist [8].
+ *        waist [0], left arm [1–4], and right arm [5–8].
  * @throws std::invalid_argument if the input does not contain nine elements.
  * @throws std::runtime_error if the driver is not initialised or is not in velocity control mode.
  */
@@ -666,19 +678,20 @@ void DriverUnitreeH1::set_all_upper_body_joint_velocities(const VectorXd& desire
         throw std::invalid_argument("[DriverUnitreeH1::set_all_upper_body_joint_velocities] Expected exactly 9 joint velocities!");
     }
 
-    const VectorXd left_arm_velocities = desired_joint_velocities_radps.head(4);
-    const VectorXd right_arm_velocities = desired_joint_velocities_radps.segment(4, 4);
-    const VectorXd waist_velocities = desired_joint_velocities_radps.tail(1);
+    const VectorXd waist_velocities = desired_joint_velocities_radps.head(1);
+    const VectorXd left_arm_velocities = desired_joint_velocities_radps.segment(1,4);
+    const VectorXd right_arm_velocities = desired_joint_velocities_radps.tail(4);
 
+    set_joint_velocities(waist_velocities, DriverUnitreeLowState::LIMB::WAIST);
     set_joint_velocities(left_arm_velocities, DriverUnitreeLowState::LIMB::LEFT_ARM);
     set_joint_velocities(right_arm_velocities, DriverUnitreeLowState::LIMB::RIGHT_ARM);
-    set_joint_velocities(waist_velocities, DriverUnitreeLowState::LIMB::WAIST);
+
 }
 
 /**
  * @brief Send torque commands to all upper-body joints. Convenience function for when C++ interface is used standalone.
  * @param desired_joint_torques_Nm Nine joint torques in Newton meters:
- *        left arm [0–3], right arm [4–7], and waist [8].
+ *        waist [0], left arm [1–4], and right arm [5–8].
  * @throws std::invalid_argument if the input does not contain nine elements.
  * @throws std::runtime_error if the driver is not initialised or is not in torque control mode.
  */
@@ -687,13 +700,13 @@ void DriverUnitreeH1::set_all_upper_body_joint_torques(const VectorXd& desired_j
         throw std::invalid_argument("[DriverUnitreeH1::set_all_upper_body_joint_torques] Expected exactly 9 joint torques!");
     }
 
-    const VectorXd left_arm_torques = desired_joint_torques_Nm.head(4);
-    const VectorXd right_arm_torques = desired_joint_torques_Nm.segment(4, 4);
-    const VectorXd waist_torques = desired_joint_torques_Nm.tail(1);
+    const VectorXd waist_torques = desired_joint_torques_Nm.head(1);
+    const VectorXd left_arm_torques = desired_joint_torques_Nm.segment(1, 4);
+    const VectorXd right_arm_torques = desired_joint_torques_Nm.tail(4);
 
+    set_joint_torques(waist_torques, DriverUnitreeLowState::LIMB::WAIST);
     set_joint_torques(left_arm_torques, DriverUnitreeLowState::LIMB::LEFT_ARM);
     set_joint_torques(right_arm_torques, DriverUnitreeLowState::LIMB::RIGHT_ARM);
-    set_joint_torques(waist_torques, DriverUnitreeLowState::LIMB::WAIST);
 }
 
 /**
@@ -742,7 +755,7 @@ void DriverUnitreeH1::set_joint_positions(const VectorXd& desired_joint_position
  * @throws std::runtime_error if the driver is not initialized or the active mode is not
  *         velocity control
  */
-void DriverUnitreeH1::set_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec, DriverUnitreeLowState::LIMB limb) {
+void DriverUnitreeH1::set_joint_velocities(const VectorXd& desired_joint_velocities_rad_per_sec, DriverUnitreeLowState::LIMB /*limb*/) {
     
     if(current_status_!=STATUS::INITIALIZED){
         throw std::runtime_error("[DriverUnitreeH1::set_joint_velocities] Function called when robot is not properly initialized!");
@@ -752,7 +765,7 @@ void DriverUnitreeH1::set_joint_velocities(const VectorXd& desired_joint_velocit
         throw std::runtime_error("[DriverUnitreeH1::set_joint_velocities] Function called when robot is not in velocity control mode!");
     }
 
-    if(desired_joint_velocities_rad_per_sec.size()!=upper_body_joints_.size()){
+    if(static_cast<std::size_t>(desired_joint_velocities_rad_per_sec.size())!=upper_body_joints_.size()){
         throw std::runtime_error("[DriverUnitreeH1::set_joint_velocities] Input has incorrect size! (got "+std::to_string(desired_joint_velocities_rad_per_sec.size())+", expected "+std::to_string(upper_body_joints_.size())+")");
     }
 
@@ -768,7 +781,7 @@ void DriverUnitreeH1::set_joint_velocities(const VectorXd& desired_joint_velocit
  * @throws std::runtime_error if the driver is not initialized or the active mode is not
  *         torque control
  */
-void DriverUnitreeH1::set_joint_torques(const VectorXd& desired_joint_torques_Nm, DriverUnitreeLowState::LIMB limb) {
+void DriverUnitreeH1::set_joint_torques(const VectorXd& desired_joint_torques_Nm, DriverUnitreeLowState::LIMB /*limb*/) {
     
     if(current_status_!=STATUS::INITIALIZED){
         throw std::runtime_error("[DriverUnitreeH1::set_joint_torques] Function called when robot is not properly initialized!");
@@ -778,7 +791,7 @@ void DriverUnitreeH1::set_joint_torques(const VectorXd& desired_joint_torques_Nm
         throw std::runtime_error("[DriverUnitreeH1::set_joint_torques] Function called when robot is not in torque control mode!");
     }
 
-    if(desired_joint_torques_Nm.size()!=upper_body_joints_.size()){
+    if(static_cast<std::size_t>(desired_joint_torques_Nm.size())!=upper_body_joints_.size()){
         throw std::runtime_error("[DriverUnitreeH1::set_joint_torques] Input has incorrect size! (got "+std::to_string(desired_joint_torques_Nm.size())+", expected "+std::to_string(upper_body_joints_.size())+")");
     }
 
@@ -800,6 +813,11 @@ void DriverUnitreeH1::set_torso_velocity(const VectorXd& desired_torso_velocity_
 
     if(desired_torso_velocity_mps_radps.size()!=3){
         throw std::runtime_error("[DriverUnitreeH1::set_torso_velocity] Input has incorrect size! (got "+std::to_string(desired_torso_velocity_mps_radps.size())+", expected 3 -> {x, y, omega})");
+    }
+
+    // If this is the dummy driver, there's no robot connected anyway, so just return.
+    if(is_dummy_){
+        return;
     }
 
     float vx, vy, v_yaw;

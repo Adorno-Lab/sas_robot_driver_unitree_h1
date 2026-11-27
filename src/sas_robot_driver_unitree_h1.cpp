@@ -389,7 +389,7 @@ void RobotDriverUnitreeH1::set_target_twist(const DQ& twist)
  * not contain functionality to control the robot's torso orientation directly.
  * @param r Target base orientation, unused.
  */
-void RobotDriverUnitreeH1::set_target_base_orientation(const DQ &r)
+void RobotDriverUnitreeH1::set_target_base_orientation(const DQ &/*r*/)
 {
    throw std::logic_error("[RobotDriverUnitreeH1::set_target_base_orientation]: This function is not supported.");
 }

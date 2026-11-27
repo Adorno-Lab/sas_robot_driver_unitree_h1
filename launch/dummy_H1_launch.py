@@ -53,7 +53,7 @@ def generate_launch_description():
                         "twist_timeout_sec": 0.2,
                         "mode": "position_controlled",
                         "ENTER_DAMPING_MODE_ON_DEINIT": False,
-                        "network_interface": "eth0",
+                        "network_interface": "lo",  # this interface chosen because it exists for most linux systems/containers, and is unlikely to have a real robot connected to it.
                         "DUMMY_MODE": True,
                         # "ROBOT_IP": "192.168.8.226", #192.168.123.220
                         # "ROBOT_PORT": 8082,

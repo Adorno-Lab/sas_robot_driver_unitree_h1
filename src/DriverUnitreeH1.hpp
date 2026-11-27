@@ -166,7 +166,7 @@ public:
     VectorXd get_joint_positions(DriverUnitreeLowState::LIMB limb) const;
     VectorXd get_joint_velocities(DriverUnitreeLowState::LIMB limb) const;
     VectorXd get_joint_torques(DriverUnitreeLowState::LIMB limb) const;
-    VectorXd get_joint_temperatures() const;
+    VectorXd get_all_upper_body_joint_temperatures() const;
     VectorXd get_torso_velocity() const;
     VectorXd get_battery_temperatures() const;
 

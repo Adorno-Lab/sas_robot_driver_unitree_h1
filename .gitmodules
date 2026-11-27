@@ -6,4 +6,4 @@
 	url = https://github.com/Adorno-Lab/sas_tools
 [submodule "src/unitree_drivers"]
 	path = src/unitree_drivers
-	url = https://github.com/Adorno-Lab/unitree_drivers.git
+	url = git@github.com:DanSJohnson/unitree_drivers.git
